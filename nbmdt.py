@@ -89,27 +89,6 @@ class IPv4_route ( object ) :
 class IPv6_route (object ):
 
 
-# Kernel IPv6 routing table
-# Destination                    Next Hop                   Flag Met Ref Use If
-# 2601:602:9802:93a8::/64        ::                         UAe  256 0     0 eno1
-# 2601:602:9802:93a8::/64        ::                         UAe  256 0     0 enp3s0
-# fe80::/64                      ::                         U    256 0     0 eno1
-# fe80::/64                      ::                         U    256 0     0 enp3s0
-# ::/0                           fe80::2e30:33ff:fe55:ca5f  UGDAe 1024 8 15656 eno1
-# ::/0                           fe80::2e30:33ff:fe55:ca5f  UGDAe 1024 0     0 enp3s0
-# ::/0                           ::                         !n   -1  1 24572 lo
-# ::1/128                        ::                         Un   0   9   869 lo
-# 2601:602:9802:93a8::/128       ::                         Un   0   1     0 lo
-# 2601:602:9802:93a8::/128       ::                         Un   0   1     0 lo
-# 2601:602:9802:93a8:210:18ff:fecc:9c77/128 ::                         Un   0   1     0 lo
-# 2601:602:9802:93a8:222:4dff:fe7c:4dd9/128 ::                         Un   0   4 80408 lo
-# fe80::/128                     ::                         Un   0   1     0 lo
-# fe80::/128                     ::                         Un   0   1     0 lo
-# fe80::210:18ff:fecc:9c77/128   ::                         Un   0   3     3 lo
-# fe80::222:4dff:fe7c:4dd9/128   ::                         Un   0   5  2876 lo
-# ff00::/8                       ::                         U    256 8 15855 eno1
-# ff00::/8                       ::                         U    256 8 14176 enp3s0
-# ::/0                           ::                         !n   -1  1 24572 lo
 
     def __init__ ( self, name, ipv6_destination, ipv6_next_hop, ipv6_flags, ipv6_metric, ipv6_ref, ipv6_use, \
                    ipv6_interface ):
@@ -128,11 +107,42 @@ class IPv6_route (object ):
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
 
+        # jeffs@jeff-desktop:~ $ ip --family inet6 route show
+        # 2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 1583sec pref medium
+        # 2601:602:9802:93a8::/64 dev enp3s0  proto kernel  metric 256  expires 1583sec pref medium
+        # fe80::/64 dev eno1  proto kernel  metric 256  pref medium
+        # fe80::/64 dev enp3s0  proto kernel  metric 256  pref medium
+        # default via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1317sec hoplimit 64 pref low
+        # default via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1317sec hoplimit 64 pref low
+        # jeffs@jeff-desktop:~ $
 
-        scraped_route_table = subprocess.
+#        jeffs @ jeff - desktop: ~ $ python3
+#        Python
+#        3.5
+#        .2(default, Nov
+#        17
+#        2016, 17: 05:23)
+#        [GCC 5.4.0 20160609]
+#        on
+###        linux
+#        Type
+#        "help", "copyright", "credits" or "license"
+#        for more information.
+#            >> > import subprocess
+#        >> > c = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show", "all"], stdin=None, input=None,
+#                                stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+#        >> > c.stdout.decode('utf-8')
+#        'default via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1653sec hoplimit 64 pref low\ndefault via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1653sec hoplimit 64 pref low\n'
+#        >> > c = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None,
+#                                stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+#        >> > c.stdout.decode('utf-8')
+#        '2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 2086sec pref medium\n2601:602:9802:93a8::/64 dev enp3s0  proto kernel  metric 256  expires 2086sec pref medium\nfe80::/64 dev eno1  proto kernel  metric 256  pref medium\nfe80::/64 dev enp3s0  proto kernel  metric 256  pref medium\ndefault via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1680sec hoplimit 64 pref low\ndefault via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1680sec hoplimit 64 pref low\n'
+ #       >> >
+#
+        scraped_route_table
 # This is the recommend approach for python 3.5 and later  From https://docs.python.org/3/library/subprocess.html
-        subprocess.run(["/sbin/route", "-n", "-6"], stdin=None, input=None, stdout=None, stderr=None, shell=False, timeout=None,
-                       check=False, encoding=None, errors=None)
+        completed = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None, \
+                            stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None, errors=None)
 
 
 
