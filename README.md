@@ -17,3 +17,14 @@ This tool will do fault isolation and diagnostics on a linux network.  It runs i
 
 The NBMT is very specific to linux and probably would require a lot of work to port.  However, one of the things on the roadmap is to be able to nagios plugins.
 
+
+    + Version 1.0: Uses subprocesses and scrapes the outputs to gather information about the networks.  Has the persistent
+file, the logging at boot, the diagnostic ability, but not the monitoring or logging
+    + Version 2.0: Queries the operating system for more information, monitoring, and logging.
+    + Version 3.0: Supports nagios plugins, and dependencies.
+
+
+
+
+
+
