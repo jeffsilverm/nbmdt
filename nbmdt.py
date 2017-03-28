@@ -86,6 +86,11 @@ class IPv4_route ( object ) :
         self.ipv4_interface = ipv4_interface
 
 
+    @staticmethod
+    def find_ipv4_routes(self):
+        """This method finds all of the IPv4 routes by examining the output of the ip route command"""
+
+
 class IPv6_route (object ):
 
 
@@ -103,7 +108,7 @@ class IPv6_route (object ):
         self.ipv6_interface = ipv6_interface
 
 
-    def find_routing_table ( self ):
+    def find_ipv6_routes( self ):
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
 
@@ -139,10 +144,14 @@ class IPv6_route (object ):
 #        '2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 2086sec pref medium\n2601:602:9802:93a8::/64 dev enp3s0  proto kernel  metric 256  expires 2086sec pref medium\nfe80::/64 dev eno1  proto kernel  metric 256  pref medium\nfe80::/64 dev enp3s0  proto kernel  metric 256  pref medium\ndefault via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1680sec hoplimit 64 pref low\ndefault via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1680sec hoplimit 64 pref low\n'
  #       >> >
 #
-        scraped_route_table
+
 # This is the recommend approach for python 3.5 and later  From https://docs.python.org/3/library/subprocess.html
         completed = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None, \
                             stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None, errors=None)
+        route_list = []
+        for r in completed :
+            (ipv6_desstination, _dev_, ipv6_interface, ) = r.split()
+
 
 
 
@@ -157,7 +166,7 @@ class System_Description ( object ):
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
-    def  __init__ ( self, interfaces, ipv4_addresses, ipv6_addresses, ipv4_routes, applications, name  ):
+    def  __init__ ( self, interfaces, ipv4_addresses, ipv6_addresses, ipv4_routes, ipv6_routes, applications, name  ):
 
         self.interfaces = interfaces
         self.ipv4_addresses = ipv4_addresses
@@ -167,8 +176,8 @@ class System_Description ( object ):
         self.applications = applications
         self.name = name
 
-
-    def populate_nominal () :
+    @Sstaticmethod
+    def populate_nominal (self) :
         """This method goes through a system that is nominally configured and operating and records the configuration """
 
         applications = find_applications()
@@ -178,6 +187,11 @@ class System_Description ( object ):
         ipv4_addresses = find_ipv4_addresses ()
         interfaces = find_interfaces ()
 
+
+        return ( applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, interfaces )
+
+    @staticmethod
+    def find_interfaces(self):
 
 
 
