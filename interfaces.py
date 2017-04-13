@@ -4,6 +4,7 @@
 import subprocess
 import re
 import datetime
+import collections
 
 class Interfaces(object):
 
@@ -15,18 +16,12 @@ class Interfaces(object):
         # socket.getaddrinfo will raise an exception if the address is ill-formed
         # In the output of the ifconfig command, an interface name begins at the start of a line and ends at the first :
 
-        self.interface_name_cp = re.compile( """"^(.*)\sflags=(.*) mtu \d+$""" )       # Used to extract the interface name
-        # From https://www.safaribooksonline.com/library/view/regular-expressions-cookbook/9781449327453/ch08s16.html
-        self.inet4_cp = re.compile( """inet (.*?)  netmask (.*?) boadcast (.*?)$""")
-        self.inet6_cp = re.compile( """inet6\s(.*?)\sprefixlen \d{1:3}\s\sscopeid\s(0[xX][0-9a-fA-F]+)""")
-        self.ethernet_cp = """\s([0-9a-fA-f]{0:4}:+)\s\sprefixlen\s(\d+)\sscopeid\s0x([o-9a-fA-F])<.*>$"""
-        self.packets_cp = """RX packets (\d+)"""
-
 
         self.ifconfig_lines = self.read_ifconfig(  None )
         self.interface_list = self.create_interface_list()
         self.last_modified_time = datetime.datetime.now()
 
+    # On my laptop running
     # wlp12s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500   <=== name, Physical
     #        inet 192.168.8.47  netmask 255.255.255.0  broadcast 192.168.8.255 < === Network layer
     #        inet6 fe80::ff55:4405:3d95:aa34  prefixlen 64  scopeid 0x20<link> <== Network layer
@@ -35,7 +30,18 @@ class Interfaces(object):
     #        RX errors 0  dropped 0  overruns 0  frame 0     <=== name, Physical
     #        TX packets 67467  bytes 16935624 (16.1 MiB)     <=== name, Physical
     #        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0     <=== name, Physical
-
+    # On my desktop running:
+    """eno1      Link encap:Ethernet  HWaddr 00:22:4d:7c:4d:d9
+          inet addr:192.168.1.23  Bcast:192.168.1.255  Mask:255.255.255.0
+          inet6 addr: fe80::222:4dff:fe7c:4dd9/64 Scope:Link
+          inet6 addr: 2601:602:9802:93a8:222:4dff:fe7c:4dd9/64 Scope:Global
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:133136736 errors:12 dropped:0 overruns:0 frame:12
+          TX packets:63631643 errors:52831 dropped:0 overruns:0 carrier:52831
+          collisions:32307027 txqueuelen:1000
+          RX bytes:199455734537 (199.4 GB)  TX bytes:4384071947 (4.3 GB)
+          Interrupt:20 Memory:f7900000-f7920000
+"""
 
 
 
@@ -60,10 +66,46 @@ class Interfaces(object):
         first object is the physical interface and the second object is the logical interface"""
         if ifconfig_lines == None :
             ifconfig_lines = self.ifconfig_lines
-        for line in ifconfig_lines :
-            line_1_grps = re.search(self.interface_cp, self.ifconfig_lines[0])    # iterface_cp is the compiled pattern
-            name = line_1_grps.group(0)
-            rest_of_line = line_1_grps.group(1)
+        assert ifconfig_lines[0][0] != " ", "Line 0 character 0 should not be a space, it should be the name of an"\
+                "interface.  Line is \n{}".format(ifconfig_lines[0])
+        name, flags_str, mtu_str, mtu_value = ifconfig_lines.split()
+        # Insofar as I can tell, none of the other lines are required to be present.  There may be a better way to
+        # figure this out, but I don't know enough yet. In particular, there may be several IPv6 addresses.
+        # In https://bugs.launchpad.net/tempest/+bug/1381416, it shows that different systems have different output
+        # formats, and this messes up tempest,
+        # See also https://bugzilla.redhat.com/show_bug.cgi?id=784314
+        ipv6_address_list = list()
+        ipv4_address_list = list()
+        for line in ifconfig_lines[1:]:
+            fields = line.split()
+            if fields[0] == "inet":
+                ipv4_entry = collections.namedtuple("ip4_if_entry", ['ipv4_address', 'netmask', 'broadcast'] )
+                ipv4_entry.ipv4_address = fields[1]
+                assert fields[2]=='netmask', "Parsing error: fields[2] should be 'netmask' but is really "+fields[2] 
+                ipv4_entry.netmask = fields[3]
+                assert fields[4]=='broadcast', "Parsing error: fields[2] should be 'netmask' but is really "+fields[4] 
+                ipv4_entry.broadcast = fields[5]
+                ipv4_address_list.append(ipv4_entry)
+            elif fields[0] == 'inet6' :
+                ipv6_entry = collections.namedtuple("ipv6_entry", ['ipv6_address', 'prefixlen', 'scopeid' ] )
+                ipv6_entry.ipv6_address = fields[1]
+                assert fields[2] == 'prefixlen'
+                ipv6_entry.prefixlen = fields[3]
+                assert fields[4] == 'scopeid'
+                ipv6_entry.scopeid = fields[5]
+                ipv6_address_list.append(ipv6_entry)
+            elif fields[0] == "ether" :
+                # ether 00:21:6a:53:14:10  txqueuelen 1000  (Ethernet)
+                mac_entry = collections.namedtuple('ether_entry', ['addr', 'txqueuelen', 'class'] )
+                mac_entry.addr = fields[1]
+                assert fields[2] == "txqueuelen"
+                mac_entry.txqueuelen = fields[3]
+
+
+            
+
+
+
 
 
 
@@ -81,7 +123,7 @@ class Interfaces(object):
 
 
     class PhysicalInterface(object):
-         """This object contains all of the information about a physical interface. """
+        """This object contains all of the information about a physical interface. """
 
         def __init__(self, name, tx_errors, tx_packets, rx_errors, rx_packets, flags):
             """This returns an object with the parameterss associated with the physical interface: packert counters,
@@ -104,6 +146,7 @@ class Interfaces(object):
 
 
 if __name__ == "__main__" :
+    interface =
 
     """jeffs@jeff-desktop:~/python/nbmdt (development)*$ ifconfig -a
 eno1      Link encap:Ethernet  HWaddr 00:22:4d:7c:4d:d9  
