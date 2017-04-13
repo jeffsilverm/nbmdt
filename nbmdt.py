@@ -12,26 +12,6 @@ import socket
 import re
 
 
-class Physical_Interface(object):
-    """This object contains all of the information about a physical interface. """
-
-    def __init__(self, name, tx_errors, tx_packets, rx_errors, rx_packets, flags):
-        self.name = name
-        self.tx_errors = tx_errors
-        self.rx_errors = rx_errors
-        self.tx_packets = tx_packets
-        self.rx_packets = rx_packets
-        self.flags = flags
-
-
-# wlp12s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500   <=== name, Physical
-#        inet 192.168.8.47  netmask 255.255.255.0  broadcast 192.168.8.255 < === Network layer
-#        inet6 fe80::ff55:4405:3d95:aa34  prefixlen 64  scopeid 0x20<link> <== Network layer
-#        ether 00:21:6a:53:14:10  txqueuelen 1000  (Ethernet)         <=== data link layer
-#        RX packets 98009  bytes 69438196 (66.2 MiB)     <=== name, Physical
-#        RX errors 0  dropped 0  overruns 0  frame 0     <=== name, Physical
-#        TX packets 67467  bytes 16935624 (16.1 MiB)     <=== name, Physical
-#        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0     <=== name, Physical
 
 
 
@@ -184,7 +164,8 @@ class IPv6_route(object):
             (ipv6_desstination, _dev_, ipv6_interface,) = r.split()
 
 
-class Interfaces(object):
+class Interface(object):
+    """Objects of this class edscribe an interface or a link"""
     def __init__(self, interface ):
         self._interface_comp_pat = "^.*"
         self.interface_name = interface
@@ -192,27 +173,155 @@ class Interfaces(object):
         self.ipv6_addresses = self.find_ipv6_addresses(interface)
 
 
-    @staticmethod
-    def find_interfaces(self):
-        """This returns a list of all the interfaces using the ifconfig -a command.  cpi is a completed process
-        instance"""
 
-        interface_cp = r"^(.*)\s(.*)$"
 
-        cpi = subprocess.run(['/sbin/ifconfig', '-a'], stdin=None, input=None, stdout=subprocess.PIPE, stderr=None,
-                             shell=False, timeout=None, check=False, encoding="utf-8", errors=None)
-        if cpi.returncode != 0:
-            raise subprocess.CalledProcessError
-        # Because subprocess.run was called with encoding=utf-8, output will be a string
-        ifconfig_out = cpi.stdout.decode('utf-8')
-        ifconfig_lines = ifconfig_out.split('\n')
-        interface_list = list()
-        for line in ifconfig_lines:
-            m = re.search(interface_cp, line)
-            interface = m.group(1)
-            if interface is not None:
-                interface_list.append( Interfaces(interface) )
-        return interface_list
+    class PhysicalInterface ( object ):
+
+
+        def __init__  ( self, link_name, link_flags, link_mtu, link_qdisc, link_state, link_mode,
+                        link_group, link_qlen, link_link, link_mac, link_brd_mac, link_promiscuity, link_remainder):
+            self.link_name = link_name
+            self.link_flags =link_flags
+            self.link_mtu = link_mtu
+            self.link_qdisc = link_qdisc
+            self.link_state = link_state
+            self.link_mode = link_mode
+            self.link_group = link_group
+            self.link_qlen = link_qlen
+            self.link_link = link_link
+            self.link_mac = link_mac
+            self.link_brd_mac = link_brd_mac
+            self.link_promiscuity = link_promiscuity
+            self.link_remainder = link_remainder
+
+        def __str__(self):
+            s = "name: " + self.link_name
+            s += " flags: " + self.link_flags
+            s += " mtu: " + self.link_mtu
+            s += " qdisc: " + self.link_qdisc
+            s += " state: " + self.link_state
+            s += " mode: " + self.link_mode
+            s += " group:" + self.link_group
+            s += " qlen: " + self.link_qlen
+            s += " link: " + self.link_link
+            s += " MAC: " + self.link_mac
+            s += " BRD_MAC: " + self.link_brd_mac
+            s += " promiscuity: " + self.link_promiscuity
+            s += " remainder: " + self.link_remainder
+
+            return s
+
+
+
+        @classmethod
+        def get_all_physical_interfaces(self):
+            """This method returns a dictionary of interfaces as known by the ip link list command
+            """
+
+            completed = subprocess.run(["/bin/ip", "--details", "--oneline", "link", "list"], stdin=None, input=None,
+                                       stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+            completed_str = completed.stdout.decode('ascii')
+            links_list = completed_str.split('\n')
+            link_db = dict()
+            for link in links_list:
+                fields = link.split()
+                link_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+                link_flags = fields[2]
+                assert "mtu" == fields[3]  # Doesn't really do anything
+                link_mtu = fields[4]
+                assert "qdisc" == fields[5]  # I don't know what qdisc is
+                link_qdisc = fields[6]  # So far, I have seen values noop, pfifo_fast, noqueue, mq
+                assert "state" == fields[7]
+                link_state = fields[8]
+                assert "mode" == fields[9]
+                link_mode = fields[10]
+                assert "group" == fields[11]
+                link_group = fields[12]
+                assert "qlen" == fields[13]
+                link_qlen = fields[14]
+                link_link = fields[15]
+                link_mac = fields[16]
+                assert "brd" == fields[17]
+                link_brd_mac = fields[18]
+                assert "promiscuity" == fields[19]
+                link_promiscuity = fields[20]
+                link_remainder = fields[21:]  # I don't what these do, either.
+                link_db[link_name] = self.PhysicalInterface(link_name, link_flags, link_mtu, link_qdisc, link_state,
+                                                       link_mode,
+                                                       link_group, link_qlen, link_link, link_mac, link_brd_mac,
+                                                       link_promiscuity, link_remainder)
+
+            return link_db
+
+    # There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
+
+
+    class LogicalInterface ( object ) :
+
+        def __init__(self, addr_name, addr_family, addr_addr, addr_brd, addr_scope,
+                                                    addr_remainder ):
+            """This creates a logical interface object."""
+            if addr_family != "inet" and addr_family != "inet6" :
+                raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
+            self.addr_name=addr_name
+            self.addr_family=addr_family
+            self.addr_addr=addr_addr
+            self.addr_brd=addr_brd
+            self.addr_scope=addr_scope
+            self.addr_remainder=addr_remainder
+
+        def __str__(self):
+            s = " name: " + self.addr_name
+            s += " family:" + self.addr_family
+            s += " address: " + self.addr_addr
+            if self.addr_family == "inet" :
+                s += " Broadcast: " + self.addr_brd
+            s += " scope: " + self.addr_scope
+            s += " remaining: " + self.addr_remainder
+            return s
+
+
+
+
+    # There should be a class method here that contains a dictionary of all of the LogicalInterfaces
+
+
+
+
+    @classmethod
+    def get_all_logical_interfaces(self):
+        """This method returns a dictionary of logical interfaces as known by the ip address list command"""
+
+        completed = subprocess.run(["/bin/ip", "--oneline", "address", "list"], stdin=None, input=None,
+                                   stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+        completed_str = completed.stdout.decode('ascii')
+        addrs_list = completed_str.split('\n')
+        addr_db=dict()
+        for addr in addrs_list :
+            fields = addr.split()
+            addr_name = fields[1]
+            addr_family = fields[2]
+            addr_addr = fields[3]
+            if addr_family == "inet" :
+                assert "brd" == fields[4]
+                addr_brd = fields[5]
+                assert "scope" == fields[6]
+                addr_scope = fields[7]
+                addr_remainder = fields[8:]
+            elif addr_family == "inet6" :
+                addr_brd = None                 # for IPv6
+                assert "scope" == fields[4]
+                addr_scope == fields[5]
+                addr_remainder = fields[6]
+            else :
+                raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
+            addr_db[addr_name] = self.LogicalInterface ( addr_name, addr_family, addr_addr, addr_brd, addr_scope,
+                                                    addr_remainder )
+
+
+
+
+
 
     # Not a static method because it needs the ifconfig_lines to get the IPv6 addresses
     def find_ipv6_addresses(self, interface):
@@ -254,6 +363,12 @@ class SystemDescription(object):
         self.ipv4_routes = ipv4_routes
         self.ipv6_routes = ipv6_routes
         self.applications = applications
+        # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
+
+        # To find all IPv6 machines on an ethernet, use ip -6 neigh show
+
+
+
         self.networks = networks
         self.name = name
 
@@ -292,4 +407,6 @@ class SystemDescription(object):
 
 
 if __name__ == "__main__":
-    nominal = SystemDescription.describe_current_state()
+    # nominal = SystemDescription.describe_current_state()
+    link_db = PhysicalInterface.get_all_physical_interfaces()
+
