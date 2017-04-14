@@ -9,7 +9,7 @@
 
 import subprocess
 import socket
-import re
+import collections
 
 
 
@@ -164,126 +164,79 @@ class IPv6_route(object):
             (ipv6_desstination, _dev_, ipv6_interface,) = r.split()
 
 
-class Interface(object):
-    """Objects of this class edscribe an interface or a link"""
-    def __init__(self, interface ):
-        self._interface_comp_pat = "^.*"
-        self.interface_name = interface
-        self.ipv4_addresses = self.find_ipv4_addresses(interface)
-        self.ipv6_addresses = self.find_ipv6_addresses(interface)
 
 
 
 
-    class PhysicalInterface ( object ):
+class PhysicalInterface ( object ):
 
 
-        def __init__  ( self, link_name, link_flags, link_mtu, link_qdisc, link_state, link_mode,
-                        link_group, link_qlen, link_link, link_mac, link_brd_mac, link_promiscuity, link_remainder):
-            self.link_name = link_name
-            self.link_flags =link_flags
-            self.link_mtu = link_mtu
-            self.link_qdisc = link_qdisc
-            self.link_state = link_state
-            self.link_mode = link_mode
-            self.link_group = link_group
-            self.link_qlen = link_qlen
-            self.link_link = link_link
-            self.link_mac = link_mac
-            self.link_brd_mac = link_brd_mac
-            self.link_promiscuity = link_promiscuity
-            self.link_remainder = link_remainder
+    def __init__  ( self, name, link_description ):
+        self.link_name = name
+        self.link_description = link_description.copy()
 
-        def __str__(self):
-            s = "name: " + self.link_name
-            s += " flags: " + self.link_flags
-            s += " mtu: " + self.link_mtu
-            s += " qdisc: " + self.link_qdisc
-            s += " state: " + self.link_state
-            s += " mode: " + self.link_mode
-            s += " group:" + self.link_group
-            s += " qlen: " + self.link_qlen
-            s += " link: " + self.link_link
-            s += " MAC: " + self.link_mac
-            s += " BRD_MAC: " + self.link_brd_mac
-            s += " promiscuity: " + self.link_promiscuity
-            s += " remainder: " + self.link_remainder
+    def __str__(self):
+        s = "name: " + self.link_name
+        for key in self.link_description.keys() :
+            s += " " + key + ": " + self.link_description[key]
 
-            return s
+        return s
 
 
 
-        @classmethod
-        def get_all_physical_interfaces(self):
-            """This method returns a dictionary of interfaces as known by the ip link list command
-            """
+    @classmethod
+    def get_all_physical_interfaces(self):
+        """This method returns a dictionary of interfaces as known by the ip link list command
+        """
 
-            completed = subprocess.run(["/bin/ip", "--details", "--oneline", "link", "list"], stdin=None, input=None,
-                                       stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
-            completed_str = completed.stdout.decode('ascii')
-            links_list = completed_str.split('\n')
-            link_db = dict()
-            for link in links_list:
-                fields = link.split()
-                link_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-                link_flags = fields[2]
-                assert "mtu" == fields[3]  # Doesn't really do anything
-                link_mtu = fields[4]
-                assert "qdisc" == fields[5]  # I don't know what qdisc is
-                link_qdisc = fields[6]  # So far, I have seen values noop, pfifo_fast, noqueue, mq
-                assert "state" == fields[7]
-                link_state = fields[8]
-                assert "mode" == fields[9]
-                link_mode = fields[10]
-                assert "group" == fields[11]
-                link_group = fields[12]
-                assert "qlen" == fields[13]
-                link_qlen = fields[14]
-                link_link = fields[15]
-                link_mac = fields[16]
-                assert "brd" == fields[17]
-                link_brd_mac = fields[18]
-                assert "promiscuity" == fields[19]
-                link_promiscuity = fields[20]
-                link_remainder = fields[21:]  # I don't what these do, either.
-                link_db[link_name] = self.PhysicalInterface(link_name, link_flags, link_mtu, link_qdisc, link_state,
-                                                       link_mode,
-                                                       link_group, link_qlen, link_link, link_mac, link_brd_mac,
-                                                       link_promiscuity, link_remainder)
+        completed = subprocess.run(["/bin/ip", "--details", "--oneline", "link", "list"], stdin=None, input=None,
+                                   stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+        completed_str = completed.stdout.decode('ascii')
+        links_list = completed_str.split('\n')
+        link_db = dict()
+        for link in links_list:
+            if len(link) == 0:              # there may be an empty trailing line in the output
+                break
+            fields = link.split()
+            ld = collections.OrderedDict()
+            link_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+            ld['flags'] = fields[2]
+            # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
+            for idx in range(3,len(fields)-1,2)  :
+                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
+                # Discipline" and it's vital.
+                ld[fields[idx]] = fields[idx+1]
+            link_db[ link_name ] = PhysicalInterface( link_name, ld )
 
-            return link_db
+        return link_db
 
-    # There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
+# There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
 
 
-    class LogicalInterface ( object ) :
+class LogicalInterface ( object ) :
 
-        def __init__(self, addr_name, addr_family, addr_addr, addr_brd, addr_scope,
-                                                    addr_remainder ):
-            """This creates a logical interface object."""
-            if addr_family != "inet" and addr_family != "inet6" :
-                raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
-            self.addr_name=addr_name
-            self.addr_family=addr_family
-            self.addr_addr=addr_addr
-            self.addr_brd=addr_brd
-            self.addr_scope=addr_scope
-            self.addr_remainder=addr_remainder
+    def __init__(self, addr_name, addr_family, addr_addr, ad  ) :
+        """This creates a logical interface object."""
+        if addr_family != "inet" and addr_family != "inet6" :
+            raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
+        self.addr_name=addr_name
+        self.addr_family=addr_family
+        self.addr_addr=addr_addr
+        self.ad = ad                # ad is going to go out of existence, but the reference to it will endure
 
-        def __str__(self):
-            s = " name: " + self.addr_name
-            s += " family:" + self.addr_family
-            s += " address: " + self.addr_addr
-            if self.addr_family == "inet" :
-                s += " Broadcast: " + self.addr_brd
-            s += " scope: " + self.addr_scope
-            s += " remaining: " + self.addr_remainder
-            return s
+
+    def __str__(self):
+        s = " name: " + self.addr_name + '\n'
+        s += " family:" + self.addr_family
+        s += " address: " + self.addr_addr
+        for key in self.ad.keys() :
+            s += " " + key + ": " + self.ad[key]
+        return s
 
 
 
 
-    # There should be a class method here that contains a dictionary of all of the LogicalInterfaces
+# There should be a class method here that contains a dictionary of all of the LogicalInterfaces
 
 
 
@@ -296,28 +249,26 @@ class Interface(object):
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
         addrs_list = completed_str.split('\n')
-        addr_db=dict()
+        addr_db = dict()
         for addr in addrs_list :
+            if len(addr) == 0:
+                break
+            # https://docs.python.org/3/library/collections.html#collections.OrderedDict
+            ad = collections.OrderedDict()
             fields = addr.split()
             addr_name = fields[1]
+
             addr_family = fields[2]
             addr_addr = fields[3]
-            if addr_family == "inet" :
-                assert "brd" == fields[4]
-                addr_brd = fields[5]
-                assert "scope" == fields[6]
-                addr_scope = fields[7]
-                addr_remainder = fields[8:]
-            elif addr_family == "inet6" :
-                addr_brd = None                 # for IPv6
-                assert "scope" == fields[4]
-                addr_scope == fields[5]
-                addr_remainder = fields[6]
+            for idx in range(4,len(fields)-1, 2) :
+                # Because ad is an ordered dictionary, the results will always be output in the same order
+                ad[fields[idx] ] = fields[idx+1]
+            # A single logical interface can have several addresses and several families
+            if addr_name not in addr_db:
+                addr_db[addr_name] = [  LogicalInterface ( addr_name, addr_family, addr_addr, ad  ) ]
             else :
-                raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
-            addr_db[addr_name] = self.LogicalInterface ( addr_name, addr_family, addr_addr, addr_brd, addr_scope,
-                                                    addr_remainder )
-
+                addr_db[addr_name].append( LogicalInterface ( addr_name, addr_family, addr_addr, ad  ) )
+        return addr_db
 
 
 
@@ -379,12 +330,12 @@ class SystemDescription(object):
         applications = Applications.find_applications()
         ipv4_routes = IPv4_route.find_ipv4_routes()
         ipv6_routes = IPv6_route.find_ipv6_routes()
-        ipv6_addresses = Interfaces.find_ipv6_addresses()
-        ipv4_addresses = Interfaces.find_ipv4_addresses()
-        interfaces = Interfaces.find_interfaces()
+#       ipv6_addresses = Interfaces.find_ipv6_addresses()
+#       ipv4_addresses = Interfaces.find_ipv4_addresses()
+#       interfaces = Interfaces.find_interfaces()
         networks = Networks.find_networks()
 
-        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, interfaces, networks)
+#        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, interfaces, networks)
 
     def __str__(self):
         """This generates a nicely formatted report of the state of this system"""
@@ -408,5 +359,24 @@ class SystemDescription(object):
 
 if __name__ == "__main__":
     # nominal = SystemDescription.describe_current_state()
+
+    # Create a dictionary, keyedby link name, of the physical interfaces
     link_db = PhysicalInterface.get_all_physical_interfaces()
+    addr_db = LogicalInterface.get_all_logical_interfaces()
+
+    print("links ", '*'*40)
+    for link in link_db.keys() :
+        print ( link, link_db[link] )
+
+    print("Addresses ", '*'*40)
+    for addr_name in addr_db.keys() :
+        print("\n{}\n".format(addr_name) )
+        for addr in addr_db[addr_name] :      # The values of the addr_db are descriptions of addresses
+            assert isinstance( addr, LogicalInterface )
+            print("   " + str(addr)  )
+
+
+
+
+
 
