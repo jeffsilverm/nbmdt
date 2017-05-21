@@ -18,8 +18,11 @@ This tool will do fault isolation and diagnostics on a linux network.  It runs i
 The roadmap for MBMDT is:
 
 1 Use a bash script to implement the NBMDT.  Output is to a flat ASCII file, and changes are detected using the diff command
-2 Use a python program that invokes other programs to examine the state of the network.  Output is to a JSON file, and changes are detected using 
+
+2 Use a python program that invokes other programs to examine the state of the network.  Output is to a JSON file, and changes are detected using [JSON tools](https://bitbucket.org/vadim_semenov/json_tools/src/75cc15381188c760badbd5b66aef9941a42c93fa?at=default)
+
 3 Use a python program that reads files in the /proc and /system pseudo file systems to examine the state of the network.
+
 4 Use nagios plugins to do the same things if unavailable by other means.
 
 See also [How to test and repair local area networks using linux tools] by Jeff Silverman
