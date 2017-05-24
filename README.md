@@ -30,3 +30,14 @@ See also [How to test and repair local area networks using linux tools] by Jeff 
 
 
 
+
+    + Version 1.0: Uses subprocesses and scrapes the outputs to gather information about the networks.  Has the persistent
+file, the logging at boot, the diagnostic ability, but not the monitoring or logging
+    + Version 2.0: Queries the operating system for more information, monitoring, and logging.
+    + Version 3.0: Supports nagios plugins, and dependencies.
+
+
+
+
+
+
