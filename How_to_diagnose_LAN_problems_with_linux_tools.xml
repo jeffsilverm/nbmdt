@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<article lang="">
+  <para>How to test and repair home local area networks using linux tools</para>
+  <para>Jeff Silverman</para>
+  <para>There are lots of discussions about the theory of how TCP/IP networks work, which include the 4 layer IP model and the 7 layer OSI model.  There is also a lot of discussion about the various linux commands that one uses to test the various levels of the stack.  What I have not seen is much discussion about how to use these commands to verify that your network is working properly and how to diagnose it when it breaks.  And your network will break, it’s just a matter of when.</para>
+  <para>Note that this is about home Local Area Networks.  Corporate LANs can be troubleshot in much the same way, but there some failure modes in corporate LANs that don’t happen in home LANs.</para>
+  <sect1>
+    <title>Models of networks</title>
+    <para>There are 2 common models of how computer networks work: the TCP/IP model and the OSI model.  The TCP/IP model is simplistic but does a better job of describing how real modern networks actually work.  The OSI model is more complicated, and if you stretch a little bit, you can see how it would apply to a real network.  The OSI model was intended to be the basis of a new networking scheme, based on research about the problems with TCP/IP.  The OSI model was better, but not so much better that everybody abandoned TCP/IP.</para>
+    <para>This section is useful as to give you a good understanding about why networks are implemented the way they are, if you have a broken network and just want to get it fixed, then skip to troubleshooting strategy, below.</para>
+  </sect1>
+  <sect1>
+    <title>Troubleshooting strategy</title>
+    <para>There are four important steps to take when troubleshooting a network:</para>
+    <orderedlist>
+      <listitem>
+        <para>Document everything</para>
+      </listitem>
+      <listitem>
+        <para>Record what the network looks like when it is operating correctly.  In particular, note the IP addresses of the name servers (which you can get from /etc/resolv.conf ) and the default gateway.</para>
+      </listitem>
+      <listitem>
+        <para>Note what is working and what is not working</para>
+      </listitem>
+      <listitem>
+        <para>Start at the bottom (physical) layer and work your way upwards</para>
+      </listitem>
+    </orderedlist>
+  </sect1>
+  <sect1>
+    <title>Mapping between layers of the TCP/IP stack and the tools to use</title>
+    <para>In the old days, there were different programs to run at different levels, and there was a lot of overlap between programs and levels.  A more modern set of commands which are in the iproute2 package are cleaner, so those are the tools I am going to focus on</para>
+    <informaltable frame="all">
+      <tgroup cols="3"><colspec colnum="1" colname="c1"/><colspec colnum="2" colname="c2"/><colspec colnum="3" colname="c3"/><thead><row><entry><para>Level</para></entry><entry><para>Tool iproute2</para></entry><entry><para>“traditional” tool</para></entry></row></thead><tbody><row><entry><para>Application</para></entry><entry><para/></entry><entry><para>netstat -pant</para></entry></row><row><entry><para>Routing</para></entry><entry><para>ip route</para></entry><entry><para>Route, netstat -r</para></entry></row><row><entry><para>Network/Internet</para></entry><entry><para>ip addrip neigh</para></entry><entry><para>Ifconfig</para><para>arp</para></entry></row><row><entry><para>Physical</para></entry><entry><para>ip link</para></entry><entry><para>ifconfig</para></entry></row></tbody></tgroup>
+    </informaltable>
+    <para/>
+  </sect1>
+  <sect1>
+    <title>Additional documentation</title>
+    <para><ulink url="http://baturin.org/docs/iproute2/">iproute2 cheat sheet</ulink> by Daniil Baturin </para>
+  </sect1>
+</article>
