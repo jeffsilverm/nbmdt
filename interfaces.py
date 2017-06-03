@@ -37,15 +37,15 @@ class PhysicalInterface ( object ):
             if len(link) == 0:              # there may be an empty trailing line in the output
                 break
             fields = link.split()
-            ld = collections.OrderedDict()
+            link_description = collections.OrderedDict()
             link_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-            ld['flags'] = fields[2]
+            link_description['flags'] = fields[2]
             # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
             for idx in range(3,len(fields)-1,2)  :
                 # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
                 # Discipline" and it's vital.
-                ld[fields[idx]] = fields[idx+1]
-            link_db[ link_name ] = PhysicalInterface( link_name, ld )
+                link_description[fields[idx]] = fields[idx+1]
+            link_db[ link_name ] = PhysicalInterface( link_name, link_description )
 
         return link_db
 
@@ -113,7 +113,7 @@ class LogicalInterface ( object ) :
 if __name__ == "__main__":
     # nominal = SystemDescription.describe_current_state()
 
-    # Create a dictionary, keyedby link name, of the physical interfaces
+    # Create a dictionary, keyed by link name, of the physical interfaces
     link_db = PhysicalInterface.get_all_physical_interfaces()
     addr_db = LogicalInterface.get_all_logical_interfaces()
 
