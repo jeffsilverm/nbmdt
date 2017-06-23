@@ -11,13 +11,28 @@ import subprocess
 import socket
 import collections
 import routes
-from routes import IPv4_route as IPv4_route
-from routes import IPv6_route as IPv6_route
+from routes import IPv4Route as IPv4_route
+from routes import IPv6Route as IPv6_route
 import interfaces
 
 
+from enum import Enum
+class Modes(Enum):
+    BOOT=1
+    MONITOR=2
+    DIAGNOSE=3
+    TEST=4
 
+class ErrorLevels(Enum):
+    OKAY=1         # Everything is working properly
+    DEGRADED=2     # Many things are working properly
+    CHANGED=3      # Things are working but they aren't what's in the database
+    UNKNOWN=4      # The program can't tell if something is working or not
+    DOWN=5         # It's completely not working
 
+import termcolor
+    colors={}
+    colors[OKAY] = termcolor.COLORS.mpl m
 
 class Networks(object):
     def __init__(self):
@@ -99,6 +114,11 @@ if __name__ == "__main__" :
     system_description = SystemDescription ( )
     applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks = \
         SystemDescription.describe_current_state()
+
+    mode = Modes.TEST
+
+    if mode == Modes.TEST :
+
 
 
 
