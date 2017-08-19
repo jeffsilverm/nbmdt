@@ -14,6 +14,7 @@ import routes
 from routes import IPv4Route as IPv4_route
 from routes import IPv6Route as IPv6_route
 import interfaces
+import yaml
 
 
 from enum import Enum
@@ -57,21 +58,28 @@ class SystemDescription(object):
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
-    def __init__(self ):
-
-        self.interfaces = interfaces.Interfaces()
-#        self.ipv4_routes = addresses.Ipv4Routes()
-#        self.ipv6_routes = addresses.Ipv6Routes()
-#        self.name_servers = nameservers.nameservers()
-#        self.applications = applications
-        # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
-
-        # To find all IPv6 machines on an ethernet, use ip -6 neigh show
+    def __init__(self, configuration_file=None ):
 
 
+        if configuration_file==None:
+            # This is what the system is currently is
 
-#        self.networks = networks
-#        self.name = name
+            self.interfaces = interfaces.Interfaces()
+    #        self.ipv4_routes = addresses.Ipv4Routes()
+    #        self.ipv6_routes = addresses.Ipv6Routes()
+    #        self.name_servers = nameservers.nameservers()
+    #        self.applications = applications
+            # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
+
+            # To find all IPv6 machines on an ethernet, use ip -6 neigh show
+    #        self.networks = networks
+    #        self.name = name
+        else:
+            y = yaml.safe_load(configuration_file)
+            self.interfaces = y['interfaces']
+            for interface in self.interfaces:
+                self.ipv4_address = interfaces
+
 
     @staticmethod
     def describe_current_state():
@@ -110,14 +118,15 @@ class SystemDescription(object):
 
 
 
-if __name__ == "__main__" :
-    system_description = SystemDescription ( )
-    applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks = \
-        SystemDescription.describe_current_state()
 
-    mode = Modes.TEST
+if __name__ == "__main__" :
+    nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
+    current_system_description = SystemDescription ( )
+
+    mode = Modes.TEST   # This will be an option to the program some day.
 
     if mode == Modes.TEST :
+        test ( nominal_system_description, current_system_description )
 
 
 

@@ -6,6 +6,8 @@ import re
 import datetime
 import collections
 
+IP_COMMAND = "/usr/sbin/ip"
+IP_COMMAND = "/usr/sbin/ip"
 
 class PhysicalInterface ( object ):
 
@@ -28,7 +30,7 @@ class PhysicalInterface ( object ):
         """This method returns a dictionary of interfaces as known by the ip link list command
         """
 
-        completed = subprocess.run(["/bin/ip", "--details", "--oneline", "link", "list"], stdin=None, input=None,
+        completed = subprocess.run([IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
         links_list = completed_str.split('\n')
@@ -84,7 +86,7 @@ class LogicalInterface ( object ) :
     def get_all_logical_interfaces(self):
         """This method returns a dictionary of logical interfaces as known by the ip address list command"""
 
-        completed = subprocess.run(["/bin/ip", "--oneline", "address", "list"], stdin=None, input=None,
+        completed = subprocess.run([IP_COMMAND, "--oneline", "address", "list"], stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
         addrs_list = completed_str.split('\n')
