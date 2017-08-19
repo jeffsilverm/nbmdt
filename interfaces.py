@@ -7,7 +7,7 @@ import datetime
 import collections
 
 IP_COMMAND = "/usr/sbin/ip"
-IP_COMMAND = "/usr/sbin/ip"
+# There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
 
 class PhysicalInterface ( object ):
 
@@ -55,36 +55,82 @@ class PhysicalInterface ( object ):
 
 
 class LogicalInterface ( object ) :
+    """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
 
-    def __init__(self, addr_name, addr_family, addr_addr, ad  ) :
+    """
+
+    logical_link_db = dict()
+
+    # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
+    # dictionary.
+    def __init__(self, addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None   ) :
         """This creates a logical interface object."""
         if addr_family != "inet" and addr_family != "inet6" :
             raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
         self.addr_name=addr_name
         self.addr_family=addr_family
         self.addr_addr=addr_addr
-        self.ad = ad                # ad is going to go out of existence, but the reference to it will endure
+        if ( scope is None and broadcast is None ) or ( scope is not None and broadcast is not None):
+            raise ValueError ("Either scope or broadcast must not be None, but not both are None")
+        self.scope=scope
+        self.broadcast=broadcast
+        self.remainder=remainder
+
 
 
     def __str__(self):
-        s = " name: " + self.addr_name + '\n'
-        s += " family:" + self.addr_family
-        s += " address: " + self.addr_addr
-        for key in self.ad.keys() :
-            s += "\t" + key + ": " + self.ad[key]
+        s = "name: " + self.addr_name + '\t'
+        s += "family:" + self.addr_family + '\t'
+        s += "address: " + self.addr_addr + '\t'
+        if self.addr_family == "inet6" :
+            s += ("scope: " + self.scope) + "\t"
+        else :
+            s += ("broadcast: " + self.broadcast)
+        s += "Remainder: " + self.remainder + "\t"
         return s
 
+    @classmethod
+    def get_all_logical_link_addrs(cls):
+        """This method creates a dictionary, keyed by name, of all of the (logical) links that have addresses.
+        Since an interface can, and probably will, have more than one address, the values of this dictionary
+        will be dictionaries keyed by address which will contain a description of the address"""
 
 
+        completed = subprocess.run([IP_COMMAND, "--details", "--oneline", "addr", "list"], stdin=None, input=None,
+                                   stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
+        completed_str = completed.stdout.decode('ascii')
+        addrs_list = completed_str.split('\n')
+        for line in addrs_list:
+            """
+effs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail addr show
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: wlp12s0    inet 10.1.10.146/24 brd 10.1.10.255 scope global dynamic wlp12s0\       valid_lft 597756sec preferred_lft 597756sec
+3: wlp12s0    inet6 fc00::1:2/128 scope global \       valid_lft forever preferred_lft forever
+3: wlp12s0    inet6 2618::1/128 scope global \       valid_lft forever preferred_lft forever
+3: wlp12s0    inet6 ff::1/128 scope global \       valid_lft forever preferred_lft forever
+3: wlp12s0    inet6 fe80::5839:4589:a697:f8fd/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-laptop:~/nbmdt (development)*$
 
-# There should be a class method here that contains a dictionary of all of the LogicalInterfaces
+            """
+            # if family is inet, then brd_scope is brd (broadcast) and brd_scope_val is the the broadcast IPv4 address
+            # if family is inet6, then brd_scope is scope\ and brd_scope_val is either host, link, or global
+            idx, link_name, family, addr_mask, brd_scope, brd_scope_val,remainder = line.split()
+            logical_link_descr =  cls.__init__(addr_name=link_name, addr_family=family, addr_addr=addr_mask,
+                                               scope = ( brd_scope if family == "inet" else None),
+                                               broadcast = ( None if family == "inet" else brd_scope),
+                                               )
+            cls.logical_link_db[link_name] = logical_link_descr
 
 
 
 
     @classmethod
     def get_all_logical_interfaces(self):
-        """This method returns a dictionary of logical interfaces as known by the ip address list command"""
+        """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
+        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
+        show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
 
         completed = subprocess.run([IP_COMMAND, "--oneline", "address", "list"], stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
@@ -117,6 +163,7 @@ if __name__ == "__main__":
 
     # Create a dictionary, keyed by link name, of the physical interfaces
     link_db = PhysicalInterface.get_all_physical_interfaces()
+    # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
     addr_db = LogicalInterface.get_all_logical_interfaces()
 
     print("links ", '*'*40)
