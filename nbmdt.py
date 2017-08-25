@@ -32,7 +32,7 @@ class ErrorLevels(Enum):
 
 import termcolor
     colors={}
-    colors[OKAY] = termcolor.COLORS.mpl m
+    colors[OKAY] = termcolor.COLORS.mpl
 
 class Networks(object):
     def __init__(self):

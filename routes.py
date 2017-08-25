@@ -95,7 +95,7 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
             self.ipv4_metric, self.ipv4_ref, self.ip4v_use, self.ipv4_interface)
 
 
-class IPv6_route(object):
+class IPv6Route(object):
     def __init__(self, name, ipv6_destination, ipv6_next_hop, ipv6_flags, ipv6_metric, ipv6_ref, ipv6_use, \
                  ipv6_interface):
         self.name = name
