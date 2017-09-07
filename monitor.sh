@@ -10,9 +10,7 @@ ISPS_ROUTER_IP="63.231.10.67"
 # For more information about putting colors in scripts, see for example
 # http://misc.flogisoft.com/bash/tip_colors_and_formatting
 source ./colors.sh
-echo -e -n "${WHITE}"
-date
-echo -e -n "${NC}"
+echo -e "\033[1m\033[37;40m$(date)\033[0m"
 exitstatus=0
 if ping -c 4 $DEFAULT_ROUTER_IP  > /dev/null 2>/dev/null; then
   echo -e  "${GREEN_BG}ping to LAN router is UP${NC}"
@@ -91,6 +89,38 @@ else
   exitstatus=1
   spd-say -w  "HTTP on ${TEST_HOST} fails"
 fi
-exit $exitstatus
+
+if ping -c 4 jeffsilverman.ddns.net > /dev/null; then
+  echo -e "${GREEN_BG}jeffsilverman.ddns.net DNS lookup is UP${NC}"
+elif [ $? -eq 2 ] ; then
+  echo -e "${RED_BG}jeffsilverman.ddns.net DNS lookup is not resolving${NC}"
+  exitstatus=1
+elif [ $? -eq 1 ]; then
+  echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving but the external address is not pingable${NC}"
+  exitstatus=1
+  if [[ "$(host jeffsilverman.ddns.net)" == *75.172.110.119 ]]; then
+    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving to ${GREEN_BG}75.172.110.119${NC}, but it is  ${RED_BG}not pingable${NC}" 
+  else
+    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving to ${RED_BG}$(host jeffsilverman.ddns.net)${YELLOW_BG}, not ${GREEN_BG}75.172.110.119${NC}"
+  fi 
+fi
+
+if ping -c 4 jeffsilverm.ddns.net > /dev/null; then
+  echo -e "${GREEN_BG}jeffsilverm.ddns.net DNS lookup is UP${NC}"
+elif [ $? -eq 2 ] ; then
+  echo -e "${RED_BG}jeffsilverm.ddns.net DNS lookup is not resolving${NC}"
+  exitstatus=1
+elif [ $? -eq 1 ]; then
+  host_ipv4=`host jeffsilverm.ddns.net|fgrep -v IPv6`
+  echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving but the external address ${host_ipv4} is not pingable${NC}"
+  exitstatus=1
+  if [[ "$()" == *75.172.110.119 ]]; then
+    echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving to ${GREEN_BG}75.172.110.119${NC}, but it is  ${RED_BG}not pingable${NC}" 
+  else
+    echo -e "${YELLOW_BG}${host_ipv4}, not ${GREEN_BG}75.172.110.119${NC}"
+  fi 
+fi
+
+exit 
 
 
