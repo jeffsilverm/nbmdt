@@ -5,6 +5,7 @@ import subprocess
 import re
 import datetime
 import collections
+import sys
 
 IP_COMMAND = "/usr/sbin/ip"
 # There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
@@ -67,30 +68,28 @@ class LogicalInterface ( object ) :
 
     # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
     # dictionary.
-    def __init__(self, addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None   ) :
+    def __init__(self, addr_name, addr_family, **kwargs   ) :
         """This creates a logical interface object."""
+        self.addr_name = addr_name
         if addr_family != "inet" and addr_family != "inet6" :
             raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
-        self.addr_name=addr_name
-        self.addr_family=addr_family
-        self.addr_addr=addr_addr
-        if ( scope is None + broadcast is None ) != 1:      # True + True = 2, True + False == False + True == 1, False + False == 0
-            raise ValueError ("One and only one of scope or broadcast must  be None")
-        self.scope=scope
-        self.broadcast=broadcast
-        self.remainder=remainder
+        else:
+            self.addr_family = addr_family
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
 
-
-
-    def __str__(self):
+    def __str__(self):                          # LogicalInterface
         s = "name: " + self.addr_name + '\t'
         s += "family:" + self.addr_family + '\t'
         s += "address: " + self.addr_addr + '\t'
         if self.addr_family == "inet6" :
             s += ("scope: " + none_if_None(self.scope) + "\t")
         else :
-            s += ("broadcast: " + none_if_None ( self.broadcast ) + "\t" )
-        s += "Remainder: " + none_if_None ( self.remainder  ) + "\t"
+            if hasattr(self, "broadcast"):
+                s += ("broadcast: " + none_if_None ( self.broadcast ) + "\t" )
+# If there is anything we missed, it should go here.
+        if hasattr(self, "remainder" ):
+            s += "Remainder: " + none_if_None ( self.remainder  ) + "\t"
         return s
 
     @classmethod
@@ -124,6 +123,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             logical_link_descr =  cls.__init__(addr_name=link_name, addr_family=family, addr_addr=addr_mask,
                                                scope = ( brd_scope if family == "inet" else None),
                                                broadcast = ( None if family == "inet" else brd_scope),
+                                               remainder = remainder
                                                )
             cls.logical_link_db[link_name] = logical_link_descr
 
@@ -179,10 +179,10 @@ if __name__ == "__main__":
     print("links ", '*'*40)
     for link in link_db.keys() :
         print ( link, link_db[link] )
-
+    print("\n")
     print("Addresses ", '*'*40)
-    for addr_name in addr_db.keys() :
-        print("\n{}\n".format(addr_name) )
-        for addr in addr_db[addr_name] :      # The values of the addr_db are descriptions of addresses
-            assert isinstance( addr, LogicalInterface )
-            print("   " + str(addr)  )
+    for lifn in addr_db.keys() :        # Logical InterFace Name
+        addr_list = addr_db[lifn]
+        print("\n%s:" % lifn)
+        for ai in addr_list :      # ai is an addr_list item.  It is a description of a logical interface
+            print("   " + str(ai)  )
