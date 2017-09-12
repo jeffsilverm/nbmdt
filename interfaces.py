@@ -66,24 +66,33 @@ class LogicalInterface ( object ) :
 
     logical_link_db = dict()
 
-    # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
-    # dictionary.
-    def __init__(self, addr_name, addr_family, **kwargs   ) :
-        """This creates a logical interface object."""
+    def __init__(self, addr_name, addr_family, address, **kwargs   ) :
+        """This creates a logical interface object named addr_name,
+        which is family addr_family, and has address address.
+        addr_family may be either "inet" or "inet6"
+        """
         self.addr_name = addr_name
+        self.address = address
         if addr_family != "inet" and addr_family != "inet6" :
             raise ValueError ("misunderstood value of addr_family: {}".format( addr_family ))
-        else:
-            self.addr_family = addr_family
+        self.addr_family = addr_family
+        if "scope" not in kwargs:       # scope must be present
+            raise ValueError("scope is missing from the definition of the logical link %s family %s address %s kwargs is %s" %
+                             (addr_name, addr_family, address, kwargs ))
+        if "broadcast" not in kwargs:      # brd might be present and might not be present
+            kwargs["broadcast"] = None
         for key in kwargs:
             setattr(self, key, kwargs[key])
+        if not hasattr(self,
+        pass
+
 
     def __str__(self):                          # LogicalInterface
         s = "name: " + self.addr_name + '\t'
         s += "family:" + self.addr_family + '\t'
         s += "address: " + self.addr_addr + '\t'
         if self.addr_family == "inet6" :
-            s += ("scope: " + none_if_None(self.scope) + "\t")
+            s += ("scope: " + none_if_None(self.ad['scope']) + "\t")
         else :
             if hasattr(self, "broadcast"):
                 s += ("broadcast: " + none_if_None ( self.broadcast ) + "\t" )
@@ -102,10 +111,10 @@ class LogicalInterface ( object ) :
         completed = subprocess.run([IP_COMMAND, "--details", "--oneline", "addr", "list"], stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
-        addrs_list = completed_str.split('\n')
+        addrs_list = completed_str.split('\n')          # addrs_list is a list of strings, each of which has a description of an address
         for line in addrs_list:
             """
-effs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail addr show
+jeffs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail addr show
 1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
 1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
 3: wlp12s0    inet 10.1.10.146/24 brd 10.1.10.255 scope global dynamic wlp12s0\       valid_lft 597756sec preferred_lft 597756sec
@@ -119,12 +128,30 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             """
             # if family is inet, then brd_scope is brd (broadcast) and brd_scope_val is the the broadcast IPv4 address
             # if family is inet6, then brd_scope is scope\ and brd_scope_val is either host, link, or global
-            idx, link_name, family, addr_mask, brd_scope, brd_scope_val,remainder = line.split()
-            logical_link_descr =  cls.__init__(addr_name=link_name, addr_family=family, addr_addr=addr_mask,
-                                               scope = ( brd_scope if family == "inet" else None),
-                                               broadcast = ( None if family == "inet" else brd_scope),
-                                               remainder = remainder
-                                               )
+            idx, link_name, family, address, remaining_fields = line.split()
+            dynamic = False
+            for fc in range(len(remaining_fields)):
+                if remaining_fields[fc] == "scope":
+                    scope = remaining_fields[fc+1]
+                    fc += 1
+                if remaining_fields[fc] == "brd" :
+                    broadcast = remaining_fields[fc+1]
+                    fc += 1
+                if remaining_fields[fc] == "dynamic":
+                    dynamic = True
+# I don't know what this is or the significance of it.
+#                if remaining_fields[fc] == "\\" or remaining_fields[fc] == link_name+"\\":
+                if remaining_fields[fc] == "valid_lft" :
+                    valid_lft = remaining_fields[fc+1]
+                    fc += 1
+                if remaining_fields[fc] == "preferred_lft" :
+                    preferred_lft = remaining_fields[fc+1]
+                    fc += 1
+
+
+            logical_link_descr =  cls.__init__(addr_name=link_name, addr_family=family, address=address,
+                                               scope=scope, broadcast=broadcast, dynamic=dynamic, valid_lft=valid_lft,
+                                               preferred_lft=preferred_lft)
             cls.logical_link_db[link_name] = logical_link_descr
 
 
@@ -133,8 +160,9 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
     @classmethod
     def get_all_logical_interfaces(self):
         """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
-        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
-        show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
+        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip addr command
+        doesn't show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be at least 2
+        entries"""
 
         completed = subprocess.run([IP_COMMAND, "--oneline", "address", "list"], stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
@@ -149,22 +177,23 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             # https://docs.python.org/3/library/collections.html#collections.OrderedDict
             # ad is an attribute dictionary.  The string returned by the ip command will look like:
             # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec preferred_lft 85452sec
-            ad = collections.OrderedDict()
+            addr_od = collections.OrderedDict()
             fields = addr.split()
+            # fields[0] is the number of the interfer, 3: in the example above
             addr_name = fields[1]
-
             addr_family = fields[2] # Either inet or inet6
             assert addr_family == "inet" or addr_family == "inet6"
             addr_addr = fields[3]
-            for idx in range(4,len(fields)-1, 2) :
+            for idx in range(5,len(fields)-1, 2) :
                 # Because ad is an ordered dictionary, the results will always be output in the same order
-                ad[fields[idx] ] = fields[idx+1]
+                addr_od[fields[idx] ] = fields[idx+1]
             # A single logical interface can have several addresses and several families
+            lif = LogicalInterface ( addr_name=addr_name, addr_family=addr_family, addr_addr=addr_addr, ad=addr_od  )
             if addr_name not in addr_db:
                 # addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None
-                addr_db[addr_name] = [  LogicalInterface ( addr_name=addr_name, addr_family=addr_family, addr_addr=addr_addr, ad=ad  ) ]
+                addr_db[addr_name] = [ lif ]
             else :
-                addr_db[addr_name].append( LogicalInterface ( addr_name=addr_name, addr_family=addr_family, addr_addr=addr_addr, ad=ad  ) )
+                addr_db[addr_name].append( lif )
         return addr_db
 
 
