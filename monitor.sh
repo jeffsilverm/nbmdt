@@ -5,6 +5,8 @@ TEST_HOST_IP="208.97.189.29"
 DEFAULT_ROUTER_IP="192.168.0.1"		# This assumes the default router is also a name server, true for home networks, false for businesses
 ISPS_ROUTER="tukw-dsl-gw67.tukw.qwest.net"
 ISPS_ROUTER_IP="63.231.10.67"
+JEFFSILVERMAN_IPV4="*97.126.74.52"
+
 
 
 # For more information about putting colors in scripts, see for example
@@ -91,35 +93,52 @@ else
 fi
 
 if ping -c 4 jeffsilverman.ddns.net > /dev/null; then
-  echo -e "${GREEN_BG}jeffsilverman.ddns.net DNS lookup is UP${NC}"
+  if [[ "$(host jeffsilverman.ddns.net)" == $JEFFSILVERMAN_IPV4 ]]; then
+    echo -e "${GREEN_BG}jeffsilverman.ddns.net DNS lookup is pingable${NC}"
+  else
+    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving to ${RED_BG}$(host jeffsilverman.ddns.net)${YELLOW_BG}, which is pingable, but so what?${NC}"
+  fi
 elif [ $? -eq 2 ] ; then
   echo -e "${RED_BG}jeffsilverman.ddns.net DNS lookup is not resolving${NC}"
   exitstatus=1
 elif [ $? -eq 1 ]; then
   echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving but the external address is not pingable${NC}"
   exitstatus=1
-  if [[ "$(host jeffsilverman.ddns.net)" == *75.172.110.119 ]]; then
-    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving to ${GREEN_BG}75.172.110.119${NC}, but it is  ${RED_BG}not pingable${NC}" 
+  if [[ "$(host jeffsilverman.ddns.net)" == $JEFFSILVERMAN_IPV4 ]]; then
+    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is correctly resolving to ${GREEN_BG}${JEFFSILVERMAN_IPV4}${NC}, but it is still ${RED_BG}not pingable${NC}." 
   else
-    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is resolving to ${RED_BG}$(host jeffsilverman.ddns.net)${YELLOW_BG}, not ${GREEN_BG}75.172.110.119${NC}"
+    echo -e "${YELLOW_BG}jeffsilverman.ddns.net DNS lookup is wrongly resolving to ${RED_BG}$(host jeffsilverman.ddns.net)${YELLOW_BG}, not ${GREEN_BG}${JEFFSILVERMAN_IPv4}${NC}"
   fi 
 fi
 
-if ping -c 4 jeffsilverm.ddns.net > /dev/null; then
-  echo -e "${GREEN_BG}jeffsilverm.ddns.net DNS lookup is UP${NC}"
+# This really ought to be a function
+if ping -c 4 jeffsilverman.ddns.net > /dev/null; then
+  if [[ "$(host jeffsilverm.ddns.net)" == $JEFFSILVERMAN_IPV4 ]]; then
+    echo -e "${GREEN_BG}jeffsilverm.ddns.net DNS lookup is pingable${NC}"
+  else
+    echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving to ${RED_BG}$(host jeffsilverm.ddns.net)${YELLOW_BG}, which is pingable, but so what?${NC}"
+  fi
 elif [ $? -eq 2 ] ; then
   echo -e "${RED_BG}jeffsilverm.ddns.net DNS lookup is not resolving${NC}"
   exitstatus=1
 elif [ $? -eq 1 ]; then
-  host_ipv4=`host jeffsilverm.ddns.net|fgrep -v IPv6`
-  echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving but the external address ${host_ipv4} is not pingable${NC}"
+  echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving but the external address is not pingable${NC}"
   exitstatus=1
-  if [[ "$()" == *75.172.110.119 ]]; then
-    echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is resolving to ${GREEN_BG}75.172.110.119${NC}, but it is  ${RED_BG}not pingable${NC}" 
+  if [[ "$(host jeffsilverm.ddns.net)" == $JEFFSILVERMAN_IPV4 ]]; then
+    echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is correctly resolving to ${GREEN_BG}${JEFFSILVERMAN_IPV4}${NC}, but it is still ${RED_BG}not pingable${NC}." 
   else
-    echo -e "${YELLOW_BG}${host_ipv4}, not ${GREEN_BG}75.172.110.119${NC}"
+    echo -e "${YELLOW_BG}jeffsilverm.ddns.net DNS lookup is wrongly resolving to ${RED_BG}$(host jeffsilverm.ddns.net)${YELLOW_BG}, not ${GREEN_BG}${JEFFSILVERMAN_IPv4}${NC}"
   fi 
 fi
+
+# Use commercialventvac to check that my SSH server is working
+if ssh jha@commercialventvac.com "ssh -p 20022 jeffs@jeffsilverm.ddns.net date" ; then
+  echo -e "${GREEN_BG}My local SSH daemon is working and so is inbound port forwarding through the router${NC}."
+else
+  echo -e "${RED_BG}Either the local SSH daemon is not working or else inbound port forwarding is broken${NC}."
+  exitstatus=1
+fi
+ 
 
 exit 
 
