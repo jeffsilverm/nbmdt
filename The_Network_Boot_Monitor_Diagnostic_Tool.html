@@ -1,12 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-  <head>
+<html><head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>NDT, the Network Diagnostic Tool</title>
   </head>
   <body>
-    <h1>The Network Diagnostic Tool (NBMDT)</h1>
-    <h2>Purpose</h2>
+    <h1><a name="mozTocId308862" class="mozTocH1"></a>The Network Boot Monitor Diagnostic Tool (NBMDT)</h1>
+    <h2><a name="mozTocId235879" class="mozTocH2"></a>Purpose</h2>
     <p>The network boot monitor diagnostic tool (NBMDT) is a python
       program that specifically checks for network problems.&nbsp; In a
       future version, it might be more generalized.&nbsp; It has several
@@ -25,7 +24,7 @@
         of the system, which is "nominal"<br>
       </li>
     </ol>
-    <h3>What are the advantages of the NBMDT over other network
+    <h3><a name="mozTocId341106" class="mozTocH3"></a>What are the advantages of the NBMDT over other network
       monitors?</h3>
     <p>The NBMDT is designed to run in a terminal window, not on a web
       server.&nbsp; Thus, it can pack more information into less screen
@@ -57,34 +56,76 @@
       <li>IPv6 neighbors</li>
       <li>listening UDP, TCP, and SCTP ports.</li>
     </ul>
-    <h3><br>
+    <h3><a name="mozTocId319879" class="mozTocH3"></a><br>
     </h3>
     <p><br>
     </p>
-    <h2>Display</h2>
+    <h2><a name="mozTocId305441" class="mozTocH2"></a>Display</h2>
     <p>The state of an item being monitored or reported on can be easily
       indicated by the back ground color:<br>
     </p>
     <span style="background-color:green;">Normal</span><br>
-    <span style="background-color:yellow;">Degraded or wrong</span><br>
-    <span style="background-color:red;">Down</span><br>
-    <span style="background-color:blue;">Unknown</span><br>
-    <span style="background-color:purple;">Down Acknowledged (monitoring
-      only)</span><br>
-    <span style="background-color:orange;">Down due to a missing
-      dependency<span style="background-color:orange;"></span><br>
-      <span style="color: white; background-color:black;">Mysteriously
-        appeared - should be in the configuration file, but isn't</span><br>
-      <br>
+
+<span style="background-color:yellow;">Degraded or slow<br>
+</span>
+<span style="background-color:orange;"><span style="background-color:DarkOrange;">Degraded due to an upstream dependency<br></span>
+ <span style="background-color:red;">Down cause unknown<br></span>
+<span style="background-color:DarkSalmon ;">Down due to a missing dependency<br></span>
+</span><span style="background-color:purple;">Down Acknowledged<br>
+</span><span style="background-color:orange;"><span style="background-color:Purple;"><span style="color: rgb(255, 255, 204);"><span style="background-color:blue;">Missing<br>
+</span></span></span><span style="color: white; background-color:black;">Mysteriously appeared</span></span><span style="background-color:orange;">
     </span>
-    <h2>Operational modes</h2>
-    <p>The NBMDT has 4 operational modes: nominal, startup, and
+    <br>
+<br>
+<br>
+<h3><a name="mozTocId378908" class="mozTocH3"></a>Meaning of the displays:</h3>
+<dl>
+  <dd>
+    <span style="background-color:green;">Normal</span></dd>
+  <dt>All is well.&nbsp; The interface is working properly in all respects</dt>
+  <dd>
+    <span style="background-color:yellow;">Degraded or slow</span></dd>
+  <dt>The monitor is measuring traffic flow through the interface or the
+ delay required to reach the interface, and it is outside acceptable 
+limits.&nbsp; The interface is still working.</dt>
+  <dd><span style="background-color:orange;"><span style="background-color:DarkOrange;">Degraded due to an upstream dependency</span></span></dd>
+  <dt>The interface is at increased risk of failure because a dependency
+ is down.&nbsp; However, the dependency has some redundancy so the fact 
+that there is an upstream failure does not mean that this interface is 
+down.&nbsp; For example, there are multiple DNS servers.&nbsp; If a server fails, the resolver will 
+pick a different name server.&nbsp; So DNS will be working, but there 
+will be fewer servers than normal and a greater risk of subsequent 
+failure.<br>
+  </dt>
+  <dd><span style="background-color:orange;"><span style="background-color:red;">Down cause unknown</span></span></dd>
+  <dt>The interface is flunking a health check for some reason.</dt>
+  <dd><span style="background-color:orange;"><span style="background-color:DarkSalmon ;">Down due to a missing dependency</span></span></dd>
+  <dt>The interface is flunking a health check or is down because something it depends on is down.</dt>
+  <dd><span style="background-color:purple;">Down Acknowledged <br>
+    </span></dd>
+  <dt>The interface is down and an operator has acknowledged that the interface is down.&nbsp; This will only happen while monitoring, never at boot time or while diagnosing or designing<br>
+  </dt>
+  <dd><span style="color:white; background-color:blue;">Missing</span></dd>
+  <dt>The interface is in the configuration file, but the monitor cannot
+    find it.</dt>
+  <dd><span style="color: white; background-color:black;">&nbsp;Mysteriously
+    appeared</span></dd>
+  <dt><dt>The interface should be in the configuration file,  the monitor found it, but it isn't there<br>
+    </dt>
+
+  </dt>
+</dl>
+<p><br>
+</p>
+<h2>Operational modes
+    </h2>
+<p>The NBMDT has 4 operational modes: nominal, startup, and
       monitoring.<br>
     </p>
     <dl>
       <dt>Nominal</dt>
       <dd>In nominal mode, NBMDT assumes that everything is as it should
-        be.&nbsp; Guided by the permanent configuration file, it explore
+        be.&nbsp; Guided by the permanent configuration file, it explores
         the NICs and the network that the NICs are connected to and then
         builds a running configuration file.&nbsp; Then, as necessary,
         it will read the contents of that file into its memory and use
@@ -113,7 +154,8 @@
       <dt>Test</dt>
       <dd>In test mode, NBMDT does all of the testing that monitor mode
         does, but there is no frequency associated with any test.&nbsp;
-        The end result is GO/NOGO.</dd>
+        The end result is GO/NOGO. There is no attempt made to diagnose why there is a problem.<br>
+</dd>
       <dt>Diagnostic</dt>
       <dd>In diagnostic mode, NBMDT attempts to figure out why something
         is not working.&nbsp; So, for example, look at:
@@ -137,8 +179,8 @@
     </p>
     <dl>
     </dl>
-    <h2>Configuration files</h2>
-    <h3>Permanent configuration file</h3>
+    <h2><a name="mozTocId336500" class="mozTocH2"></a>Configuration files</h2>
+    <h3><a name="mozTocId84646" class="mozTocH3"></a>Permanent configuration file</h3>
     <p>The permanent configuration file is generated by the system
       administrator using any ASCII/Unicode text editor.&nbsp; It is in
       JSON format.&nbsp; The file is organized as a list.&nbsp; Each
@@ -160,24 +202,31 @@
       IPv6 went down with it.&nbsp; Furthermore, all of the remote DNS
       name servers went down.&nbsp; NTP became degraded.&nbsp; The
       applications that are listening are still listening.&nbsp; NBMDT
-      generates only one alert, because it understands the dependencies.<br>
-    </p>
-    <p><br>
-    </p>
-    <p><br>
-    </p>
-    <h3>Running configuration file<br>
+      generates only one alert, because it understands the dependencies.</p>
+<p>The permanent configuration file also records some system specific things, such as where the ip command is.</p>
+<h3> <br>
+
+
+
     </h3>
-    <p><br>
+<h3><a name="mozTocId867742" class="mozTocH3"></a>Nominal configuration file</h3>
+<p>The nominal configuration file is generated by the nbmdt program at the command of the system administrator.&nbsp;  It is in
+      JSON format.&nbsp; When nbmdt is run in nominal mode, it builds a 
+description of the system and then creates the nominal configuration 
+file.&nbsp; This file is assumed to be correct.&nbsp; It has to be 
+changed only when the system changes.</p>
+<p><br>
     </p>
-    <h2>Internals</h2>
-    <p>See also <a
-        href="file:///home/jeffs/logbooks/notes_2017-03.html#mozTocId725313">how
+    <h2><a name="mozTocId821733" class="mozTocH2"></a>Internals</h2>
+    <p>See also <a href="file:///home/jeffs/logbooks/notes_2017-03.html#mozTocId725313">how
 
 
 
         to find everything you want to know about interfaces</a><br>
     </p>
-    <h3>Network cards</h3>
-    <h4>MAC addresses:</h4>
-    <pre>jeffs@jeff-desktop:~$ cat /sys/class/net/*/address<br>00:22:4d:7c:4d:d9<br>00:10:18:cc:9c:77<br>00:00:00:00:00:00<br>00:16:3e:00:00:00<br>00:00:00:00<br>00:00:00:00:00:00<br>52:54:00:2c:bc:48<br>jeffs@jeff-desktop:~$ <br>jeffs@jeff-desktop:~$ egrep "up|down|unknown" /sys/class/net/*/operstate<br>/sys/class/net/eno1/operstate:up<br>/sys/class/net/enp3s0/operstate:up<br>/sys/class/net/lo/operstate:unknown<br>/sys/class/net/lxcbr0/operstate:down<br>/sys/class/net/sit0/operstate:down<br>/sys/class/net/virbr0-nic/operstate:down<br>/sys/class/net/virbr0/operstate:down<br>jeffs@jeff-desktop:~$ <br><br><br></pre><h4>Additional information</h4><p>I found the following on <a href="http://unix.stackexchange.com/questions/150195/getting-information-from-sysfs">stackexchange</a>:<br></p><p><meta http-equiv="content-type" content="text/html; charset=UTF-8"></p><table style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; border-spacing: 0px; border-collapse: collapse; color: rgb(36, 39, 41); font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255);"><tbody style="margin: 0px; padding: 0px; border: 0px; font-size: 13px;"><tr style="margin: 0px; padding: 0px; border: 0px; font-size: 13px;"><td class="votecell" style="margin: 0px; padding: 0px 15px 0px 0px; border: 0px; font-size: 13px; vertical-align: top;"><div class="vote" style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; text-align: center; min-width: 46px;"><a class="vote-up-off" title="This answer is useful" style="margin: 0px auto 2px; padding: 0px; border: 0px; font-size: 1px; color: rgb(21, 86, 128); text-decoration: none; cursor: pointer; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 48px; background-position: 0px -170px;">up vote</a><span itemprop="upvoteCount" class="vote-count-post " style="margin: 8px 0px; padding: 0px; border: 0px; font-size: 20px; display: block; font-family: &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, Consolas, &quot;Andale Mono WT&quot;, &quot;Andale Mono&quot;, &quot;Lucida Console&quot;, &quot;Lucida Sans Typewriter&quot;, monospace; color: rgb(106, 115, 124);">6</span><a class="vote-down-off" title="This answer is not useful" style="margin: 0px auto 10px; padding: 0px; border: 0px; font-size: 1px; color: rgb(21, 86, 128); text-decoration: none; cursor: pointer; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 48px; background-position: 0px -220px;">down vote</a><span class="vote-accepted-on load-accepted-answer-date" title="loading when this answer was accepted..." style="margin: 0px auto 10px; padding: 0px; border: 0px; font-size: 1px; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 40px; background-position: -40px -270px; color: rgb(106, 115, 124);">accepted</span></div></td><td class="answercell" style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; vertical-align: top;"><div class="post-text" itemprop="text" style="margin: 0px 0px 5px; padding: 0px; border: 0px; font-size: 15px; width: 660px; word-wrap: break-word; line-height: 1.3;"><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">It's the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span class="Apple-converted-space">&nbsp;</span>link in class directories that you aren't supposed to use. The idea is that<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0</code><span class="Apple-converted-space">&nbsp;</span>is a symbolic link to somewhere under<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/devices</code>, and the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code>link merely links to a (grand-)<sup style="margin: 0px; padding: 0px; border: 0px; font-size: 12px;">*</sup>parent directory; instead of using the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span class="Apple-converted-space">&nbsp;</span>link, you're supposed to walk back to a parent directory if needed.</p><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">Accessing files in<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0/</code><span class="Apple-converted-space">&nbsp;</span>is fine.</p><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">If you're referring to the operational status found in<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0/operstate</code>, there are a few more. The names are defined in<span class="Apple-converted-space">&nbsp;</span><a href="http://lxr.free-electrons.com/source/net/core/net-sysfs.c?v=3.14#L226" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">net/core/net-sysfs.c</code></a><span class="Apple-converted-space">&nbsp;</span>and the constants in<span class="Apple-converted-space">&nbsp;</span><a href="http://lxr.free-electrons.com/source/include/uapi/linux/if.h?v=3.14#L115" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">include/uapi/linux/if.h</code></a>. They come from<span class="Apple-converted-space">&nbsp;</span><a href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;">RFC 2863</a>.</p></div></td></tr></tbody></table><p><br></p><pre><br><br><br><br><br></pre></body></html>
+    <h3><a name="mozTocId76477" class="mozTocH3"></a>Network cards</h3>
+    <h4><a name="mozTocId290478" class="mozTocH4"></a>MAC addresses:</h4>
+    <pre>jeffs@jeff-desktop:~$ cat /sys/class/net/*/address<br>00:22:4d:7c:4d:d9<br>00:10:18:cc:9c:77<br>00:00:00:00:00:00<br>00:16:3e:00:00:00<br>00:00:00:00<br>00:00:00:00:00:00<br>52:54:00:2c:bc:48<br>jeffs@jeff-desktop:~$ <br>jeffs@jeff-desktop:~$ egrep "up|down|unknown" /sys/class/net/*/operstate<br>/sys/class/net/eno1/operstate:up<br>/sys/class/net/enp3s0/operstate:up<br>/sys/class/net/lo/operstate:unknown<br>/sys/class/net/lxcbr0/operstate:down<br>/sys/class/net/sit0/operstate:down<br>/sys/class/net/virbr0-nic/operstate:down<br>/sys/class/net/virbr0/operstate:down<br>jeffs@jeff-desktop:~$ <br><br><br></pre><h4><a name="mozTocId218814" class="mozTocH4"></a>Additional information</h4><p>I found the following on <a href="http://unix.stackexchange.com/questions/150195/getting-information-from-sysfs">stackexchange</a>:<br></p><p><meta http-equiv="content-type" content="text/html; charset=UTF-8"></p><table style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; border-spacing: 0px; border-collapse: collapse; color: rgb(36, 39, 41); font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255);"><tbody style="margin: 0px; padding: 0px; border: 0px; font-size: 13px;"><tr style="margin: 0px; padding: 0px; border: 0px; font-size: 13px;"><td class="votecell" style="margin: 0px; padding: 0px 15px 0px 0px; border: 0px; font-size: 13px; vertical-align: top;"><div class="vote" style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; text-align: center; min-width: 46px;"><a class="vote-up-off" title="This answer is useful" style="margin: 0px auto 2px; padding: 0px; border: 0px; font-size: 1px; color: rgb(21, 86, 128); text-decoration: none; cursor: pointer; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 48px; background-position: 0px -170px;">up vote</a><span itemprop="upvoteCount" class="vote-count-post " style="margin: 8px 0px; padding: 0px; border: 0px; font-size: 20px; display: block; font-family: &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, Consolas, &quot;Andale Mono WT&quot;, &quot;Andale Mono&quot;, &quot;Lucida Console&quot;, &quot;Lucida Sans Typewriter&quot;, monospace; color: rgb(106, 115, 124);">6</span><a class="vote-down-off" title="This answer is not useful" style="margin: 0px auto 10px; padding: 0px; border: 0px; font-size: 1px; color: rgb(21, 86, 128); text-decoration: none; cursor: pointer; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 48px; background-position: 0px -220px;">down vote</a><span class="vote-accepted-on load-accepted-answer-date" title="loading when this answer was accepted..." style="margin: 0px auto 10px; padding: 0px; border: 0px; font-size: 1px; background-image: url(&quot;img/sprites.svg?v=9e3ed1509727&quot;), none; background-size: initial; background-repeat: no-repeat; overflow: hidden; display: block; text-indent: -9999em; width: 40px; height: 40px; background-position: -40px -270px; color: rgb(106, 115, 124);">accepted</span></div></td><td class="answercell" style="margin: 0px; padding: 0px; border: 0px; font-size: 13px; vertical-align: top;"><div class="post-text" itemprop="text" style="margin: 0px 0px 5px; padding: 0px; border: 0px; font-size: 15px; width: 660px; word-wrap: break-word; line-height: 1.3;"><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">It's the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span class="Apple-converted-space">&nbsp;</span>link in class directories that you aren't supposed to use. The idea is that<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0</code><span class="Apple-converted-space">&nbsp;</span>is a symbolic link to somewhere under<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/devices</code>, and the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code>link merely links to a (grand-)<sup style="margin: 0px; padding: 0px; border: 0px; font-size: 12px;">*</sup>parent directory; instead of using the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span class="Apple-converted-space">&nbsp;</span>link, you're supposed to walk back to a parent directory if needed.</p><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">Accessing files in<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0/</code><span class="Apple-converted-space">&nbsp;</span>is fine.</p><p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-size: 15px; clear: both;">If you're referring to the operational status found in<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/class/net/eth0/operstate</code>, there are a few more. The names are defined in<span class="Apple-converted-space">&nbsp;</span><a href="http://lxr.free-electrons.com/source/net/core/net-sysfs.c?v=3.14#L226" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">net/core/net-sysfs.c</code></a><span class="Apple-converted-space">&nbsp;</span>and the constants in<span class="Apple-converted-space">&nbsp;</span><a href="http://lxr.free-electrons.com/source/include/uapi/linux/if.h?v=3.14#L115" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">include/uapi/linux/if.h</code></a>. They come from<span class="Apple-converted-space">&nbsp;</span><a href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin: 0px; padding: 0px; border: 0px; font-size: 15px; color: rgb(16, 120, 165); text-decoration: none; cursor: pointer;">RFC 2863</a>.</p></div></td></tr></tbody></table><p><br></p><hr style="width: 100%; height: 2px;"><ol id="mozToc" class="readonly"><!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId308862">The Network Diagnostic Tool (NBMDT)</a><ol><li><a href="#mozTocId235879">Purpose</a><ol><li><a href="#mozTocId341106">What are the advantages of the NBMDT over other network
+      monitors?</a></li><li><a href="#mozTocId319879">
+    </a></li></ol></li><li><a href="#mozTocId305441">Display</a><ol><li><a href="#mozTocId378908">Meaning of the displays:</a></li></ol></li><li><a href="#mozTocId336500">Configuration files</a><ol><li><a href="#mozTocId84646">Permanent configuration file</a></li><li><a href="#mozTocId867742">Running configuration file
+    </a></li></ol></li><li><a href="#mozTocId821733">Internals</a><ol><li><a href="#mozTocId76477">Network cards</a><ol><li><a href="#mozTocId290478">MAC addresses:</a></li><li><a href="#mozTocId218814">Additional information</a></li></ol></li></ol></li></ol></li></ol><pre><br><br><br><br><br></pre></body></html>
