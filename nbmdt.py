@@ -64,8 +64,14 @@ class SystemDescription(object):
         if configuration_file==None:
             # This is what the system is currently is
 
-            self.interfaces = interfaces.Interfaces()
-    #        self.ipv4_routes = addresses.Ipv4Routes()
+            # Create a dictionary, keyed by link name, of the physical interfaces
+            self.link_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
+            # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
+            self.addr_db = interfaces.LogicalInterface.get_all_logical_interfaces()
+            self.routes_4_db = routes.Routes.get_all_ipv4_routes()
+            self.routes_6_db = routes.Routes.get_all_ipv4_routes()
+
+            #        self.ipv4_routes = addresses.Ipv4Routes()
     #        self.ipv6_routes = addresses.Ipv6Routes()
     #        self.name_servers = nameservers.nameservers()
     #        self.applications = applications
@@ -91,11 +97,14 @@ class SystemDescription(object):
 #        ipv6_routes = IPv6_route.find_ipv6_routes()
 #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
 #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
-#       interfaces = Interfaces.find_interfaces()
 #        networks = Networks.find_networks()
 #        networks = None
 
-#        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
+        # nominal = SystemDescription.describe_current_state()
+
+
+
+    #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
 
     def __str__(self):
         """This generates a nicely formatted report of the state of this system"""
