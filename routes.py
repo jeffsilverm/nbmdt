@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 #
 # This module is responsible for representing the routing tables.  There are at least 2: one for IPv4 and one for IPv6
+import socket
+import subprocess
+import sys
 
+IP_COMMAND="/sbin/ip"
 
 class IPv4_address(object):
     """This object has an IPv4 object"""
@@ -38,61 +42,107 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     
     """
 
-    def __init__(self, source ):
-        """This returns an IPv4Route object.  The object can come from one of two sources: this constructor can
-        query the system using the ip command or it can go to the configuration file"""
+    def __init__(self, route ):
+        """This returns an IPv4Route object.  """
 
 
-        if source ==
-
-        self.name = name
-        self.ipv4_destination = ipv4_destination
-        self.ipv4_gateway = ipv4_gateway
-        self.ipv4_mask = ipv4_mask
-        self.ipv4_flags = ipv4_flags
-        self.ipv4_metric = ipv4_metric
-        self.ipv4_ref = ipv4_ref
-        self.ip4v_use = ipv4_use
-        self.ipv4_interface = ipv4_interface
+        self.ipv4_destination = route['ipv4_destination']  # Destination must be present
+        self.ipv4_dev = route['dev']
+        self.ipv4_gateway = route.get('via', None)
+        self.ipv4_proto = route.get('proto', None)
+        self.ipv4_scope = route.get('scope', None )
+        self.ipv4_metric = route.get('metric', 0 )
+        self.ip4v_src = route.get('src', None )
+        self.ipv4_linkdown = route.get('linkdown', False )
+        assert isinstance( self.ipv4_linkdown, bool ),\
+            "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
 
 
 
-    @staticmethod
-
+    @classmethod
     def find_ipv4_routes(self):
         """This method finds all of the IPv4 routes by examining the output of the ip route command, and
         returns a list of IPV4_routes """
+
+        def translate_destination(destination: str):
+            """
+This method translates destination from a dotted quad IPv4 address to a name if it can"""
+            if destination == "0.0.0.0":
+                name = "default"
+            else:
+                try:
+                    name = socket.gethostbyaddr(destination)
+                except socket.herror as h:
+                    # This exception shouldn't happen, but the documentation
+                    # says that it can so I have to handle it
+                    print("socket.gethostbyaddr raised a socket.herror "
+                          "exception on %s" % destination, str(h), file=sys.stderr )
+                    name = destination
+                except socket.gaierror as g:
+                    print("socket.gethostbyaddr raised a socket.gaierror "
+                          "exception on %s" % destination, str(g),
+                          file=sys.stderr )
+                    name = destination
+                name = destination
+            return name
+
+
+
         # https://docs.python.org/3/library/subprocess.html
-        cpi = subprocess.run(['route', '-4', '-n'], stdin=None, input=None, stdout=subprocess.PIPE, stderr=None,
+        cpi = subprocess.run(args=[IP_COMMAND, '-4', 'route', 'list'],
+                             stdin=None,
+                             input=None,
+                             stdout=subprocess.PIPE, stderr=None,
                              shell=False, timeout=None,
                              check=False, encoding="utf-8", errors=None)
         if cpi.returncode != 0:
             raise subprocess.CalledProcessError
         # Because subprocess.run was called with encoding=utf-8, output will be a string
-        routes = cpi.stdout.decode('utf-8')
-        route_records = routes.split('\n')
+        results = cpi.stdout
+        lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
+        """
+jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
+default via 192.168.0.1 dev eno1 proto static metric 100 
+10.0.3.0/24 dev lxcbr0 proto kernel scope link src 10.0.3.1 linkdown 
+169.254.0.0/16 dev eno1 scope link metric 1000 
+192.168.0.0/24 dev eno1 proto kernel scope link src 192.168.0.16 metric 100 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 linkdown 
+jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ 
+
+        """
+
         route_list = list()
-        for r_rec in route_records[2:]:
-            (ipv4_destination, ipv4_gateway, ipv4_mask, ipv4_flags, ipv4_metric, ipv4_ref, ipv4_use, \
-             ipv4_interface) = r_rec.split()
-            if ipv4_destination == "0.0.0.0":
-                name = "default"
-            else:
-                try:
-                    name = socket.gethostbyaddr(ipv4_destination)
-                except socket.herror as h:
-                    # This shouldn't happen, but the documentation says that it can so I have to handle it
-                    print("socket.gethostbyaddr")
-                    name = ipv4_destination
-            route_list.append(IPv4_route(name, ipv4_destination, ipv4_gateway, ipv4_mask, ipv4_flags, ipv4_metric, \
-                                         ipv4_ref, ipv4_use, ipv4_interface))
+        for line in lines:
+            fields = line.split()
+            route=dict()
+            route['ipv4_destination'] = translate_destination(fields[0])
+            for i in range(1, len(fields), 2):
+                if fields[i] == 'linkdown':
+                    route['linkdown'] = True
+                    break
+                route[fields[i]] = fields[i+1]
+            ipv4_route = IPv4Route( route=route )
+            route_list.append(ipv4_route)
+            """
+            route_list.append(self.IPv4_route(name=name,
+                                              ipv4_destination=ipv4_destination,
+                                              ipv4_gateway=ipv4_gateway,
+                                              ipv4_mask=ipv4_mask,
+                                              ipv4_flags=ipv4_flags,
+                                              ipv4_metric=ipv4_metric,
+                                              ipv4_ref=ipv4_ref,
+                                              ipv4_use=ipv4_use,
+                                              ipv4_interface=ipv4_interface))
+            """
         return route_list
 
     def __str__(self):
         """This method produces a nice string representation of a IPv4_route object"""
-        return "name={} dest={} gateway={} mask={} flags={} metric={} ref={} use={} I/F={}".format( \
-            self.name, self.ipv4_destination, self.ipv4_gateway, self.ipv4_mask, self.ipv4_flags, \
-            self.ipv4_metric, self.ipv4_ref, self.ip4v_use, self.ipv4_interface)
+        return f"dest={self.ipv4_destination} gateway={self.ipv4_gateway} " \
+               f"dev={self.ipv4_dev} " \
+               f"metric={self.ipv4_metric} proto={self.ipv4_proto} "\
+               f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
+               ( "linkdown" if self.ipv4_linkdown else "linkUP" )
 
 
 class IPv6Route(object):
@@ -152,4 +202,9 @@ class IPv6Route(object):
         for r in completed:
             (ipv6_desstination, _dev_, ipv6_interface,) = r.split()
 
+
+if __name__ in "__main__":
+    ipv4_route_lst = IPv4Route.find_ipv4_routes()
+    for r in ipv4_route_lst:
+        print(r.__str__() )
 

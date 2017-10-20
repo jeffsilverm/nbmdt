@@ -38,6 +38,15 @@ class PhysicalInterface(object):
             stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
             check=False)
         completed_str = completed.stdout.decode('ascii')
+        """
+jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 gso_max_size 65536 gso_max_segs 65535 
+3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 200 hello_time 200 max_age 2000 ageing_time 30000 stp_state 1 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    1.73 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.73 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 1 \    tun \    bridge_slave state disabled priority 32 cost 100 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8001 port_no 0x1 designated_port 32769 designated_cost 0 designated_bridge 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+6: lxcbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:16:3e:00:00:00 brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 1500 hello_time 200 max_age 2000 ageing_time 30000 stp_state 0 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.0:16:3e:0:0:0 designated_root 8000.0:16:3e:0:0:0 root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    0.00 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.72 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+        """
         links_list = completed_str.split('\n')
         link_db = dict()
         for link in links_list:
@@ -46,13 +55,14 @@ class PhysicalInterface(object):
                 break
             fields = link.split()
             intf_description = collections.OrderedDict()
-            intf_name = fields[1][
-                        :-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+# fields[0] is the line number, skip that.  fields[1] is the device name
+            intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+# fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
             intf_description['flags'] = fields[2]
             # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
             for idx in range(3, len(fields) - 1, 2):
-                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-                # Discipline" and it's vital.
+# Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
+# Discipline" and it's vital.
                 intf_description[fields[idx]] = fields[idx + 1]
             link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
 
@@ -121,7 +131,8 @@ class LogicalInterface(object):
         addrs_list = completed_str.split('\n')
         for line in addrs_list:
             """
-effs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail addr show
+jeffs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail 
+addr show
 1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
 1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
 3: wlp12s0    inet 10.1.10.146/24 brd 10.1.10.255 scope global dynamic wlp12s0\       valid_lft 597756sec preferred_lft 597756sec
@@ -204,7 +215,10 @@ if __name__ == "__main__":
 
     print("links ", '*' * 40)
     for link in link_db.keys():
-        print(link, link_db[link])
+        link_int_descr=link_db[link].intf_description
+        mac_addr = link_int_descr['link/ether'] if 'link/ether' in \
+                                                   link_int_descr else "00:00:00:00:00:00"
+        print(link, mac_addr, link_int_descr['state'] )
 
     print("Addresses ", '*' * 40)
     for addr_name in addr_db:
