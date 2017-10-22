@@ -22,7 +22,6 @@ class FixedConfiguration(object):
         This method creates a FixedConfiguration object from the file ini_filename
         :param ini_filename:  str
         """
-        global hostname
 
         self.__ini_filename = ini_filename
         config = configparser.ConfigParser()
@@ -35,7 +34,6 @@ class FixedConfiguration(object):
                              ini_filename )
         my_section = config[self.hostname]
         self.__ip_command = my_section['ip_command']
-        self.__hostname_command = my_section['hostname_command']    # currently unused
 
     @property  # Invoke this method when setting the name of the ip command.  On some machines, it is /sbin/ip
     # and on others it is /usr/sbin/ip or /usr/bin/ip
