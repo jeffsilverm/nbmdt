@@ -11,54 +11,60 @@ import configparser
 import sys
 import os
 
-class FixedConfiguration( object ):
+
+class FixedConfiguration(object):
     """
     An object of FixedConfiguration has the read-only configuration for nbmdt
     """
 
-    hostname = os.environ['HOSTNAME']
-
-    def __init__(self, ini_filename: str, machine_name: str ):
+    def __init__(self, ini_filename: str):
         """
         This method creates a FixedConfiguration object from the file ini_filename
         :param ini_filename:  str
         """
         global hostname
 
+        self.__ini_filename = ini_filename
         config = configparser.ConfigParser()
-        config.read(ini_filename)
-        sections=config.sections()
-        self._ip_command=sections[hostname]['ip_command']
-        self._ini_filename=ini_filename
+        if len ( config.read(ini_filename) ) == 0:
+            raise FileNotFoundError("%s was not found" % ini_filename )
+        sections = config.sections()
+        self.hostname = os.environ["HOSTNAME"]
+        if self.hostname not in sections:
+            raise ValueError("hostname %s is not a section in the configuration file %s" % (self.hostname),
+                             ini_filename )
+        my_section = config[self.hostname]
+        self.__ip_command = my_section['ip_command']
+        self.__hostname_command = my_section['hostname_command']    # currently unused
 
-
-    @property           # Invoke this method when setting the name of the ip command
-    def get_ip_command(self):
+    @property  # Invoke this method when setting the name of the ip command.  On some machines, it is /sbin/ip
+    # and on others it is /usr/sbin/ip or /usr/bin/ip
+    def ip_command(self):
         """Return the name of the ip command"""
 
-        return self.hostname
+        return self.__ip_command
 
-    @_ip_command.setter  # when you do Stock.name = x, it will call this function
-    def set_ip_command(self, name):
-        raise NotImplementedError("You can't set the hostname programmatically.  You must modify file %s" % \
-                                  self._ini_filename)
+    @ip_command.setter
+    def ip_command(self, name):
+        raise NotImplementedError("You can't set the ip command programmatically.  You must modify file %s" % \
+                                  self.__ini_filename)
+
 
 if __name__ == "__main__":
-    fixed_configuration = FixedConfiguration("nmbd.ini")
-    ip_command = fixed_configuration.get_ip_command()
+    try:
+        fixed_configuration = FixedConfiguration("XyZZy.txt")
+    except FileNotFoundError as f:
+        print("Raise FileNotFound error as expected", file=sys.stderr)
+    else:
+        print("The FixedConfiguration.__init__ method did *not* raise the FileNotFound exception as it should.")
+    fixed_configuration = FixedConfiguration("nbmdt.ini")
+    ip_command = fixed_configuration.ip_command
 
     try:
-        fixed_configuration.set_ip_command("This should fail")
+        fixed_configuration.ip_command="This should fail: calling the set_ip_command method"
     except NotImplementedError as n:
-        print("fixed_configuration.set_ip_command failed as expected with NotImplementedError")
+        print("fixed_configuration.set.ip_command failed as expected with NotImplementedError")
     else:
         print("EPIC FAIL!!! fixed_configuration.set_ip_command worked! Should have raised NotImplementedError")
 
-
-    try:
-        fixed_configuration._ip_command="This should fail"
-    except NotImplementedError as n:
-        print("fixed_configuration._ip_command failed as expected with NotImplementedError")
-    else:
-        print("EPIC FAIL!!! fixed_configuration._ip_command worked! Should have raised NotImplementedError")
-
+    print(fixed_configuration.ip_command, fixed_configuration.hostname)
