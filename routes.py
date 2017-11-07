@@ -73,7 +73,8 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                 try:
                     name = socket.gethostbyaddr(destination)
                 except socket.herror as h:
-                    # This exception shouldn't happen, but the documentation
+                    # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
+                    # /etc/hosts.  Now, should I print the message, even though I expect it?
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
                           "exception on %s" % destination, str(h), file=sys.stderr )
@@ -83,7 +84,8 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                           "exception on %s" % destination, str(g),
                           file=sys.stderr )
                     name = destination
-                name = destination
+                else:
+                    name = destination
             return name
 
 
@@ -207,4 +209,5 @@ if __name__ in "__main__":
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
     for r in ipv4_route_lst:
         print(r.__str__() )
+        print(f"The gateway is {r.ipv4_gateway}")
 
