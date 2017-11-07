@@ -52,31 +52,35 @@ class FixedConfiguration(object):
 
 if __name__ == "__main__":
 
-    from routing import routing
+    from routes import IPv4Route
 
 
     def make_test_nbmdt_ini_file():
         """Make a test ini file """
-        routing = routing.Routes()
+        routing = IPv4Route()
+        routing.find_ipv4_routes()
         default_gateway = routing.default_gateway()
         contents="""
-[jeffs-laptop]
+[default]
+ping_targets: redhat.com, canonical.com
+
+[machine-jeffs-laptop]
 ping_targets: f5.com, commercialventvac.com, google.com
 ping_command: /bin/ping
 ip_command: /sbin/ip
+default_device: wlp12s0
+
+[machine-jeffs-desktop]
+ping_targets: f5.com, commercialventvac.com, amazon.com
+ping_command: /bin/ping
+ip_command: /sbin/ip
+default_device: eno1
+
+[location-jeffs_house]
 default_gateway: 192.168.0.1
 
-[jeffs-desktop]
-ping_targets: f5.com, commercialventvac.com, google.com
-ping_command: /bin/ping
-ip_command: /sbin/ip
-default_gateway: 192.168.8.1        
-
-[jeffs_house]
-ping_targets: f5.com, commercialventvac.com, google.com
-ping_command: /bin/ping
-ip_command: /sbin/ip
-default_gateway: 192.168.0.1
+[location-parents_house]
+default_gateway: 192.168.8.1
 
 [bad]
 ping_targets:
@@ -103,14 +107,18 @@ ping_targets:
         print("fixed_configuration.set.ip_command failed as expected with NotImplementedError")
     else:
         print("EPIC FAIL!!! fixed_configuration.set_ip_command worked! Should have raised NotImplementedError")
-    ip_command = fixed_configuration.ip_command
+    # ip_command = fixed_configuration.ip_command
+    default_ping_list = fixed_configuration['default']['ping_targets']
     for section in fixed_configuration.sections():
-
-        print(fixed_configuration[section].ip_command )
-        ping_target_str = fixed_configuration[section]['ping_targets']
-        ping_targets_list = ",".split(ping_target_str)
-        for ping_target in ping_targets_list:
-            print(f"In section {section} ping target is {ping}")
+        if "machine" in section:
+            print(f"section {section}: the ip command is {fixed_configuration[section].ip_command}" )
+            ping_target_str = fixed_configuration[section]['ping_targets']
+            ping_targets_list = ",".split(ping_target_str)  + default_ping_list
+            for ping_target in ping_targets_list:
+                print(f"In section {section} a ping target is {ping}")
+            print(f"default gateway is {fixed_configuration[section]['default_gateway']}")
+        if "location" in section:
+            print(f"In section {section} the default device is {fixed_configuration[section]['default_device']}")
 
 
 

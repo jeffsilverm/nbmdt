@@ -60,11 +60,12 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
 
 
     @classmethod
-    def find_ipv4_routes(self):
+    def find_ipv4_routes(cls):
         """This method finds all of the IPv4 routes by examining the output of the ip route command, and
-        returns a list of IPV4_routes """
+        returns a list of IPV4_routes.  This is a class method because all route objects have the same
+         default gateway"""
 
-        def translate_destination(destination: str):
+        def translate_destination(destination: str) -> str:
             """
 This method translates destination from a dotted quad IPv4 address to a name if it can"""
             if destination == "0.0.0.0":
@@ -116,14 +117,17 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         route_list = list()
         for line in lines:
             fields = line.split()
+            destination = translate_destination(fields[0])
             route=dict()
-            route['ipv4_destination'] = translate_destination(fields[0])
+            route['ipv4_destination'] = destination
             for i in range(1, len(fields), 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
                     break
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
+            if destination == "default" or destination == "0.0.0.0":
+                cls.default_gateway = ipv4_route
             route_list.append(ipv4_route)
             """
             route_list.append(self.IPv4_route(name=name,
