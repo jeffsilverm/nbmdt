@@ -68,7 +68,7 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
         def translate_destination(destination: str) -> str:
             """
 This method translates destination from a dotted quad IPv4 address to a name if it can"""
-            if destination == "0.0.0.0":
+            if destination == "0.0.0.0" or destination == "default":
                 name = "default"
             else:
                 try:
@@ -118,6 +118,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         for line in lines:
             fields = line.split()
             destination = translate_destination(fields[0])
+
             route=dict()
             route['ipv4_destination'] = destination
             for i in range(1, len(fields), 2):
@@ -149,6 +150,11 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                f"metric={self.ipv4_metric} proto={self.ipv4_proto} "\
                f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
                ( "linkdown" if self.ipv4_linkdown else "linkUP" )
+
+    def get_default_gateway(self):
+        """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
+        invoke find_ipv4_routes, which will define the default gateway"""
+        return self.default_gateway
 
 
 class IPv6Route(object):
