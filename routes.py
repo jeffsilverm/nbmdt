@@ -112,7 +112,8 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         """
 
         route_list = list()
-        for line in lines:
+        for line in lines:      # lines is the output of the ip route list
+            # command
             fields = line.split()
             route=dict()
             route['ipv4_destination'] = translate_destination(fields[0])
