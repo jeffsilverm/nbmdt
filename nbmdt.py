@@ -18,6 +18,8 @@ import yaml
 
 
 from enum import Enum
+import termcolor
+
 class Modes(Enum):
     BOOT=1
     MONITOR=2
@@ -31,7 +33,6 @@ class ErrorLevels(Enum):
     UNKNOWN=4      # The program can't tell if something is working or not
     DOWN=5         # It's completely not working
 
-import termcolor
     colors={}
     colors[OKAY] = termcolor.COLORS.mpl
 
@@ -68,8 +69,9 @@ class SystemDescription(object):
             self.link_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
             # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
             self.addr_db = interfaces.LogicalInterface.get_all_logical_interfaces()
-            self.routes_4_db = routes.Routes.get_all_ipv4_routes()
-            self.routes_6_db = routes.Routes.get_all_ipv4_routes()
+            self.routes_4_db = routes.IPv4Route.find_ipv4_routes()
+            self.ipv4_default_gateway = routes.IPv4Route.default_gateway
+            # self.routes_6_db = routes.Routes.get_all_ipv4_routes()
 
             #        self.ipv4_routes = addresses.Ipv4Routes()
     #        self.ipv6_routes = addresses.Ipv6Routes()
@@ -125,6 +127,11 @@ class SystemDescription(object):
             result += str(network) + "\n"
         return result
 
+    def test (self ):
+
+        default_gateway = self.ipv4_default_gateway
+        ping_results = 
+
 
 
 
@@ -135,7 +142,7 @@ if __name__ == "__main__" :
     mode = Modes.TEST   # This will be an option to the program some day.
 
     if mode == Modes.TEST :
-        test ( nominal_system_description, current_system_description )
+        current_system_description.test (  )
 
 
 
