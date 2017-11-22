@@ -129,6 +129,12 @@ class SystemDescription(object):
 
 
 if __name__ == "__main__" :
+    default_gateway = routes.get_default_gateway()
+    ping_results = ping( default_gateway )
+
+
+
+"""
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
     current_system_description = SystemDescription ( )
 
@@ -136,7 +142,7 @@ if __name__ == "__main__" :
 
     if mode == Modes.TEST :
         test ( nominal_system_description, current_system_description )
-
+"""
 
 
 
