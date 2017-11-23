@@ -7,33 +7,34 @@
 
 
 
-import subprocess
-import socket
-import collections
-import routes
-from routes import IPv4Route as IPv4_route
-from routes import IPv6Route as IPv6_route
-import interfaces
-import yaml
-
-
 from enum import Enum
-class Modes(Enum):
-    BOOT=1
-    MONITOR=2
-    DIAGNOSE=3
-    TEST=4
-
-class ErrorLevels(Enum):
-    OKAY=1         # Everything is working properly
-    DEGRADED=2     # Many things are working properly
-    CHANGED=3      # Things are working but they aren't what's in the database
-    UNKNOWN=4      # The program can't tell if something is working or not
-    DOWN=5         # It's completely not working
 
 import termcolor
-    colors={}
-    colors[OKAY] = termcolor.COLORS.mpl
+import yaml
+
+import interfaces
+import routes
+
+
+# If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
+# https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
+class Modes(Enum):
+    BOOT = 1
+    MONITOR = 2
+    DIAGNOSE = 3
+    TEST = 4
+
+
+class ErrorLevels(Enum):
+    OKAY = 1  # Everything is working properly
+    DEGRADED = 2  # Many things are working properly
+    CHANGED = 3  # Things are working but they aren't what's in the database
+    UNKNOWN = 4  # The program can't tell if something is working or not
+    DOWN = 5  # It's completely not working
+
+    colors = {}
+    colors[self.OKAY] = termcolor.COLORS
+
 
 class Networks(object):
     def __init__(self):
@@ -58,10 +59,9 @@ class SystemDescription(object):
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
-    def __init__(self, configuration_file=None ):
+    def __init__(self, configuration_file=None):
 
-
-        if configuration_file==None:
+        if configuration_file == None:
             # This is what the system is currently is
 
             # Create a dictionary, keyed by link name, of the physical interfaces
@@ -72,35 +72,35 @@ class SystemDescription(object):
             self.routes_6_db = routes.Routes.get_all_ipv4_routes()
 
             #        self.ipv4_routes = addresses.Ipv4Routes()
-    #        self.ipv6_routes = addresses.Ipv6Routes()
-    #        self.name_servers = nameservers.nameservers()
-    #        self.applications = applications
+            #        self.ipv6_routes = addresses.Ipv6Routes()
+            #        self.name_servers = nameservers.nameservers()
+            #        self.applications = applications
             # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
 
             # To find all IPv6 machines on an ethernet, use ip -6 neigh show
-    #        self.networks = networks
-    #        self.name = name
+            #        self.networks = networks
+            #        self.name = name
         else:
             y = yaml.safe_load(configuration_file)
             self.interfaces = y['interfaces']
             for interface in self.interfaces:
                 self.ipv4_address = interfaces
 
-
     @staticmethod
     def describe_current_state():
-        """This method goes through a system that is nominally configured and operating and records the configuration """
+        """This method goes through a system that is nominally configured and operating and records the configuration
+        """
 
-#        applications = Applications.find_applications()
-#        applications = None
-#        ipv4_routes = IPv4_route.find_ipv4_routes()
-#        ipv6_routes = IPv6_route.find_ipv6_routes()
-#        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
-#        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
-#        networks = Networks.find_networks()
-#        networks = None
+    #        applications = Applications.find_applications()
+    #        applications = None
+    #        ipv4_routes = IPv4_route.find_ipv4_routes()
+    #        ipv6_routes = IPv6_route.find_ipv6_routes()
+    #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
+    #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
+    #        networks = Networks.find_networks()
+    #        networks = None
 
-        # nominal = SystemDescription.describe_current_state()
+    # nominal = SystemDescription.describe_current_state()
 
 
 
@@ -126,13 +126,9 @@ class SystemDescription(object):
         return result
 
 
-
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     default_gateway = routes.get_default_gateway()
-    ping_results = ping( default_gateway )
-
-
+    ping_results = ping(default_gateway)
 
 """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
@@ -143,11 +139,3 @@ if __name__ == "__main__" :
     if mode == Modes.TEST :
         test ( nominal_system_description, current_system_description )
 """
-
-
-
-
-
-
-
-
