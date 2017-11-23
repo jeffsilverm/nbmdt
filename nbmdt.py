@@ -130,7 +130,7 @@ class SystemDescription(object):
     def test (self ):
 
         default_gateway = self.ipv4_default_gateway
-        ping_results = 
+        ping_results =
 
 
 
