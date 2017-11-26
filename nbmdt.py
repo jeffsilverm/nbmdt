@@ -14,6 +14,8 @@ import yaml
 
 import interfaces
 import routes
+import network
+import tests
 
 
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
@@ -126,17 +128,21 @@ class SystemDescription(object):
             result += str(network) + "\n"
         return result
 
-    def test (self ):
+    def test_default_gateway (self ):
 
         default_gateway = self.ipv4_default_gateway
-        ping_results =
+        ping_results = tests.ping( default_gateway, count=5, min_for_good=4, slow_ms=40.0 )
+        if not ping_results :
+            return ( False, "default gateway flunks")
+        for remote_host in 
+
 
 
 
 
 if __name__ == "__main__":
     default_gateway = routes.get_default_gateway()
-    ping_results = ping(default_gateway)
+    
 
 """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
