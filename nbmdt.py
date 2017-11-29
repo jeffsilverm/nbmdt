@@ -26,6 +26,7 @@ class Modes(Enum):
     MONITOR = 2
     DIAGNOSE = 3
     TEST = 4
+    NOMINAL = 5
 
 
 class ErrorLevels(Enum):
@@ -90,12 +91,16 @@ class SystemDescription(object):
             # This is what the system is currently is
 
             # Create a dictionary, keyed by link name, of the physical interfaces
-            self.link_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
-            self.neighbors = [] # for now
+            self.phys_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
             # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
-            self.addr_db = interfaces.LogicalInterface.get_all_logical_interfaces()
+            self.data_link_db = interfaces.LogicalInterface.get_all_logical_link_addrs()
+            # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
             self.ipv4_routes = routes.IPv4Route.find_ipv4_routes()
             self.ipv6_routes = routes.IPv6Route.find_all_ipv6_routes()
+            # Create something... what?  to track transports (OSI layer 4)
+            self.transports_4 = transports.ipv4
+            self.transports_6 = transports.ipv6
+
             self.applications = {}   # For now
 
             #        self.name_servers = nameservers.nameservers()
@@ -146,9 +151,6 @@ class SystemDescription(object):
         result = result + "\ninterfaces\n" + "*" * 80
         for iface in self.interfaces:
             result += str(iface) + "\n"
-        result = result + "\nNeghbors:\n" + "*" * 80
-        for neighbor in self.neighbors:
-            result += str(neighbor) + "\n"
         return result
 
     def test (self ):
@@ -157,6 +159,7 @@ class SystemDescription(object):
 
 
 if __name__ == "__main__":
+    mode = Modes.NOMINAL    # For debugging
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
