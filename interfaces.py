@@ -5,8 +5,10 @@ import collections
 import subprocess
 import sys
 
-# This should be a configuration file item
-IP_COMMAND = "/bin/ip"
+# This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was symlink it so that both /bin/ip and
+# /usr/sbin/ip work.  But I can do that because I am a sysadmin.
+# Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
+IP_COMMAND = "/usr/sbin/ip"
 
 
 # There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
@@ -83,7 +85,14 @@ class LogicalInterface(object):
     # dictionary.
     def __init__(self, addr_name, addr_family, addr_addr, addr_descr,
                  scope=None, broadcast=None, remainder=None):
-        """This creates a logical interface object."""
+        """This creates a logical interface object.
+        :param  addr_name   The name, as gethostbyaddr returns or what you feed to gethostbyname, or None
+        :param  addr_family "inet" or "inet6"
+        :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
+        :param  addr_descr  ?
+        :param  scope       ?
+        :param  
+        """
         if addr_family != "inet" and addr_family != "inet6":
             raise ValueError(
                 "misunderstood value of addr_family: {}".format(addr_family))
@@ -152,7 +161,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                 print(f"Raised ValueError.  Error is {str(v)}.  line is \n{line}\nTrying again ", file=sys.stderr)
                 fields = line.split()
                 print(f"There are actually {len(fields)} in line", file=sys.stderr)
-                idx, link_name, family, addr_mask, brd_scope, brd_scope_val  = fields[0:5]
+                idx, link_name, family, addr_mask, brd_scope, brd_scope_val  = fields[0:7]
             logical_link_descr = cls.__init__(addr_name=link_name,
                                               addr_family=family,
                                               addr_addr=addr_mask,
