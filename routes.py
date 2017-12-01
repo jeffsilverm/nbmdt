@@ -13,13 +13,32 @@ class DNSFailure(Exception):
 
 
 class IPv4_address(object):
-    """This object has an IPv4 object"""
+    """
+    This object has an IPv4 object.  It has two attributes: name and ipv4_address.
+    If the name has not been specified, then it is None
+    """
+
+    def __init__(self, name : str =None, ipv4_address : [str, bytes] = None):
+        if name is not None:
+            self.name = name
+            if ipv4_address is None:
+                # This may raise a socket.gaierror error if gethostbyname fails.  The error will propogate back to the caller
+                ipv4_address = socket.gethostbyname(name)
+        if ipv4_address is not None:
+            if isinstance(ipv4_address, str):
+                # https://docs.python.org/3/library/socket.html#socket.inet_pton
+                self.ipv4_address = socket.inet_pton(socket.AF_INET, ipv4_address)
+            elif isinstance(ipv4_address, bytes) and len(ipv4_address) == 4 :
+                self.ipv4_address = ipv4_address
+            else:
+                raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
+                                 "should be bytes or str")
 
 
-    def __init__(self, name, ipv4_address):
-        self.name = name
-        self.ipv4_address = ipv4_address
-
+    def __str__(self):
+        # https://docs.python.org/3/library/socket.html#socket.inet_ntop
+        ipv4_addr_str = socket.inet_ntop(socket.AF_INET, self.ipv4_address)
+        return ipv4_addr_str
 
     def ping(self, count=4, max_allowed_delay=1000):
         """Verifies that an IPv4 address is pingable.
@@ -44,9 +63,12 @@ class IPv4_address(object):
 
 
 class IPv6_address(object):
-    def __init__(self, name, ipv6_address):
-        self.name = name
+    def __init__(self, name : str = None, ipv6_address : [str, ] = None ):
+        if name is not None:
+            self.name = name
+        # Needs work
         self.ipv6_address = ipv6_address
+
 
 
 class IPv4Route(object):
@@ -72,7 +94,7 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     def __init__(self, route ):
         """This returns an IPv4Route object.  """
 
-
+ # Use caution: these are strings, not length 4 bytes
         self.ipv4_destination = route['ipv4_destination']  # Destination must be present
         self.ipv4_dev = route['dev']
         self.ipv4_gateway = route.get('via', None)
@@ -80,10 +102,9 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
         self.ipv4_scope = route.get('scope', None )
         self.ipv4_metric = route.get('metric', 0 )
         self.ip4v_src = route.get('src', None )
-        self.ipv4_linkdown = route.get('linkdown', False )
+        self.ipv4_linkdown  = route.get('linkdown', False )
         assert isinstance( self.ipv4_linkdown, bool ),\
             "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
-
 
 
     @classmethod
@@ -106,14 +127,13 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
                           "exception on %s" % destination, str(h), file=sys.stderr )
-                    name = destination
                 except socket.gaierror as g:
                     print("socket.gethostbyaddr raised a socket.gaierror "
                           "exception on %s" % destination, str(g),
                           file=sys.stderr )
-                    name = destination
                 else:
-                    name = destination
+                    pass
+                name = destination
             return name
 
 
@@ -179,10 +199,14 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
                ( "linkdown" if self.ipv4_linkdown else "linkUP" )
 
-    def get_default_gateway(self):
+    @classmethod
+    def get_default_gateway(cls):
         """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
         invoke find_ipv4_routes, which will define the default gateway"""
-        return self.default_gateway
+        if not hasattr(cls, "default_gateway"):
+            # This has some overhead, and ought to be cached somehow.  Deal with that later.
+            cls.find_ipv4_routes()
+        return cls.default_gateway
 
 
 class IPv6Route(object):
@@ -244,8 +268,12 @@ class IPv6Route(object):
 
 
 if __name__ in "__main__":
+    print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
+    print(f"The default gateway is {IPv4Route.default_gateway}")
+    print(40*"=")
     for r in ipv4_route_lst:
         print(r.__str__() )
-        print(f"The gateway is {r.ipv4_gateway}")
+        print(f"The gateway is {r.ipv4_gateway}\n")
+
 
