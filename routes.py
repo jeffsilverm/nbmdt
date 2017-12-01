@@ -8,12 +8,39 @@ import sys
 
 IP_COMMAND="/sbin/ip"
 
+class DNSFailure(Exception):
+    pass
+
+
 class IPv4_address(object):
     """This object has an IPv4 object"""
+
 
     def __init__(self, name, ipv4_address):
         self.name = name
         self.ipv4_address = ipv4_address
+
+
+    def ping(self, count=4, max_allowed_delay=1000):
+        """Verifies that an IPv4 address is pingable.
+        :param  count   How many times to ping the IP address
+        :param  max_allowed_delay
+
+
+        :returns False if the remote device is unpingable
+
+        A future version will return a tuple with the package loss percentage, statistics about delay, etc.
+        """
+
+        completed = subprocess.run(['ping', self.ipv4_address])
+        # return status = 0 if everything is okay
+        # return status = 2 if DNS fails to look up the name
+        # return status = 1 if the device is not pingable
+        if completed.returncode == 2:
+            raise DNSFailure
+        return completed.returncode == True
+
+
 
 
 class IPv6_address(object):
