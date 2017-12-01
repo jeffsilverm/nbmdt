@@ -126,10 +126,10 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                     # /etc/hosts.  Now, should I print the message, even though I expect it?
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
-                          "exception on %s" % destination, str(h), file=sys.stderr )
+                          "exception on %s, continuing" % destination, str(h), file=sys.stderr )
                 except socket.gaierror as g:
                     print("socket.gethostbyaddr raised a socket.gaierror "
-                          "exception on %s" % destination, str(g),
+                          "exception on %s, continuing" % destination, str(g),
                           file=sys.stderr )
                 else:
                     pass
@@ -264,7 +264,7 @@ class IPv6Route(object):
                                    errors=None)
         route_list = []
         for r in completed:
-            (ipv6_desstination, _dev_, ipv6_interface,) = r.split()
+            (ipv6_destination, _dev_, ipv6_interface,) = r.split()
 
 
 if __name__ in "__main__":

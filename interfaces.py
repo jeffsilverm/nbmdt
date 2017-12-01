@@ -91,7 +91,7 @@ class LogicalInterface(object):
         :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
         :param  addr_descr  ?
         :param  scope       ?
-        :param  
+        :param
         """
         if addr_family != "inet" and addr_family != "inet6":
             raise ValueError(
