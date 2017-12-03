@@ -4,14 +4,21 @@
 import collections
 import subprocess
 import sys
+from os import path as path
+from pathlib import Path
 
-# This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was symlink it so that both /bin/ip and
+import netifaces
+
+# This should be a configuration file item - on ubuntu, the IP_COMMAND is
+# /bin/ip .  So what I did was symlink it so that both /bin/ip and
 # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
 # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
 IP_COMMAND = "/usr/sbin/ip"
+NET_DEVS_PATH = Path("/sys/class/net")
 
 
-# There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
+# There is an ip command cheat sheet at
+# https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
 
 def none_if_None(s):
     return s if s is not None else "None"
@@ -30,8 +37,24 @@ class PhysicalInterface(object):
         return s
 
     @classmethod
-    def get_all_physical_interfaces(self):
-        """This method returns a dictionary of interfaces as known by the ip link list command
+    def get_all_physical_interfaces(self) -> list:
+        """
+        This method returns a list of interfaces as known by the netifaces package
+        """
+
+        links_list = netifaces.interfaces()
+
+        return links_list
+
+    def run_ip_link_command(self, interface=None) -> dict:
+        """
+        This method returns all of the properties of the interface inferface as
+        a dictionary which is keyed by interface name and has the value of the
+        property.
+        If interface is None, then return the properties of all interfaces as a
+        dictionary.
+
+        :return:
         """
 
         completed = subprocess.run(
@@ -40,6 +63,7 @@ class PhysicalInterface(object):
             stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
             check=False)
         completed_str = completed.stdout.decode('ascii')
+        # The output of the ip link command looks like:
         """
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
@@ -49,29 +73,54 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
 5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 1 \    tun \    bridge_slave state disabled priority 32 cost 100 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8001 port_no 0x1 designated_port 32769 designated_cost 0 designated_bridge 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
 6: lxcbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:16:3e:00:00:00 brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 1500 hello_time 200 max_age 2000 ageing_time 30000 stp_state 0 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.0:16:3e:0:0:0 designated_root 8000.0:16:3e:0:0:0 root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    0.00 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.72 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
         """
-        links_list = completed_str.split('\n')
-        link_db = dict()
-        for link in links_list:
-            if len(
-                    link) == 0:  # there may be an empty trailing line in the output
-                break
-            fields = link.split()
-            intf_description = collections.OrderedDict()
-# fields[0] is the line number, skip that.  fields[1] is the device name
-            intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-# fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
-            intf_description['flags'] = fields[2]
-            # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
-            for idx in range(3, len(fields) - 1, 2):
-# Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-# Discipline" and it's vital.
-                intf_description[fields[idx]] = fields[idx + 1]
-            link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
+        """
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $ ip --oneline --detail link list eno1
+3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $ 
 
-        return link_db
+        """
+    @staticmethod
+    def link_properties(ifname: str) -> dict:
+        """
+        Return a dictionary of properties, keyed by property name and the
+        value of that property.  THIS IS HIGHLY *NOT* PORTABLE - IT WILL ONLY
+        RUN ON LINUX"
 
+        :param ifname:  The name of the interface to report
+        :return:    A dictionary of properties of the interface
+        """
 
-# There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
+        properties = dict()
+        assert path.exists(str(NET_DEVS_PATH)), \
+            f"The networks device path {NET_DEVS_PATH} does not exist."\
+            "This is a serious internal software error."\
+            "Please submit a bug report and include the results of the"\
+            "\nls -lR /sys\ncommand"
+        dev_properties_path = NET_DEVS_PATH / ifname
+        if not path.exists(str(dev_properties_path)):
+            print(
+                f"The device path {str(dev_properties_path)} does not exist.  " \
+                f"It likely that the directory for the interface named {ifname} does not exist.\n", \
+                "The devices that are known are:", file=sys.stderr)
+            for f in dev_properties_path.glob("*"):
+                print(f, file=sys.stderr)
+            raise AssertionError(
+                f"Inteface {ifname} not found in pseudo file system")
+        for d in dev_properties_path.glob("*"):
+            if d.is_dir():
+                continue
+            gh = str(d)
+            property = gh[gh.rindex("/") + 1:]
+            with open(gh, "rb") as fp:
+                try:
+                    contents = fp.readlines()
+                except OSError as o:
+                    print(f"Property {property} cannot be known due to OSError", file=sys.stderr)
+                    continue
+                except UnicodeDecodeError as u:
+                    print(f"Property {property} in {gh} raised a UnicodeDecodeError", file=sys.stderr)
+                properties[property] = contents
+        return properties
 
 
 class LogicalInterface(object):
@@ -102,8 +151,8 @@ class LogicalInterface(object):
         self.addr_descr = addr_descr
         # I have to have a better understanding of the symantecs of scope and
         # broadcast
-        if ( ( scope is None ) + ( broadcast is None) ) != 1:  # True + True =
-        #  2, True + False == False + True == 1, False + False == 0
+        if ((scope is None) + (broadcast is None)) != 1:  # True + True =
+            #  2, True + False == False + True == 1, False + False == 0
             print(
                 "While instantiating {}, ".format(addr_name),
                 "One and only one of scope or broadcast must be None\n" \
@@ -158,19 +207,27 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             try:
                 idx, link_name, family, addr_mask, brd_scope, brd_scope_val, remainder = line.split()[0:7]
             except ValueError as v:
-                print(f"Raised ValueError.  Error is {str(v)}.  line is \n{line}\nTrying again ", file=sys.stderr)
+                print(
+                    f"Raised ValueError.  Error is {str(v)}.  line is \n{line}\nTrying again ",
+                    file=sys.stderr)
                 fields = line.split()
-                print(f"There are actually {len(fields)} in line", file=sys.stderr)
-                idx, link_name, family, addr_mask, brd_scope, brd_scope_val  = fields[0:7]
+                print(f"There are actually {len(fields)} in line",
+                      file=sys.stderr)
+                idx, link_name, family, addr_mask, brd_scope, brd_scope_val = fields[ 0:7]
+
+            """                                                                 
             logical_link_descr = cls.__init__(addr_name=link_name,
                                               addr_family=family,
                                               addr_addr=addr_mask,
                                               scope=(
-                                              brd_scope if family == "inet" else None),
+                                                  brd_scope if family == "inet" else None),
                                               broadcast=(
-                                              None if family == "inet" else brd_scope),
+                                                  None if family == "inet" else brd_scope),
                                               )
-            cls.logical_link_db[link_name] = logical_link_descr
+            """
+
+            print("kludged the logical link DB in interfaces.py")
+            cls.logical_link_db[link_name] = line.split()[0:7]
 
     @classmethod
     def get_all_logical_interfaces(self):
@@ -223,21 +280,29 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
 if __name__ == "__main__":
     # nominal = SystemDescription.describe_current_state()
 
-    # Create a dictionary, keyed by link name, of the physical interfaces
+    # Create a list of all the physical interfaces
     link_db = PhysicalInterface.get_all_physical_interfaces()
     # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
     addr_db = LogicalInterface.get_all_logical_interfaces()
 
     print("links ", '*' * 40)
-    for link in link_db.keys():
-        link_int_descr=link_db[link].intf_description
-        mac_addr = link_int_descr['link/ether'] if 'link/ether' in \
-                                                   link_int_descr else "00:00:00:00:00:00"
-        print(link, mac_addr, link_int_descr['state'] )
+    for link in link_db:
+        print(link, ":||  ", end=" ")
+        properties : dict = PhysicalInterface.link_properties(ifname=link)
+        for property in properties:
+            if len(properties[property]) == 1:
+                print(property, ": ", properties[property][0], end=" ")
+            else:      # It is a list of values, so print the entire list.
+                print(property, ": ", properties[property], end=" ")
 
+        if False:
+            mac_addr = properties['address']
+            print(link, mac_addr, properties['state'])
+        print(end="\n")
     print("Addresses ", '*' * 40)
     for addr_name in addr_db:
         print("\n{}\n".format(addr_name))
-        for addr in addr_db[addr_name]:  # The values of the addr_db are descriptions of addresses
+        for addr in addr_db[
+            addr_name]:  # The values of the addr_db are descriptions of addresses
             assert isinstance(addr, LogicalInterface)
             print("   " + str(addr))
