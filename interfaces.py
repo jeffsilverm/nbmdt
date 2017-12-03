@@ -156,7 +156,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             # if family is inet, then brd_scope is brd (broadcast) and brd_scope_val is the the broadcast IPv4 address
             # if family is inet6, then brd_scope is scope\ and brd_scope_val is either host, link, or global
             try:
-                idx, link_name, family, addr_mask, brd_scope, brd_scope_val, remainder = line.split()
+                idx, link_name, family, addr_mask, brd_scope, brd_scope_val, remainder = line.split()[0:7]
             except ValueError as v:
                 print(f"Raised ValueError.  Error is {str(v)}.  line is \n{line}\nTrying again ", file=sys.stderr)
                 fields = line.split()
