@@ -8,18 +8,67 @@ import sys
 
 IP_COMMAND="/sbin/ip"
 
-class IPv4_address(object):
-    """This object has an IPv4 object"""
+class DNSFailure(Exception):
+    pass
 
-    def __init__(self, name, ipv4_address):
-        self.name = name
-        self.ipv4_address = ipv4_address
+
+class IPv4_address(object):
+    """
+    This object has an IPv4 object.  It has two attributes: name and ipv4_address.
+    If the name has not been specified, then it is None
+    """
+
+    def __init__(self, name : str =None, ipv4_address : [str, bytes] = None):
+        if name is not None:
+            self.name = name
+            if ipv4_address is None:
+                # This may raise a socket.gaierror error if gethostbyname fails.  The error will propogate back to the caller
+                ipv4_address = socket.gethostbyname(name)
+        if ipv4_address is not None:
+            if isinstance(ipv4_address, str):
+                # https://docs.python.org/3/library/socket.html#socket.inet_pton
+                self.ipv4_address = socket.inet_pton(socket.AF_INET, ipv4_address)
+            elif isinstance(ipv4_address, bytes) and len(ipv4_address) == 4 :
+                self.ipv4_address = ipv4_address
+            else:
+                raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
+                                 "should be bytes or str")
+
+
+    def __str__(self):
+        # https://docs.python.org/3/library/socket.html#socket.inet_ntop
+        ipv4_addr_str = socket.inet_ntop(socket.AF_INET, self.ipv4_address)
+        return ipv4_addr_str
+
+    def ping(self, count=4, max_allowed_delay=1000):
+        """Verifies that an IPv4 address is pingable.
+        :param  count   How many times to ping the IP address
+        :param  max_allowed_delay
+
+
+        :returns False if the remote device is unpingable
+
+        A future version will return a tuple with the package loss percentage, statistics about delay, etc.
+        """
+
+        completed = subprocess.run(['ping', self.ipv4_address])
+        # return status = 0 if everything is okay
+        # return status = 2 if DNS fails to look up the name
+        # return status = 1 if the device is not pingable
+        if completed.returncode == 2:
+            raise DNSFailure
+        return completed.returncode == True
+
+
 
 
 class IPv6_address(object):
-    def __init__(self, name, ipv6_address):
-        self.name = name
+    def __init__(self, name : str = None, ipv6_address : [str, ] = None ):
+        if name is not None:
+            self.name = name
+        # Needs work
         self.ipv6_address = ipv6_address
+
 
 
 class IPv4Route(object):
@@ -45,7 +94,7 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     def __init__(self, route ):
         """This returns an IPv4Route object.  """
 
-
+ # Use caution: these are strings, not length 4 bytes
         self.ipv4_destination = route['ipv4_destination']  # Destination must be present
         self.ipv4_dev = route['dev']
         self.ipv4_gateway = route.get('via', None)
@@ -53,36 +102,37 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
         self.ipv4_scope = route.get('scope', None )
         self.ipv4_metric = route.get('metric', 0 )
         self.ip4v_src = route.get('src', None )
-        self.ipv4_linkdown = route.get('linkdown', False )
+        self.ipv4_linkdown  = route.get('linkdown', False )
         assert isinstance( self.ipv4_linkdown, bool ),\
             "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
 
 
-
     @classmethod
-    def find_ipv4_routes(self):
+    def find_ipv4_routes(cls):
         """This method finds all of the IPv4 routes by examining the output of the ip route command, and
-        returns a list of IPV4_routes """
+        returns a list of IPV4_routes.  This is a class method because all route objects have the same
+         default gateway"""
 
-        def translate_destination(destination: str):
+        def translate_destination(destination: str) -> str:
             """
 This method translates destination from a dotted quad IPv4 address to a name if it can"""
-            if destination == "0.0.0.0":
+            if destination == "0.0.0.0" or destination == "default":
                 name = "default"
             else:
                 try:
                     name = socket.gethostbyaddr(destination)
                 except socket.herror as h:
-                    # This exception shouldn't happen, but the documentation
+                    # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
+                    # /etc/hosts.  Now, should I print the message, even though I expect it?
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
-                          "exception on %s" % destination, str(h), file=sys.stderr )
-                    name = destination
+                          "exception on %s, continuing" % destination, str(h), file=sys.stderr )
                 except socket.gaierror as g:
                     print("socket.gethostbyaddr raised a socket.gaierror "
-                          "exception on %s" % destination, str(g),
+                          "exception on %s, continuing" % destination, str(g),
                           file=sys.stderr )
-                    name = destination
+                else:
+                    pass
                 name = destination
             return name
 
@@ -112,16 +162,21 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         """
 
         route_list = list()
-        for line in lines:
+        for line in lines:      # lines is the output of the ip route list
+            # command
             fields = line.split()
+            destination = translate_destination(fields[0])
+
             route=dict()
-            route['ipv4_destination'] = translate_destination(fields[0])
+            route['ipv4_destination'] = destination
             for i in range(1, len(fields), 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
                     break
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
+            if destination == "default" or destination == "0.0.0.0":
+                cls.default_gateway = ipv4_route
             route_list.append(ipv4_route)
             """
             route_list.append(self.IPv4_route(name=name,
@@ -143,6 +198,15 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                f"metric={self.ipv4_metric} proto={self.ipv4_proto} "\
                f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
                ( "linkdown" if self.ipv4_linkdown else "linkUP" )
+
+    @classmethod
+    def get_default_gateway(cls):
+        """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
+        invoke find_ipv4_routes, which will define the default gateway"""
+        if not hasattr(cls, "default_gateway"):
+            # This has some overhead, and ought to be cached somehow.  Deal with that later.
+            cls.find_ipv4_routes()
+        return cls.default_gateway
 
 
 class IPv6Route(object):
@@ -200,11 +264,16 @@ class IPv6Route(object):
                                    errors=None)
         route_list = []
         for r in completed:
-            (ipv6_desstination, _dev_, ipv6_interface,) = r.split()
+            (ipv6_destination, _dev_, ipv6_interface,) = r.split()
 
 
 if __name__ in "__main__":
+    print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
+    print(f"The default gateway is {IPv4Route.default_gateway}")
+    print(40*"=")
     for r in ipv4_route_lst:
         print(r.__str__() )
+        print(f"The gateway is {r.ipv4_gateway}\n")
+
 
