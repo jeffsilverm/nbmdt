@@ -87,13 +87,13 @@ class SystemDescription(object):
 
     def __init__(self, configuration_file: str = None) -> None:
 
-        if configuration_file == None:
+        if configuration_file is None:
             # This is what the system is currently is
 
             # Create a dictionary, keyed by link name, of the physical interfaces
             self.phys_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
             # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
-            self.data_link_db = interfaces.LogicalInterface.get_all_logical_link_addrs()
+            self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
             # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
             self.ipv4_routes = routes.IPv4Route.find_ipv4_routes()
             self.ipv6_routes = routes.IPv6Route.find_all_ipv6_routes()

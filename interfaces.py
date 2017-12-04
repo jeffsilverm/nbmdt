@@ -124,54 +124,9 @@ jeffs@jeffs-desktop:/home/jeffs  $
             s += ("scope: " + none_if_None(self.scope) + "\t")
         else:
             s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
-        s += "Remainder: " + none_if_None(self.remainder) + "\t"
         return s
 
-    @classmethod
-    def get_all_logical_link_addrs(cls):
-        """This method creates a dictionary, keyed by name, of all of the (logical) links that have addresses.
-        Since an interface can, and probably will, have more than one address, the values of this dictionary
-        will be dictionaries keyed by address which will contain a description of the address"""
 
-        completed = subprocess.run(
-            [IP_COMMAND, "--details", "--oneline", "addr", "list"], stdin=None,
-            input=None,
-            stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
-            check=False)
-        completed_str = completed.stdout.decode('ascii')
-        addrs_list = completed_str.split('\n')
-        for line in addrs_list:
-            """
-jeffs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail addr show
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet 10.1.10.146/24 brd 10.1.10.255 scope global dynamic wlp12s0\       valid_lft 597756sec preferred_lft 597756sec
-3: wlp12s0    inet6 fc00::1:2/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 2618::1/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 ff::1/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 fe80::5839:4589:a697:f8fd/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-laptop:~/nbmdt (development)*$
-
-            """
-            # if family is inet, then brd_scope is brd (broadcast) and brd_scope_val is the the broadcast IPv4 address
-            # if family is inet6, then brd_scope is scope\ and brd_scope_val is either host, link, or global
-            try:
-                idx, link_name, family, addr_mask, brd_scope, brd_scope_val, remainder = line.split()[0:7]
-            except ValueError as v:
-                print(f"Raised ValueError.  Error is {str(v)}.  line is \n{line}\nTrying again ", file=sys.stderr)
-                fields = line.split()
-                print(f"There are actually {len(fields)} in line", file=sys.stderr)
-                idx, link_name, family, addr_mask, brd_scope, brd_scope_val  = fields[0:7]
-            """
-def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
-            """
-            logical_link_descr = cls.__init__(addr_name=link_name,
-                                              addr_family=family,
-                                              addr_addr=addr_mask,
-                                              addr_descr=addr_descr
-                                              )
-            cls.logical_link_db[link_name] = logical_link_descr
 
     @classmethod
     def get_all_logical_interfaces(self):
@@ -184,6 +139,19 @@ def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
                                    stdout=subprocess.PIPE, stderr=None,
                                    shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
+        """
+        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 63655sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
+
+        """
         # addrs_list is really a list of logical interfaces
         addrs_list = completed_str.split('\n')
         addr_db = dict()

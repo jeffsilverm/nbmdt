@@ -221,7 +221,8 @@ class IPv6Route(object):
         self.ipv6_use = ipv6_use
         self.ipv6_interface = ipv6_interface
 
-    def find_ipv6_routes(self):
+    @classmethod
+    def find_all_ipv6_routes(cls):
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
 
