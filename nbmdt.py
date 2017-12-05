@@ -149,7 +149,7 @@ class SystemDescription(object):
         for r6 in self.ipv6_routes:
             result += str(r6) + "\n"
         result = result + "\ninterfaces\n" + "*" * 80
-        for iface in self.interfaces:
+        for iface in self.data_link_db:
             result += str(iface) + "\n"
         return result
 
