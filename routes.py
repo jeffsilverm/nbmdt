@@ -178,17 +178,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
             if destination == "default" or destination == "0.0.0.0":
                 cls.default_gateway = ipv4_route
             route_list.append(ipv4_route)
-            """
-            route_list.append(self.IPv4_route(name=name,
-                                              ipv4_destination=ipv4_destination,
-                                              ipv4_gateway=ipv4_gateway,
-                                              ipv4_mask=ipv4_mask,
-                                              ipv4_flags=ipv4_flags,
-                                              ipv4_metric=ipv4_metric,
-                                              ipv4_ref=ipv4_ref,
-                                              ipv4_use=ipv4_use,
-                                              ipv4_interface=ipv4_interface))
-            """
+
         return route_list
 
     def __str__(self):
@@ -210,16 +200,14 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
 
 
 class IPv6Route(object):
-    def __init__(self, name, ipv6_destination, ipv6_next_hop, ipv6_flags, ipv6_metric, ipv6_ref, ipv6_use, \
-                 ipv6_interface):
-        self.name = name
+    def __init__(self, ipv6_destination, ipv6_next_hop, ipv6_proto, ipv6_interface, ipv6_metric):
+
         self.ipv6_destination = ipv6_destination
         self.ipv6_next_hop = ipv6_next_hop
-        self.ipv6_flags = ipv6_flags
         self.ipv6_metric = ipv6_metric
-        self.ipv6_ref = ipv6_ref
-        self.ipv6_use = ipv6_use
         self.ipv6_interface = ipv6_interface
+        self.ipv6_proto = ipv6_proto
+
 
     @classmethod
     def find_all_ipv6_routes(cls):
@@ -261,11 +249,55 @@ class IPv6Route(object):
 
         # This is the recommend approach for python 3.5 and later  From https://docs.python.org/3/library/subprocess.html
         completed = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None, \
-                                   stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None,
+                                   stdout=subprocess.PIPE, stderr=None,
+                                   shell=False, timeout=None, check=False,
+                                   encoding="ascii",
                                    errors=None)
+        """
+        jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $ /sbin/ip --family inet6 route show
+2602:61:7e44:2b00::/64 via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto ra metric 100  pref medium
+fd00::/64 via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto ra metric 100  pref medium
+fe80::6bf:6dff:fed9:8ab4 dev eno1 proto static metric 100  pref medium
+fe80::/64 dev eno1 proto kernel metric 256  pref medium
+default via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto static metric 100  pref medium
+jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $ 
+        """
         route_list = []
-        for r in completed:
-            (ipv6_destination, _dev_, ipv6_interface,) = r.split()
+        for r in completed.stdout.split('\n'):
+            if len(r) <= 0:             # There may be an empty line at the end
+                break
+            fields:list = r.split()
+            ipv6_destination = fields[0]
+            if fields[1] == "via":
+                ipv6_next_hop = fields[2]
+                start = 3
+            elif fields[1] == "dev":
+                ipv6_next_hop = None
+                start = 1
+            else:
+                raise ValueError(f"fields[1] has a bad value {fields[1]} should be either 'via' or 'dev'.\nLine is {r}")
+            if fields[start] != "dev":
+                raise ValueError(f"fields[{start}] should be 'dev' but is actually {fields[start]}.\nLine is {r}")
+            ipv6_interface = fields[start+1]
+            if fields[start+2] != "proto":
+                raise ValueError(f"field[{start+2}] should be 'proto' but is actually {fields[start+2]}.\nLine is {r}")
+            ipv6_proto = fields[start+3]
+            if fields[start+4] != "metric":
+                raise ValueError(f"field[{start+4}] should be 'metric' but is actually {fields[start+4]}.\nLine is {r}")
+            ipv6_metric = fields[start+5]
+            if fields[start+6] != "pref" :
+                raise ValueError(f"field[{start+7}] should be 'pref' but is actually {fields[start+6]}.\nLine is {r}")
+            route_table_entry = IPv6Route(ipv6_destination=ipv6_destination,
+                                          ipv6_next_hop=ipv6_next_hop,
+                                          ipv6_proto=ipv6_proto,
+                                          ipv6_interface=ipv6_interface,
+                                          ipv6_metric=ipv6_metric
+                                          )
+            route_list.append(route_table_entry)
+        return route_list
+
+
+
 
 
 if __name__ in "__main__":
