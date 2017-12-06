@@ -14,13 +14,10 @@ import yaml
 
 import interfaces
 import routes
-<<<<<<< HEAD
 import network
 import tests
-=======
 import transports
 import applications
->>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
 
 
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
@@ -158,34 +155,30 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
-<<<<<<< HEAD
     def test_default_gateway (self ):
-
         default_gateway = self.ipv4_default_gateway
         ping_results = tests.ping( default_gateway, count=5, min_for_good=4, slow_ms=40.0 )
-        if not ping_results :
-            return ( False, "default gateway flunks")
-        for remote_host in 
+        return ping_results
 
 
-=======
     def test (self ):
         pass
->>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
 
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    default_gateway = routes.get_default_gateway()
-    
-=======
+
     mode = Modes.NOMINAL    # For debugging
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
+    default_gateway = routes.get_default_gateway()
+    if current_system.test_default_gateway() :
+        colored.cprint("default gateway pingable", "green")
+    else:
+        colored.cprint("default gateway is NOT pingable", "red")
 
->>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
+
 
 """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
