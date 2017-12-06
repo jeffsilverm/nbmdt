@@ -9,51 +9,80 @@
 
 from enum import Enum
 
-import termcolor
+from termcolor import colored
 import yaml
 
 import interfaces
 import routes
+<<<<<<< HEAD
 import network
 import tests
+=======
+import transports
+import applications
+>>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
 
 
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
 # https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
+# termcolor.colored
 class Modes(Enum):
     BOOT = 1
     MONITOR = 2
     DIAGNOSE = 3
     TEST = 4
+    NOMINAL = 5
 
 
 class ErrorLevels(Enum):
-    OKAY = 1  # Everything is working properly
-    DEGRADED = 2  # Many things are working properly
-    CHANGED = 3  # Things are working but they aren't what's in the database
-    UNKNOWN = 4  # The program can't tell if something is working or not
-    DOWN = 5  # It's completely not working
-
-    colors = {}
-    colors[self.OKAY] = termcolor.COLORS
+    """
+    From The_Network_Boot_Monitor_Diagnostic_Tool.html
 
 
-class Networks(object):
-    def __init__(self):
-        self.remote_hosts = []
+        Normal
+    All is well.  The resource is working properly in all respects
+        Slow
+    The monitor is measuring traffic flow through the resource or the delay required to reach the interface, and it is outside acceptable limits.  The interface is still working.
+        Degraded due to an upstream dependency failure.
+    The resource is at increased risk of failure because a dependency is down.  However, the dependency has some redundancy so the fact that there is an upstream failure does not mean that this interface is down.  For example, there are multiple DNS servers.  If a single server fails, the resolver will pick a different name server.  So DNS will work, but there will be fewer servers than normal and a greater risk of subsequent failure.
+        Down cause unknown
+    The resource is flunking a health check for some reason.
+        Down due to a missing or failed dependency
+    The resource is flunking a health check or is down because something it depends on is down.
+        Down Acknowledged
+    The resource is down and an operator has acknowledged that the interface is down.  This will only happen while monitoring, never at boot time or while diagnosing or designing
+        Changed
+    The resource is in the configuration file, but the monitor cannot find it, or the auto configuration methods found a resource that should be in the configuration file, but isn't.  Classic example is a NIC changing its MAC address.
+        Other problem
+    Something else is wrong that doesn't fit into the above categories.
 
-    @staticmethod
-    def find_networks():
-        pass
+    """
+
+    NORMAL = 1              # Everything is working properly
+    SLOW = 2                # Up, but running slower than allowed
+    DEGRADED = 3            #  Up, but something that this thing partly depends on is down
+    DOWN = 4                # It flunks the test, cause unknown
+    DOWN_DEPENDENCY = 5     # It flunks the test, but it is known to be due
+# to a dependency
+    DOWN_ACKNOWLEDGED = 6   # It flunks the test, but somebody has
+# acknowledged the problem
+    CHANGED = 7             # The resource works, but something about it has changed
+    OTHER = 8               # A problem that doesn't fit into any of the above categories
 
 
-class Applications(object):
-    def __init__(self):
-        self.applications = []
 
-    @staticmethod
-    def find_applications():
-        pass
+colors = {}
+colors[ErrorLevels.NORMAL] = ['black', 'on_green']
+colors[ErrorLevels.SLOW] = ['black', 'on_yellow']
+colors[ErrorLevels.DEGRADED] = ['black', 'on_magenta']
+colors[ErrorLevels.DOWN] = ['black', 'on_red']
+colors[ErrorLevels.DOWN_DEPENDENCY] = ['black', 'on_cyan']
+colors[ErrorLevels.DOWN_ACKNOWLEDGED] = ['black', 'on_magenta']
+colors[ErrorLevels.CHANGED] = ['white', 'on_black']
+colors[ErrorLevels.OTHER] = ['black', 'on_grey']
+
+
+
 
 
 class SystemDescription(object):
@@ -61,20 +90,24 @@ class SystemDescription(object):
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
-    def __init__(self, configuration_file=None):
+    def __init__(self, configuration_file: str = None) -> None:
 
-        if configuration_file == None:
+        if configuration_file is None:
             # This is what the system is currently is
 
             # Create a dictionary, keyed by link name, of the physical interfaces
-            self.link_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
+            self.phys_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
             # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
-            self.addr_db = interfaces.LogicalInterface.get_all_logical_interfaces()
-            self.routes_4_db = routes.Routes.get_all_ipv4_routes()
-            self.routes_6_db = routes.Routes.get_all_ipv4_routes()
+            self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
+            # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
+            self.ipv4_routes = routes.IPv4Route.find_ipv4_routes()
+            self.ipv6_routes = routes.IPv6Route.find_all_ipv6_routes()
+            # Create something... what?  to track transports (OSI layer 4)
+            self.transports_4 = transports.ipv4
+            self.transports_6 = transports.ipv6
 
-            #        self.ipv4_routes = addresses.Ipv4Routes()
-            #        self.ipv6_routes = addresses.Ipv6Routes()
+            self.applications = {}   # For now
+
             #        self.name_servers = nameservers.nameservers()
             #        self.applications = applications
             # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
@@ -104,7 +137,7 @@ class SystemDescription(object):
     #        networks = None
 
     # nominal = SystemDescription.describe_current_state()
-
+        pass
 
 
     #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
@@ -121,13 +154,11 @@ class SystemDescription(object):
         for r6 in self.ipv6_routes:
             result += str(r6) + "\n"
         result = result + "\ninterfaces\n" + "*" * 80
-        for iface in self.interfaces:
+        for iface in self.data_link_db:
             result += str(iface) + "\n"
-        result = result + "\nNetworks:\n" + "*" * 80
-        for network in self.networks:
-            result += str(network) + "\n"
         return result
 
+<<<<<<< HEAD
     def test_default_gateway (self ):
 
         default_gateway = self.ipv4_default_gateway
@@ -137,12 +168,24 @@ class SystemDescription(object):
         for remote_host in 
 
 
+=======
+    def test (self ):
+        pass
+>>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
 
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     default_gateway = routes.get_default_gateway()
     
+=======
+    mode = Modes.NOMINAL    # For debugging
+    current_system = SystemDescription()
+    current_system_str = str(current_system)
+    print ( current_system_str )
+
+>>>>>>> 4863a1087522c5ceb34f5150efd227d5a3f99494
 
 """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )

@@ -5,8 +5,10 @@ import collections
 import subprocess
 import sys
 
-# This should be a configuration file item
-IP_COMMAND = "/bin/ip"
+# This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was symlink it so that both /bin/ip and
+# /usr/sbin/ip work.  But I can do that because I am a sysadmin.
+# Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
+IP_COMMAND = "/usr/sbin/ip"
 
 
 # There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
@@ -81,29 +83,38 @@ class LogicalInterface(object):
 
     # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
     # dictionary.
-    def __init__(self, addr_name, addr_family, addr_addr, addr_descr,
-                 scope=None, broadcast=None, remainder=None):
-        """This creates a logical interface object."""
+    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
+        """This creates a logical interface object.
+        :param  addr_name   The name of this logical interface
+        :param  addr_family "inet" or "inet6"
+        :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
+        :param  addr_descr  The rest of the description of this logical address.
+        """
+        """
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 77480sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-desktop:/home/jeffs  $ 
+"""
+        self.addr_name = addr_name
         if addr_family != "inet" and addr_family != "inet6":
             raise ValueError(
                 "misunderstood value of addr_family: {}".format(addr_family))
-        self.addr_name = addr_name
         self.addr_family = addr_family
         self.addr_addr = addr_addr
-        self.addr_descr = addr_descr
-        # I have to have a better understanding of the symantecs of scope and
-        # broadcast
-        if ( ( scope is None ) + ( broadcast is None) ) != 1:  # True + True =
-        #  2, True + False == False + True == 1, False + False == 0
-            print(
-                "While instantiating {}, ".format(addr_name),
-                "One and only one of scope or broadcast must be None\n" \
-                "scope is {} broadcast is {}\n".format(str(scope),
-                                                       str(broadcast)),
-                file=sys.stderr)
-        self.scope = scope
-        self.broadcast = broadcast
-        self.remainder = remainder
+        # For IPv4, scope is either host or global
+        # For IPv6, scope is either host, link, or global.  However, the wikipedia
+        # article on IPv6 doesn't mention host scope.  ULAs are global.
+        self.scope = addr_descr["scope"]
+        for key in addr_descr.keys():
+            setattr(self, key, addr_descr[key] )
+        if not hasattr(self, 'broadcast'):
+            self.broadcast = None
 
     def __str__(self):
         s = "name: " + self.addr_name + '\t'
@@ -113,49 +124,9 @@ class LogicalInterface(object):
             s += ("scope: " + none_if_None(self.scope) + "\t")
         else:
             s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
-        s += "Remainder: " + none_if_None(self.remainder) + "\t"
         return s
 
-    @classmethod
-    def get_all_logical_link_addrs(cls):
-        """This method creates a dictionary, keyed by name, of all of the (logical) links that have addresses.
-        Since an interface can, and probably will, have more than one address, the values of this dictionary
-        will be dictionaries keyed by address which will contain a description of the address"""
 
-        completed = subprocess.run(
-            [IP_COMMAND, "--details", "--oneline", "addr", "list"], stdin=None,
-            input=None,
-            stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
-            check=False)
-        completed_str = completed.stdout.decode('ascii')
-        addrs_list = completed_str.split('\n')
-        for line in addrs_list:
-            """
-jeffs@jeffs-laptop:~/nbmdt (development)*$ /usr/sbin/ip --oneline --detail 
-addr show
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet 10.1.10.146/24 brd 10.1.10.255 scope global dynamic wlp12s0\       valid_lft 597756sec preferred_lft 597756sec
-3: wlp12s0    inet6 fc00::1:2/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 2618::1/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 ff::1/128 scope global \       valid_lft forever preferred_lft forever
-3: wlp12s0    inet6 fe80::5839:4589:a697:f8fd/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-laptop:~/nbmdt (development)*$
-
-            """
-            # if family is inet, then brd_scope is brd (broadcast) and brd_scope_val is the the broadcast IPv4 address
-            # if family is inet6, then brd_scope is scope\ and brd_scope_val is either host, link, or global
-            idx, link_name, family, addr_mask, brd_scope, brd_scope_val, remainder = line.split()
-            logical_link_descr = cls.__init__(addr_name=link_name,
-                                              addr_family=family,
-                                              addr_addr=addr_mask,
-                                              scope=(
-                                              brd_scope if family == "inet" else None),
-                                              broadcast=(
-                                              None if family == "inet" else brd_scope),
-                                              )
-            cls.logical_link_db[link_name] = logical_link_descr
 
     @classmethod
     def get_all_logical_interfaces(self):
@@ -168,6 +139,19 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                                    stdout=subprocess.PIPE, stderr=None,
                                    shell=False, timeout=None, check=False)
         completed_str = completed.stdout.decode('ascii')
+        """
+        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 63655sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
+
+        """
         # addrs_list is really a list of logical interfaces
         addrs_list = completed_str.split('\n')
         addr_db = dict()
@@ -178,30 +162,35 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             # https://docs.python.org/3/library/collections.html#collections.OrderedDict
             # ad is an attribute dictionary.  The string returned by the ip command will look like:
             # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec preferred_lft 85452sec
-            ad = collections.OrderedDict()
+            # addr_desc is a further description of an an address
+            addr_desc = collections.OrderedDict()
             fields = addr.split()
-            addr_name = fields[1]
-
+            addr_name = fields[1]       # Field 0 is a number, skip it
             addr_family = fields[2]  # Either inet or inet6
             assert addr_family == "inet" or addr_family == "inet6"
-            addr_addr = fields[3]
+            addr_addr = fields[3]       # Either IPv4 or IPv6 address
+            # All of the rest of strings in the ip addr list command are in the
+            # of key value pairs, delimited by spaces
             for idx in range(4, len(fields) - 1, 2):
-                # Because ad is an ordered dictionary, the results will always be output in the same order
-                ad[fields[idx]] = fields[idx + 1]
+                # Because addr_desc is an ordered dictionary, the results will always be output in the same order
+                addr_desc[fields[idx]] = fields[idx + 1]
             # A single logical interface can have several addresses and several families
             # so the logical interface name is a key to a value which is a list
             # of addresses.
             if addr_name not in addr_db:
                 # addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None
+                """
+                    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
+                """
                 addr_db[addr_name] = [LogicalInterface(addr_name=addr_name,
                                                        addr_family=addr_family,
                                                        addr_addr=addr_addr,
-                                                       addr_descr=ad)]
+                                                       addr_descr=addr_desc)]
             else:
                 addr_db[addr_name].append(LogicalInterface(addr_name=addr_name,
                                                            addr_family=addr_family,
                                                            addr_addr=addr_addr,
-                                                           addr_descr=ad))
+                                                           addr_descr=addr_desc))
         return addr_db
 
 
