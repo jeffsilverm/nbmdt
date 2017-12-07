@@ -208,6 +208,12 @@ class IPv6Route(object):
         self.ipv6_interface = ipv6_interface
         self.ipv6_proto = ipv6_proto
 
+    def __str__(self):
+        """This method produces a nice string representation of a IPv4_route object"""
+        return f"dest={self.ipv6_destination} gateway={self.ipv6_next_hop} " \
+               f"dev={self.ipv6_interface} " \
+               f"metric={self.ipv6_metric} proto={self.ipv6_proto} "
+
 
     @classmethod
     def find_all_ipv6_routes(cls):
