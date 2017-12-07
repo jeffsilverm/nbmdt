@@ -14,6 +14,8 @@ import yaml
 
 import interfaces
 import routes
+import network
+import tests
 import transports
 import applications
 
@@ -153,16 +155,29 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
+    def test_default_gateway (self ):
+        default_gateway = self.ipv4_default_gateway
+        ping_results = tests.ping( default_gateway, count=5, min_for_good=4, slow_ms=40.0 )
+        return ping_results
+
+
     def test (self ):
         pass
 
 
 
 if __name__ == "__main__":
+
     mode = Modes.NOMINAL    # For debugging
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
+    default_gateway = routes.get_default_gateway()
+    if current_system.test_default_gateway() :
+        colored.cprint("default gateway pingable", "green")
+    else:
+        colored.cprint("default gateway is NOT pingable", "red")
+
 
 
 """

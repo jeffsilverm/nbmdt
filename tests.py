@@ -30,8 +30,8 @@ class Tests():
         self.my_resolver = dns.resolver.Resolver()
 
 
-
-    def ping(self, remote_ipv4:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
+    @classmethod
+    def ping(cls, remote_ipv4:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
 
         """This does a ping test of the machine remote_ipv4.
         :param  remote_ipv4     the remote machine to ping
@@ -42,6 +42,7 @@ class Tests():
                                 remote machine will be considered "slow"
 
         """
+        SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
         cpi = subprocess.run(args=[PING_COMMAND, '-n', count, remote_ipv4 ],
                              stdin=None,
                              input=None,
@@ -79,7 +80,7 @@ class Tests():
                 # ['23.326', '29.399', '46.300', '9.762']
                 # >>>
                 numbers = re.findall("\d+\.\d+", line)
-                slow = numbers[1] > slow_ms
+                slow = numbers[1] > SLOW_MS
             else:
                 pass
 
