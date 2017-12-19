@@ -27,6 +27,7 @@ class Routes_4():
             route_words = route_line.split()
             destination = route_words[0]
             if destination == b"default" or destination == b"0.0.0.0" :
+                raise NotImplemented("Why are you using the routing module?  Use routes instead")
                 self.default_gateway = destination
             self.routing_table[destination] = route_words[1:]
 
