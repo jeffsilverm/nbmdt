@@ -98,7 +98,9 @@ class SystemDescription(object):
             self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
             # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
             self.ipv4_routes = routes.IPv4Route.find_ipv4_routes()
+            self.default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
             self.ipv6_routes = routes.IPv6Route.find_all_ipv6_routes()
+            self.default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
             # Create something... what?  to track transports (OSI layer 4)
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
@@ -155,9 +157,9 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
-    def test_default_gateway (self ):
-        default_gateway = self.ipv4_default_gateway
-        ping_results = tests.ping( default_gateway, count=5, min_for_good=4, slow_ms=40.0 )
+    def test_default_ipv4_gateway (self ):
+        default_ipv4_gateway = self.default_ipv4_gateway
+        ping_results = tests.Tests.ping4( default_ipv4_gateway, count=5, min_for_good=4, slow_ms=40.0 )
         return ping_results
 
 
@@ -172,11 +174,12 @@ if __name__ == "__main__":
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
-    default_gateway = routes.get_default_gateway()
-    if current_system.test_default_gateway() :
-        colored.cprint("default gateway pingable", "green")
+    default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
+    default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
+    if current_system.test_default_ipv4_gateway() :
+        colored.cprint("default IPv4 gateway pingable", "green")
     else:
-        colored.cprint("default gateway is NOT pingable", "red")
+        colored.cprint("default IPv4 gateway is NOT pingable", "red")
 
 
 

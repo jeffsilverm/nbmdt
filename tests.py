@@ -21,6 +21,7 @@ import subprocess
 import re
 # Get dns from https://github.com/rthalley/dnspython
 import dns.resolver
+from termcolor import colored
 
 PING_COMMAND = "/bin/ping"      # for now
 
@@ -31,7 +32,7 @@ class Tests():
 
 
     @classmethod
-    def ping(cls, remote_ipv4:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
+    def ping4(cls, remote_ipv4:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
 
         """This does a ping test of the machine remote_ipv4.
         :param  remote_ipv4     the remote machine to ping
@@ -86,6 +87,22 @@ class Tests():
 
         return ( down, slow )
 
+    @classmethod
+    def ping6(cls, remote_ipv6:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
+
+        """This does a ping test of the machine remote_ipv6.
+        :param  remote_ipv6     the remote machine to ping
+        :param  min_for_good     The minimum number of successful pings required for the machine to be up
+        :param  count           number of packets to be sent, default is 10
+        :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
+        :param  slow            The maximum amount of time, in milliseconds, that is allowed to transpire before the
+                                remote machine will be considered "slow"
+
+        """
+        colored.cprint("ping6 isn't implemented yet", "yellow")
+        return True
+
+
     def dns (self,  remote_host:str, dns_server:str=None ):     # type annotation should be str or list
         """This method tests that the name server DNS server can return queries and that it gets the right address for
         remote_host
@@ -103,4 +120,6 @@ class Tests():
         else:
             self.my_resolver.nameservers = [dns_server]
 
-answer = my_resolver.query('google.com')
+if __name__ == "__main__" :
+    my_resolver = dns.ipv4
+    answer = my_resolver.query('google.com')

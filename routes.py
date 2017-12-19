@@ -176,7 +176,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
             if destination == "default" or destination == "0.0.0.0":
-                cls.default_gateway = ipv4_route
+                cls.default_ipv4_gateway = ipv4_route
             route_list.append(ipv4_route)
 
         return route_list
@@ -190,13 +190,13 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                ( "linkdown" if self.ipv4_linkdown else "linkUP" )
 
     @classmethod
-    def get_default_gateway(cls):
+    def get_default_ipv4_gateway(cls):
         """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
         invoke find_ipv4_routes, which will define the default gateway"""
-        if not hasattr(cls, "default_gateway"):
+        if not hasattr(cls, "default_ipv4_gateway"):
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv4_routes()
-        return cls.default_gateway
+        return cls.default_ipv4_gateway
 
 
 class IPv6Route(object):
@@ -300,16 +300,32 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
                                           ipv6_metric=ipv6_metric
                                           )
             route_list.append(route_table_entry)
+            if ipv6_destination == "default":
+                cls.default_ipv6_gateway = ipv6_destination
+
+        if not hasattr(cls, "default_ipv6_gateway" ):
+            # Have to think about this - what action should be taken if there is no
+            # default gateway?
+            cls.default_ipv6_gateway = None
+
         return route_list
 
+    @classmethod
+    def get_default_ipv6_gateway(cls):
+        """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
+        invoke find_ipv6_routes, which will define the default gateway"""
+        if not hasattr(cls, "default_ipv6_gateway"):
+            # This has some overhead, and ought to be cached somehow.  Deal with that later.
+            cls.find_ipv6_routes()
+        return cls.default_ipv6_gateway
 
 
 
 
 if __name__ in "__main__":
-    print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_gateway()}")
+    print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
-    print(f"The default gateway is {IPv4Route.default_gateway}")
+    print(f"The default gateway is {IPv4Route.default_ipv4_gateway}")
     print(40*"=")
     for r in ipv4_route_lst:
         print(r.__str__() )

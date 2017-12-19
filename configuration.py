@@ -59,7 +59,7 @@ if __name__ == "__main__":
         """Make a test ini file """
         routing = IPv4Route()
         routing.find_ipv4_routes()
-        default_gateway = routing.default_gateway()
+        default_ipv4_gateway = routing.default_ipv4_gateway()
         contents="""
 [default]
 ping_targets: redhat.com, canonical.com
@@ -77,10 +77,10 @@ ip_command: /sbin/ip
 default_device: eno1
 
 [location-jeffs_house]
-default_gateway: 192.168.0.1
+default_ipv4_gateway: 192.168.0.1
 
 [location-parents_house]
-default_gateway: 192.168.8.1
+default_ipv4_gateway: 192.168.8.1
 
 [bad]
 ping_targets:
@@ -116,7 +116,7 @@ ping_targets:
             ping_targets_list = ",".split(ping_target_str)  + default_ping_list
             for ping_target in ping_targets_list:
                 print(f"In section {section} a ping target is {ping}")
-            print(f"default gateway is {fixed_configuration[section]['default_gateway']}")
+            print(f"default gateway is {fixed_configuration[section]['default_ipv4_gateway']}")
         if "location" in section:
             print(f"In section {section} the default device is {fixed_configuration[section]['default_device']}")
 
