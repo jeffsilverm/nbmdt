@@ -71,18 +71,23 @@ class Tests(object):
         jeffs@jeffs-laptop:~/nbmdt (development)*$ 
         
         """
+        # Failsafe initialization
+        slow = True
+        down = True
         for line in lines:
             if "transmitted " in line:
-                packet_counters = re.findall("\d+.*?\d+")
+                # re.findall returns a list of length 1 because there is 1 match to the RE
+                packet_counters = re.findall("(\d+).*?(\d+).*received.*(\d+).*()", line)[0]
                 packets_xmit=packet_counters[0]
                 packets_rcvd=packet_counters[1]
-                down = packets_rcvd < min_for_good
+                down = int(packets_rcvd) < min_for_good
             elif "rtt " == line[0:3]:         # crude, I will do something better, later
                 # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
                 # ['23.326', '29.399', '46.300', '9.762']
                 # >>>
+                # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
                 numbers = re.findall("\d+\.\d+", line)
-                slow = numbers[1] > SLOW_MS
+                slow = int(numbers[1]) > SLOW_MS
             else:
                 pass
 
