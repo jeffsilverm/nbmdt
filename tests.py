@@ -34,17 +34,18 @@ class Tests(object):
 
 
     @classmethod
-    def ping4(cls, remote_ipv4:str, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
+    def ping4(cls, remote_ipv4:str, count:str="10", min_for_good:int=8, slow_ms:float=100.0 ):
 
         """This does a ping test of the machine remote_ipv4.
         :param  remote_ipv4     the remote machine to ping
         :param  min_for_good     The minimum number of successful pings required for the machine to be up
         :param  count           number of packets to be sent, default is 10
         :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
-        :param  slow            The maximum amount of time, in milliseconds, that is allowed to transpire before the
+        :param  slow_ms         The maximum amount of time, in milliseconds, that is allowed to transpire before the
                                 remote machine will be considered "slow"
 
         """
+
         SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
         cpi = subprocess.run(args=[PING_COMMAND, '-n', count, remote_ipv4 ],
                              stdin=None,
