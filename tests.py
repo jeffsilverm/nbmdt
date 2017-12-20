@@ -74,6 +74,7 @@ class Tests(object):
         # Failsafe initialization
         slow = True
         down = True
+        # loop through output of ping command
         for line in lines:
             if "transmitted " in line:
                 # re.findall returns a list of length 1 because there is 1 match to the RE
