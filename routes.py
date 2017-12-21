@@ -5,14 +5,21 @@
 import socket
 import subprocess
 import sys
+import re
+from termcolor import colored, cprint
 
 IP_COMMAND="/sbin/ip"
+PING_COMMAND = "/bin/ping"      # for now
 
 class DNSFailure(Exception):
     pass
 
+class NotPingable(Exception):
+    pass
 
-class IPv4_address(object):
+
+# Issue 5 renamed IPv4_address to IPv4Address.   Reflecting what PEP-8 says
+class IPv4Address(object):
     """
     This object has an IPv4 object.  It has two attributes: name and ipv4_address.
     If the name has not been specified, then it is None
@@ -40,34 +47,101 @@ class IPv4_address(object):
         ipv4_addr_str = socket.inet_ntop(socket.AF_INET, self.ipv4_address)
         return ipv4_addr_str
 
-    def ping(self, count=4, max_allowed_delay=1000):
-        """Verifies that an IPv4 address is pingable.
-        :param  count   How many times to ping the IP address
-        :param  max_allowed_delay
+    def ping4(self, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0):
+        """This does a ping test of the machine with this IPv4 address
+        :param  self            the remote machine to ping
+        :param  min_for_good     The minimum number of successful pings required for the machine to be up
+        :param  count           number of packets to be sent, default is 10
+        :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
+        :param  slow_ms         The maximum amount of time, in milliseconds, that is allowed to transpire before the
+                                remote machine will be considered "slow"
 
-
-        :returns False if the remote device is unpingable
-
-        A future version will return a tuple with the package loss percentage, statistics about delay, etc.
         """
 
-        completed = subprocess.run(['ping', self.ipv4_address])
+        SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
+        cpi = subprocess.run(args=[PING_COMMAND, '-n', count, str(self.ipv4_address) ],
+                             stdin=None,
+                             input=None,
+                             stdout=subprocess.PIPE, stderr=None,
+                             shell=False, timeout=None,
+                             check=False, encoding="utf-8", errors=None)
         # return status = 0 if everything is okay
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
-        if completed.returncode == 2:
+        if cpi.returncode == 2:
             raise DNSFailure
-        return completed.returncode == True
+        elif cpi.returncode == 1:
+            raise NotPingable
+        if cpi.returncode != 0:
+            raise subprocess.CalledProcessError
+        # Because subprocess.run was called with encoding=utf-8, output will be a string
+        results = cpi.stdout
+        lines = results.split('\n')[
+                :-1]  # Don't use the last element, which is empty
 
+        """
+        jeffs@jeffs-laptop:~/nbmdt (development)*$ ping -c 4  f5.com
+        PING f5.com (104.219.110.168) 56(84) bytes of data.
+        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=1 ttl=249 time=24.0 ms
+        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=2 ttl=249 time=23.8 ms
+        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=3 ttl=249 time=23.3 ms
+        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=4 ttl=249 time=46.3 ms
 
+        --- f5.com ping statistics ---
+        4 packets transmitted, 4 received, 0% packet loss, time 3003ms
+        rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms
+        jeffs@jeffs-laptop:~/nbmdt (development)*$ 
 
+        """
+        # Failsafe initialization
+        slow = True
+        down = True
+        # loop through output of ping command
+        for line in lines:
+            if "transmitted " in line:
+                # re.findall returns a list of length 1 because there is 1 match to the RE
+                packet_counters = \
+                re.findall("(\d+).*?(\d+).*received.*(\d+).*()", line)[0]
+                packets_xmit = packet_counters[0]
+                packets_rcvd = packet_counters[1]
+                # If at least one packet was received, then the remote machine
+                # is pingable and the NotPingable exception will not be raised
+                down = int(packets_rcvd) < min_for_good
+            elif "rtt " == line[
+                           0:3]:  # crude, I will do something better, later
+                # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
+                # ['23.326', '29.399', '46.300', '9.762']
+                # >>>
+                # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
+                numbers = re.findall("\d+\.\d+", line)
+                slow = int(numbers[1]) > SLOW_MS
+            else:
+                pass
 
-class IPv6_address(object):
+        return (down, slow)
+
+# Issue 5 renamed IPv6_address to IPv6Address
+class IPv6Address(object):
     def __init__(self, name : str = None, ipv6_address : [str, ] = None ):
         if name is not None:
             self.name = name
         # Needs work
         self.ipv6_address = ipv6_address
+
+    @classmethod
+    def ping6(self, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
+
+        """This does a ping test of the machine remote_ipv6.
+        :param  self          the remote machine to ping
+        :param  min_for_good     The minimum number of successful pings required for the machine to be up
+        :param  count           number of packets to be sent, default is 10
+        :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
+        :param  slow            The maximum amount of time, in milliseconds, that is allowed to transpire before the
+                                remote machine will be considered "slow"
+
+        """
+        colored.cprint("ping6 isn't implemented yet", "yellow")
+        return True
 
 
 
@@ -162,6 +236,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         """
 
         route_list = list()
+        cls.default_ipv4_gateway = None
         for line in lines:      # lines is the output of the ip route list
             # command
             fields = line.split()
@@ -173,10 +248,11 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
                     break
+                # A string that identifies the value that follows it.
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
             if destination == "default" or destination == "0.0.0.0":
-                cls.default_ipv4_gateway = ipv4_route
+                cls.default_ipv4_gateway = ipv4_route.ipv4_gateway
             route_list.append(ipv4_route)
 
         return route_list
@@ -330,5 +406,39 @@ if __name__ in "__main__":
     for r in ipv4_route_lst:
         print(r.__str__() )
         print(f"The gateway is {r.ipv4_gateway}\n")
+    # Commercialventvac.com's canonical name
+    COMMERCIALVENTVAC = "ps558161.dreamhost.com"
+    COMMERCIALVENTVAC_ADDR = "208.97.189.29"
+    """
+>>> socket.inet_pton(socket.AF_INET,"208.97.189.29")
+b'\xd0a\xbd\x1d'
+>>> 
+    """
+    COMMERCIALVENTVAC_BYTES = b'\xd0a\xbd\x1d'
+    cvv_ip_v4 = IPv4Address(name=COMMERCIALVENTVAC)
+    assert str(cvv_ip_v4) == COMMERCIALVENTVAC or str(cvv_ip_v4) == COMMERCIALVENTVAC_ADDR,\
+        f"commercialventvac by name should be {COMMERCIALVENTVAC} but is actually {str(cvv_ip_v4)}"
+    cvv_ip_v4_by_addr = IPv4Address(ipv4_address=COMMERCIALVENTVAC_ADDR)
+    assert str(cvv_ip_v4_by_addr) == COMMERCIALVENTVAC or \
+           str(cvv_ip_v4_by_addr) == COMMERCIALVENTVAC_ADDR, \
+        f"commercialventvac by addr should be {COMMERCIALVENTVAC} but is actually {str(cvv_ip_v4)}"
+    assert cvv_ip_v4.ipv4_address == COMMERCIALVENTVAC_BYTES, \
+        f"cvv_ip_v4.ipv4_address should be b'\xd0a\xbd\x1d' but is actually "\
+        f"{cvv_ip_v4.ipv4_address}"
+    assert cvv_ip_v4_by_addr.ipv4_address == COMMERCIALVENTVAC_BYTES, \
+        f"cvv_ip_v4_by_addr.ipv4_address should be b'\xd0a\xbd\x1d' but is actually "\
+        f"{cvv_ip_v4_by_addr.ipv4_address}"
+
+    # This is mentioned in Issue 5
+    cprint("IPv6 tests not implemented yet", "magenta", "on_yellow")
+
+
+
+
+
+
+
+
+
 
 
