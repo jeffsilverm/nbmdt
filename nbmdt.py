@@ -113,10 +113,10 @@ class SystemDescription(object):
             # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
             self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
             # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
-            self.ipv4_routes = routes.IPv4Route.find_ipv4_routes()
-            self.default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
-            self.ipv6_routes = routes.IPv6Route.find_all_ipv6_routes()
-            self.default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
+            self.ipv4_routes = network.IPv4Route.find_ipv4_routes()
+            self.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
+            self.ipv6_routes = network.IPv6Route.find_all_ipv6_routes()
+            self.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
             # Create something... what?  to track transports (OSI layer 4)
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
@@ -180,14 +180,14 @@ if __name__ == "__main__":
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
-    current_system.default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, routes.IPv4Address ),\
-        f"routes.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, "\
-        "should have returned a routes.IPv4Address"
-    current_system.default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, routes.IPv4Address ),\
-        f"routes.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, "\
-        "should have returned a routes.IPv6Address"
+    current_system.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
+    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address ),\
+        f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, "\
+        "should have returned a network.IPv4Address"
+    current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
+    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address ),\
+        f"network.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, "\
+        "should have returned a network.IPv6Address"
     if current_system.default_ipv4_gateway.ping4():
         cprint("default IPv4 gateway pingable", "green")
     else:
