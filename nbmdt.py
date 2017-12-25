@@ -15,10 +15,25 @@ import yaml
 
 import applications # OSI layer 7: HTTP, HTTPS
 import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network      # OSI layer 3: IPv4, IPv6
-import routes       # OSI layer 2: Media Access Control
+import network
+import routes       # OSI layer 3: IPv4, IPv6 should be called network
+# OSI layer 2: # Media Access Control
 import interfaces   # OSI layer 1: ethernet, WiFi
 
+"""
+Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
+7	host	    	Application 	Application	Application		        	Data
+6	    	    	Presentation	"		"
+5		        	Session	    	"		"
+4		    	    Transport   	Transport	Transport	UDP,TCP,SCTP	Segments
+3	router  		Network 		Internet	Network		IPv4, IPv6  	Packets
+2	Switch/Bridge	Data link   	Link		Data Link	CSMA/CD,CSMA/CA	Frames
+1	hub/repeater	physical        "		    Physical	Ethernet, WiFI	bits
+
+# From http://jaredheinrichs.com/mastering-the-osi-tcpip-models.html
+
+
+"""
 
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
 # https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
@@ -105,7 +120,7 @@ class SystemDescription(object):
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
 
-            self.applications = {}   # For now
+            self.applications : dict = {}   # For now
 
             #        self.name_servers = nameservers.nameservers()
             #        self.applications = applications
@@ -157,7 +172,6 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
-    def check_default_gateway(self):
 
 if __name__ == "__main__":
 
@@ -165,8 +179,14 @@ if __name__ == "__main__":
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
-    current_system.default_ipv4_gateway : routes.IPv4Address = routes.IPv4Route.get_default_ipv4_gateway()
-    current_system.default_ipv6_gateway : routes.IPv6Address = routes.IPv6Route.get_default_ipv6_gateway()
+    current_system.default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
+    assert isinstance(current_system.default_ipv4_gateway, routes.IPv4Address ),\
+        f"routes.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, "\
+        "should have returned a routes.IPv4Address"
+    current_system.default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
+    assert isinstance(current_system.default_ipv4_gateway, routes.IPv4Address ),\
+        f"routes.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, "\
+        "should have returned a routes.IPv6Address"
     if current_system.default_ipv4_gateway.ping4():
         cprint("default IPv4 gateway pingable", "green")
     else:
