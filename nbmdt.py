@@ -9,15 +9,15 @@
 
 from enum import Enum
 
-from termcolor import colored
+# https://pypi.python.org/pypi/termcolor
+from termcolor import colored, cprint
 import yaml
 
-import interfaces
-import routes
-import network
-import tests
-import transports
-import applications
+import applications # OSI layer 7: HTTP, HTTPS
+import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import network      # OSI layer 3: IPv4, IPv6
+import routes       # OSI layer 2: Media Access Control
+import interfaces   # OSI layer 1: ethernet, WiFi
 
 
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
@@ -157,16 +157,7 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
-    def test_default_ipv4_gateway (self ):
-        default_ipv4_gateway = self.default_ipv4_gateway
-        ping_results = tests.Tests.ping4( default_ipv4_gateway, count=5, min_for_good=4, slow_ms=40.0 )
-        return ping_results
-
-
-    def test (self ):
-        pass
-
-
+    def check_default_gateway(self):
 
 if __name__ == "__main__":
 
@@ -174,12 +165,16 @@ if __name__ == "__main__":
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
-    default_ipv4_gateway = routes.IPv4Route.get_default_ipv4_gateway()
-    default_ipv6_gateway = routes.IPv6Route.get_default_ipv6_gateway()
-    if current_system.test_default_ipv4_gateway() :
-        colored.cprint("default IPv4 gateway pingable", "green")
+    current_system.default_ipv4_gateway : routes.IPv4Address = routes.IPv4Route.get_default_ipv4_gateway()
+    current_system.default_ipv6_gateway : routes.IPv6Address = routes.IPv6Route.get_default_ipv6_gateway()
+    if current_system.default_ipv4_gateway.ping4():
+        cprint("default IPv4 gateway pingable", "green")
     else:
-        colored.cprint("default IPv4 gateway is NOT pingable", "red")
+        cprint("default IPv4 gateway is NOT pingable", "red")
+    if current_system.default_ipv6_gateway.ping6() :
+        cprint("default IPv6 gateway pingable", "green")
+    else:
+        cprint("default IPv6 gateway is NOT pingable", "red")
 
 
 
