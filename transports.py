@@ -6,6 +6,7 @@ from enum import Enum
 from routes import IPv4Address as ipv4
 from routes import IPv6Address as ipv6
 from socket import AF_INET, AF_INET6
+from typing import Union
 
 
 class Transports(object):
@@ -17,17 +18,19 @@ class Transports(object):
         UDP = 2
 
     def __init__(self, configuration_file: str = None) -> None:
-        self._connections = list()
+        self._connections : list = list()
         pass
 
     def find_all_listeners(self, transport : TransportNames = TransportNames.TCP) -> dict:
         pass
 
+    """
     def find_all_connections(self, transport : TransportNames = TransportNames.TCP) -> dict:
         pass
+    """
 
     def add_connection(self, source_port : int, destination_port : int,
-                       remote_address : [ipv4, ipv6],
+                       remote_address : Union[ipv4, ipv6],
                        transport : TransportNames = TransportNames.TCP ) -> None:
         connection = ( source_port, destination_port, remote_address, transport )
         self._connections.append(connection)
