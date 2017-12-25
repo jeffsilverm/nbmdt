@@ -52,7 +52,7 @@ class FixedConfiguration(object):
 
 if __name__ == "__main__":
 
-    from routes import IPv4Route
+    from network import IPv4Route
 
 
     def make_test_nbmdt_ini_file():

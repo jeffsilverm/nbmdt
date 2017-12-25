@@ -3,8 +3,8 @@
 
 from enum import Enum
 # Issue 5 renamed IPv4_address to IPv4Address and IPv6_address to IPv6Address
-from routes import IPv4Address as ipv4
-from routes import IPv6Address as ipv6
+from network import IPv4Address as ipv4
+from network import IPv6Address as ipv6
 from socket import AF_INET, AF_INET6
 from typing import Union
 

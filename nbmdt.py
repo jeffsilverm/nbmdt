@@ -14,10 +14,11 @@ from termcolor import colored, cprint
 import yaml
 
 import applications # OSI layer 7: HTTP, HTTPS
+import presentation # OSI layer 6:
+import session      # OSI layer 5: 
 import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network
-import routes       # OSI layer 3: IPv4, IPv6 should be called network
-# OSI layer 2: # Media Access Control
+import network      # OSI layer 3: IPv4, IPv6 should be called network
+import mac          # OSI layer 2: # Media Access Control: arp, ndp
 import interfaces   # OSI layer 1: ethernet, WiFi
 
 """
