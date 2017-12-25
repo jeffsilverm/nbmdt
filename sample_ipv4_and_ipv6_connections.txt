@@ -1,0 +1,49 @@
+[ps558161]$ netstat -pantW
+(No info could be read for "-p": geteuid()=16184766 but you should be root.)
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 10.220.102.36:587       0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:587       0.0.0.0:*               LISTEN      -               
+tcp        0      0 127.0.0.1:587           0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:80        0.0.0.0:*               LISTEN      -               
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -               
+tcp        0      0 10.220.102.36:25        0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:25        0.0.0.0:*               LISTEN      -               
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:443       0.0.0.0:*               LISTEN      -               
+tcp        0      0 10.220.102.36:5666      0.0.0.0:*               LISTEN      -               
+tcp6       0      0 2607:f298:5:115f::23:e397:80 :::*                    LISTEN      -               
+tcp6       0      0 :::21                   :::*                    LISTEN      -               
+tcp6       0      0 :::22                   :::*                    LISTEN      -               
+tcp6       0      0 2607:f298:5:115f::23:e397:443 :::*                    LISTEN      -               
+tcp6       0      0 2607:f298:5:115f::23:e397:22 2602:61:7123:3100:bc10:33ac:14f7:13b1:34126 ESTABLISHED -               
+tcp6       0   1488 2607:f298:5:115f::23:e397:22 2602:61:7123:3100:bc10:33ac:14f7:13b1:34232 ESTABLISHED -               
+tcp6       0      0 2607:f298:5:115f::23:e397:22 2602:61:7123:3100:bc10:33ac:14f7:13b1:57440 ESTABLISHED -               
+tcp6       0      0 2607:f298:5:115f::23:e397:80 2600:1700:fcc0:1410:5c03:2b14:d8f:458a:59454 TIME_WAIT   -               
+[ps558161]$ 
+
+After logging in with IPv4 (use the -4 switch to ssh):
+
+[ps558161]$ netstat -pantW
+(No info could be read for "-p": geteuid()=16184766 but you should be root.)
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 10.220.102.36:587       0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:587       0.0.0.0:*               LISTEN      -               
+tcp        0      0 127.0.0.1:587           0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:80        0.0.0.0:*               LISTEN      -               
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -               
+tcp        0      0 10.220.102.36:25        0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:25        0.0.0.0:*               LISTEN      -               
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      -               
+tcp        0      0 208.97.189.29:443       0.0.0.0:*               LISTEN      -               
+tcp        0      0 10.220.102.36:5666      0.0.0.0:*               LISTEN      -               
+tcp        0    304 208.97.189.29:22        97.113.35.49:38750      ESTABLISHED -               
+tcp        0      0 208.97.189.29:80        66.33.200.4:7357        TIME_WAIT   -               
+tcp6       0      0 2607:f298:5:115f::23:e397:80 :::*                    LISTEN      -               
+tcp6       0      0 :::21                   :::*                    LISTEN      -               
+tcp6       0      0 :::22                   :::*                    LISTEN      -               
+tcp6       0      0 2607:f298:5:115f::23:e397:443 :::*                    LISTEN      -               
+tcp6       0      0 2607:f298:5:115f::23:e397:22 2602:61:7123:3100:bc10:33ac:14f7:13b1:34126 ESTABLISHED -               
+tcp6       0      0 2607:f298:5:115f::23:e397:22 2602:61:7123:3100:bc10:33ac:14f7:13b1:57440 ESTABLISHED -               
+[ps558161]$
