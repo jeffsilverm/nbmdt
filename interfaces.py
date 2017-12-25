@@ -79,7 +79,7 @@ class LogicalInterface(object):
 
     """
 
-    logical_link_db = dict()
+    logical_link_db : dict = dict()
 
     # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
     # dictionary.
