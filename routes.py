@@ -6,6 +6,7 @@ import socket
 import subprocess
 import sys
 import re
+from typing import Union
 from termcolor import colored, cprint
 
 IP_COMMAND="/sbin/ip"
@@ -25,22 +26,40 @@ class IPv4Address(object):
     If the name has not been specified, then it is None
     """
 
-    def __init__(self, name : str =None, ipv4_address : [str, bytes] = None):
+    def __init__(self, name : str = None, ipv4_address : Union[str, bytes] = None) -> None :
+        """
+        :param name:    str remote computer name
+        :param ipv4_address: str remote computer name as a dotted quad (e.g. 192.168.0.1) or as a 4 bytes
+        :raises ValueError
+        """
+        def raise_value_error (name, ipv4_address):
+            raise ValueError("Create an IPv4Address object with either a name or an IPv4 address but not both "\
+                             f"{name} and {ipv4_address} .")
+
         if name is not None:
             self.name = name
             if ipv4_address is None:
-                # This may raise a socket.gaierror error if gethostbyname fails.  The error will propogate back to the caller
-                ipv4_address = socket.gethostbyname(name)
-        if ipv4_address is not None:
+                # This may raise a socket.gaierror error if gethostbyname fails.
+                # The error will propogate back to the caller.  I know that sounds
+                # draconian, but if we have a name and no address, it just ain't gonna work
+                self.ipv4_address = socket.inet_aton( socket.gethostbyname(name) )
+            else:
+                raise_value_error(name, ipv4_address)
+        elif ipv4_address is not None:
             if isinstance(ipv4_address, str):
                 # https://docs.python.org/3/library/socket.html#socket.inet_pton
+                # if ipv4 is malformed, then inet_pton will raise an error
                 self.ipv4_address = socket.inet_pton(socket.AF_INET, ipv4_address)
-            elif isinstance(ipv4_address, bytes) and len(ipv4_address) == 4 :
-                self.ipv4_address = ipv4_address
+            elif isinstance(ipv4_address, bytes):
+                if len(ipv4_address) == 4 :
+                    self.ipv4_address = ipv4_address
+                else:
+                    raise ValueError(f"ipv4_address is bytes but length {len(ipv4_address)} instead of 4")
             else:
                 raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
                                  "should be bytes or str")
-
+        else:
+            raise_value_error(name, ipv4_address)
 
     def __str__(self):
         # https://docs.python.org/3/library/socket.html#socket.inet_ntop
@@ -122,13 +141,18 @@ class IPv4Address(object):
 
 # Issue 5 renamed IPv6_address to IPv6Address
 class IPv6Address(object):
-    def __init__(self, name : str = None, ipv6_address : [str, ] = None ):
+    def __init__(self, name : str = None, ipv6_address : Union[str, bytes ] = None ) -> None:
+        """
+        :param name:    str remote computer name
+        :param ipv6_address: str remote computer name or byte string
+        :raises ValueError
+        """
+
         if name is not None:
             self.name = name
         # Needs work
         self.ipv6_address = ipv6_address
 
-    @classmethod
     def ping6(self, count:int=10, min_for_good:int=8, slow_ms:float=100.0 ):
 
         """This does a ping test of the machine remote_ipv6.
@@ -140,7 +164,7 @@ class IPv6Address(object):
                                 remote machine will be considered "slow"
 
         """
-        colored.cprint("ping6 isn't implemented yet", "yellow")
+        cprint("ping6 isn't implemented yet", "yellow")
         return True
 
 
@@ -194,7 +218,7 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                 name = "default"
             else:
                 try:
-                    name = socket.gethostbyaddr(destination)
+                    name = socket.gethostbyaddr(destination)[0]
                 except socket.herror as h:
                     # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
                     # /etc/hosts.  Now, should I print the message, even though I expect it?
@@ -401,7 +425,6 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
 if __name__ in "__main__":
     print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
-    print(f"The default gateway is {IPv4Route.default_ipv4_gateway}")
     print(40*"=")
     for r in ipv4_route_lst:
         print(r.__str__() )
