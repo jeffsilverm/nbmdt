@@ -225,13 +225,14 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
                           "exception on %s, continuing" % destination, str(h), file=sys.stderr )
+                    name = destination
                 except socket.gaierror as g:
                     print("socket.gethostbyaddr raised a socket.gaierror "
                           "exception on %s, continuing" % destination, str(g),
                           file=sys.stderr )
+               	    name = destination
                 else:
                     pass
-                name = destination
             return name
 
 
@@ -264,10 +265,10 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         for line in lines:      # lines is the output of the ip route list
             # command
             fields = line.split()
-            destination = translate_destination(fields[0])
+            destination : str = translate_destination(fields[0])
 
             route=dict()
-            route['ipv4_destination'] = destination
+            route['ipv4_destination'] = IPv4Address(destination)
             for i in range(1, len(fields), 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
@@ -296,7 +297,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         if not hasattr(cls, "default_ipv4_gateway"):
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv4_routes()
-        return cls.default_ipv4_gateway
+        return IPv4Address(cls.default_ipv4_gateway)
 
 
 class IPv6Route(object):
