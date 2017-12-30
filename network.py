@@ -8,6 +8,9 @@ import sys
 import re
 from typing import Union
 from termcolor import colored, cprint
+# The color names described in https://pypi.python.org/pypi/termcolor are:
+# Text colors: grey, red, green, yellow, blue, magenta, cyan, white
+# Text highlights: on_grey, on_red, on_green, on_yellow, on_blue, on_magenta, on_cyan, on_white
 
 IP_COMMAND="/sbin/ip"
 PING_COMMAND = "/bin/ping"      # for now
@@ -37,12 +40,51 @@ class IPv4Address(object):
                              f"{name} and {ipv4_address} .")
 
         if name is not None:
-            self.name = name
+            if name == "default":
+                # I think is the true resolution of Issue 10
+                """
+    >>> addr2=sk.inet_aton( "0.0.0.0")
+    >>> addr2
+    b'\x00\x00\x00\x00'
+    >>> 
+                """
+                self.name = "0.0.0.0"
+            # Does the IPv4 address string contain a subnet mask?  If so, then remove it.
+            # This is not a complete solution, because the subnet mask is part of the routing table.
+                self.ipv4_subnet_mask = 0
+            elif "/" in name :
+                parts = name.split("/")
+                self.name = parts[0]
+                self.ipv4_subnet_mask = int( parts[1] )
+            else :
+                self.name = name
+                self.ipv4_ipv4_subnet_mask = 0
             if ipv4_address is None:
-                # This may raise a socket.gaierror error if gethostbyname fails.
-                # The error will propogate back to the caller.  I know that sounds
-                # draconian, but if we have a name and no address, it just ain't gonna work
-                self.ipv4_address = socket.inet_aton( socket.gethostbyname(name) )
+                # The exception described by Issue 10 starts here.  Just because gethostbyname fails, doesn't mean we
+                # work with the name.  It might have an IPv4 address in it in dotted quad format.
+                # For example:
+                """
+Python 3.6.1 (default, Sep  7 2017, 16:36:03) 
+[GCC 6.3.0 20170406] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> name="f5.com"
+>>> import socket as sk
+>>> addr=sk.inet_aton( sk.gethostbyname(name) )
+>>> addr
+b'h\xdbn\xa8'
+>>> addr2=sk.inet_aton( "104.219.110.168" )
+>>> addr2
+b'h\xdbn\xa8'
+>>> addr == addr2
+True
+>>>
+                """
+                try:
+                    self.ipv4_address = socket.inet_aton( socket.gethostbyname(self.name) )
+                except socket.gaierror as g:
+                    # Now, if this call to inet_aton fails, then it's hopeless
+                    self.ipv4_address = socket.inet_aton( name )
+
             else:
                 raise_value_error(name, ipv4_address)
         elif ipv4_address is not None:
@@ -59,6 +101,7 @@ class IPv4Address(object):
                 raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
                                  "should be bytes or str")
         else:
+            # Both name and ipv4_address are None
             raise_value_error(name, ipv4_address)
 
     def __str__(self):
@@ -78,7 +121,8 @@ class IPv4Address(object):
         """
 
         SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
-        cpi = subprocess.run(args=[PING_COMMAND, '-n', count, str(self.ipv4_address) ],
+        # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
+        cpi = subprocess.run(args=[PING_COMMAND, '-n', count, str(self) ],
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
@@ -194,6 +238,7 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
 
  # Use caution: these are strings, not length 4 bytes
         self.ipv4_destination = route['ipv4_destination']  # Destination must be present
+        self.ipv4_subnet_mask = 0
         self.ipv4_dev = route['dev']
         self.ipv4_gateway = route.get('via', None)
         self.ipv4_proto = route.get('proto', None)
@@ -268,7 +313,13 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
             destination : str = translate_destination(fields[0])
 
             route=dict()
-            route['ipv4_destination'] = IPv4Address(destination)
+            try:
+                route['ipv4_destination'] = IPv4Address(destination)
+            except socket.gaierror as g:
+                cprint(f"Tried to add the destination {destination} to a route, and a socket.gaierror exception was raised", 'red', file=sys.stderr )
+            except OSError as o:
+                cprint(f"Tried to add the destination {destination} to a route, and an OSError exception was raised", 'red', file=sys.stderr )
+
             for i in range(1, len(fields), 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
@@ -284,7 +335,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
 
     def __str__(self):
         """This method produces a nice string representation of a IPv4_route object"""
-        return f"dest={self.ipv4_destination} gateway={self.ipv4_gateway} " \
+        return f"dest={self.ipv4_destination} mask={self.ipv4_subnet_mask}, gateway={self.ipv4_gateway} " \
                f"dev={self.ipv4_dev} " \
                f"metric={self.ipv4_metric} proto={self.ipv4_proto} "\
                f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
