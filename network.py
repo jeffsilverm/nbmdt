@@ -6,6 +6,7 @@ import socket
 import subprocess
 import sys
 import re
+from applications import DNSFailure
 from typing import Union
 from termcolor import colored, cprint
 # The color names described in https://pypi.python.org/pypi/termcolor are:
@@ -15,10 +16,11 @@ from termcolor import colored, cprint
 IP_COMMAND="/sbin/ip"
 PING_COMMAND = "/bin/ping"      # for now
 
-class DNSFailure(Exception):
-    pass
+
 
 class NotPingable(Exception):
+    def __init__(self, name : str = None) -> None:
+        cprint (f"{name} is not pingable", 'yellow', file=sys.stderr)
     pass
 
 
@@ -39,6 +41,8 @@ class IPv4Address(object):
             raise ValueError("Create an IPv4Address object with either a name or an IPv4 address but not both "\
                              f"{name} and {ipv4_address} .")
 
+        self.ipv4_subnet_mask = 0      # This is the default unless the name is a dotted quad IPv4 address with a
+                                            # subnet mask length
         if name is not None:
             if name == "default":
                 # I think is the true resolution of Issue 10
@@ -49,16 +53,26 @@ class IPv4Address(object):
     >>> 
                 """
                 self.name = "0.0.0.0"
-            # Does the IPv4 address string contain a subnet mask?  If so, then remove it.
-            # This is not a complete solution, because the subnet mask is part of the routing table.
-                self.ipv4_subnet_mask = 0
             elif "/" in name :
                 parts = name.split("/")
                 self.name = parts[0]
+                # This is the only case where the ipv4_subnet_mask might be other than 0
                 self.ipv4_subnet_mask = int( parts[1] )
+            elif isinstance(name, tuple):
+                if len(name) == 3 and isinstance(name[0], str) and isinstance(name[2], list):
+                    # This looks strange.  However, in some cases, the name is actually a 3-tuple where element 0 is the name
+                    # as a Unicode string, element 1 is an empty list (Why?  I ought to know), and element 2 is a list of
+                    # length 1 which has the IPv4 address of the host
+                    self.name = name[0]
+                    self.ipv4_address = socket.inet_aton(name[2][0])
+                else :
+                    raise ValueError("Tried to create an IPV4Address object "\
+                        "with a name that was a tuple but was either not length 3, the first element was not a string,"\
+                        " or the third element was not a list")
             else :
                 self.name = name
-                self.ipv4_ipv4_subnet_mask = 0
+                # This might raise a socket.gaierror exception, but at this point, there's not much that can be done.
+                self.ipv4_address = socket.inet_aton( socket.gethostbyname(name) )
             if ipv4_address is None:
                 # The exception described by Issue 10 starts here.  Just because gethostbyname fails, doesn't mean we
                 # work with the name.  It might have an IPv4 address in it in dotted quad format.
@@ -87,29 +101,80 @@ True
 
             else:
                 raise_value_error(name, ipv4_address)
-        elif ipv4_address is not None:
-            if isinstance(ipv4_address, str):
-                # https://docs.python.org/3/library/socket.html#socket.inet_pton
-                # if ipv4 is malformed, then inet_pton will raise an error
-                self.ipv4_address = socket.inet_pton(socket.AF_INET, ipv4_address)
-            elif isinstance(ipv4_address, bytes):
-                if len(ipv4_address) == 4 :
+        elif ipv4_address is not None:      # and name is None
+            # Because we're here, we know that we have to populate the self.ipv4_address and self.name attributes from
+            # the ipv4_address we were given.
+            # socket.inet_aton(ip_string) will create a packed IPv4 address from a dotted quad string
+            # socket.gethostbyaddr(ip_string) must have a dotted quad string
+            # If we were given a packed IPv4 address, then it must be converted to dotted quad string before we can
+            # call gethostbyaddr.
+            # https://docs.python.org/3/library/socket.html#socket.inet_pton
+            # if ipv4 is malformed, then inet_pton will raise an error
+            s = isinstance(ipv4_address, str)
+            b = isinstance(ipv4_address, bytes) and ( len(ipv4_address) == 4 )
+            if not ( s or b ):
+                raise ValueError(
+                    f"ipv4_address is {ipv4_address}, type {type(ipv4_address)} of length {len(ipv4_address)} " \
+                    " but should be either str or 4 byte array")
+            try:
+                if b:
+                    # It is a packed IPv4 address, so use it, but unpack it
                     self.ipv4_address = ipv4_address
-                else:
-                    raise ValueError(f"ipv4_address is bytes but length {len(ipv4_address)} instead of 4")
-            else:
-                raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
-                                 "should be bytes or str")
+                    ipv4_address = socket.inet_ntoa(ipv4_address)
+                if s:
+                    self.ipv4_address = socket.inet_aton(ipv4_address)
+                self.name = socket.gethostbyaddr(ipv4_address)
+            # At this point, self.ipv4_address must be populated, but self.name might not be if the gethostbyaddr call failed
+            # Also, at this point, ipv4_address is a dotted quad string
+            except ( socket.herror, socket.gaierror )  as e:
+                cprint("socket.gethostbyaddr raised an "
+                       "exception on %s, continuing" % ipv4_address, 'yellow',
+                       file=sys.stderr)
+                self.name = ipv4_address
+
         else:
             # Both name and ipv4_address are None
             raise_value_error(name, ipv4_address)
+        # Now, fix up a little wrinkle from gethostbyaddr.  self.name should be a string, but depending on how it was
+        # created, it might be a string or, from https://docs.python.org/3/library/socket.html?highlight=socket%20inet_pton#socket.gethostbyaddr,
+        # it might be a tuple of the (hostname, aliaslist, ipaddrlist) where hostname is the primary host name corresponding to the given
+        # ip_address, aliaslist is a(possibly empty) list of alternative host names for the same address, and ipaddrlist is a list of
+        # IPv4 / v6 addresses for the same interface on the same host (most likely containing only a single address).
+        if isinstance ( self.name, tuple) and len ( self.name ) == 3 and isinstance ( self.name[1], list) and isinstance ( self.name[2], list) :
+            self.name = self.name[0]
+        elif not isinstance ( self.name, str ):
+            raise AssertionError(f"self.name should be either a 3-tuple or a string, but its really a {type(self.name)}.  "\
+                                 f"It's {self.name}.  In the IPv4Address constructor with name={name} and ipv4_address={ipv4_address}")
+        else:
+            pass        # already a string
+        # Some sanity checks to make sure I haven't introduced any bugs
+        assert hasattr(self,'ipv4_address'), \
+            f'At the end of the IPv4Address constructor with {self.name}, '\
+                f'there is no ipv4_address attribute. name={name}, ipv4_address={ipv4_address}'
+        assert hasattr(self,'name'), \
+            f'At the end of the IPv4Address constructor with {self.ipv4_address}, '\
+                f'there is no name attribute. name={name}, ipv4_address={ipv4_address}'
+        assert isinstance(self.name, str), \
+            f'At the end of the IPv4Address constructor, self.name is type {type(self.name)}'\
+                f'should be str.  name={name}, ipv4_address={ipv4_address}'
+        assert isinstance(self.ipv4_address, bytes), \
+            f'At the end of the IPv4Address constructor, self.ipv4_address is type {type(self.ipv4_address)}' \
+            f'should be str.  name={name}, ipv4_address={ipv4_address}'
+        # This is a constructor, so don't return anything or return None
+
+    def validate(self) -> str:
+        """
+        :return:    Either False or None if this IPv4Address object is valid or else a diagnostic string
+        """
+
+
 
     def __str__(self):
         # https://docs.python.org/3/library/socket.html#socket.inet_ntop
         ipv4_addr_str = socket.inet_ntop(socket.AF_INET, self.ipv4_address)
         return ipv4_addr_str
 
-    def ping4(self, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0):
+    def ping4(self, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> tuple:
         """This does a ping test of the machine with this IPv4 address
         :param  self            the remote machine to ping
         :param  min_for_good     The minimum number of successful pings required for the machine to be up
@@ -117,12 +182,15 @@ True
         :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
         :param  slow_ms         The maximum amount of time, in milliseconds, that is allowed to transpire before the
                                 remote machine will be considered "slow"
+        :param  production      If production is false, then ping4 won't raise a NotPingable exception
 
         """
 
         SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
+        name = str(self)
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
-        cpi = subprocess.run(args=[PING_COMMAND, '-n', count, str(self) ],
+        # -c is for linux, use -n for windows.
+        cpi = subprocess.run(args=[PING_COMMAND, '-c', count, name ],
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
@@ -132,9 +200,9 @@ True
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
         if cpi.returncode == 2:
-            raise DNSFailure
-        elif cpi.returncode == 1:
-            raise NotPingable
+            raise DNSFailure(name=name, query_type='A')
+        elif cpi.returncode == 1 and production:
+            raise NotPingable(name=name)
         if cpi.returncode != 0:
             raise subprocess.CalledProcessError
         # Because subprocess.run was called with encoding=utf-8, output will be a string
@@ -157,8 +225,8 @@ True
 
         """
         # Failsafe initialization
-        slow = True
-        down = True
+        slow : bool = True
+        down : bool = True
         # loop through output of ping command
         for line in lines:
             if "transmitted " in line:
@@ -170,8 +238,7 @@ True
                 # If at least one packet was received, then the remote machine
                 # is pingable and the NotPingable exception will not be raised
                 down = int(packets_rcvd) < min_for_good
-            elif "rtt " == line[
-                           0:3]:  # crude, I will do something better, later
+            elif "rtt " == line[0:3]:  # crude, I will do something better, later
                 # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
                 # ['23.326', '29.399', '46.300', '9.762']
                 # >>>
@@ -182,6 +249,7 @@ True
                 pass
 
         return (down, slow)
+
 
 # Issue 5 renamed IPv6_address to IPv6Address
 class IPv6Address(object):
@@ -233,12 +301,14 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     
     """
 
+    default_ipv4_gateway = None
+
     def __init__(self, route ):
         """This returns an IPv4Route object.  """
 
  # Use caution: these are strings, not length 4 bytes
         self.ipv4_destination = route['ipv4_destination']  # Destination must be present
-        self.ipv4_subnet_mask = 0
+        self.ipv4_subnet_mask = 0               # This is the default
         self.ipv4_dev = route['dev']
         self.ipv4_gateway = route.get('via', None)
         self.ipv4_proto = route.get('proto', None)
@@ -264,23 +334,17 @@ This method translates destination from a dotted quad IPv4 address to a name if 
             else:
                 try:
                     name = socket.gethostbyaddr(destination)[0]
-                except socket.herror as h:
+                except ( socket.herror, socket.gaierror ) as h:
                     # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
                     # /etc/hosts.  Now, should I print the message, even though I expect it?
                     # says that it can so I have to handle it
-                    print("socket.gethostbyaddr raised a socket.herror "
-                          "exception on %s, continuing" % destination, str(h), file=sys.stderr )
+                    cprint("socket.gethostbyaddr raised an "
+                          "exception on %s, continuing" % destination, 'yellow',
+                          file=sys.stderr)
                     name = destination
-                except socket.gaierror as g:
-                    print("socket.gethostbyaddr raised a socket.gaierror "
-                          "exception on %s, continuing" % destination, str(g),
-                          file=sys.stderr )
-               	    name = destination
                 else:
                     pass
             return name
-
-
 
         # https://docs.python.org/3/library/subprocess.html
         cpi = subprocess.run(args=[IP_COMMAND, '-4', 'route', 'list'],
@@ -328,7 +392,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
             if destination == "default" or destination == "0.0.0.0":
-                cls.default_ipv4_gateway = ipv4_route.ipv4_gateway
+                cls.default_ipv4_gateway = IPv4Address(ipv4_route.ipv4_gateway)
             route_list.append(ipv4_route)
 
         return route_list
@@ -342,13 +406,14 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                ( "linkdown" if self.ipv4_linkdown else "linkUP" )
 
     @classmethod
-    def get_default_ipv4_gateway(cls):
+    def get_default_ipv4_gateway(cls) -> IPv4Address:
         """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
         invoke find_ipv4_routes, which will define the default gateway"""
-        if not hasattr(cls, "default_ipv4_gateway"):
+        if not hasattr(cls, "default_ipv4_gateway") or cls.default_ipv4_gateway is None:
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv4_routes()
-        return IPv4Address(cls.default_ipv4_gateway)
+        assert cls.default_ipv4_gateway is not None, 'The default IPv4 gateway is not defined at the end of get_default_ipv4_gateway'
+        return cls.default_ipv4_gateway
 
 
 class IPv6Route(object):
@@ -475,6 +540,7 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
 
 
 if __name__ in "__main__":
+
     print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
     print(40*"=")
@@ -503,6 +569,14 @@ b'\xd0a\xbd\x1d'
     assert cvv_ip_v4_by_addr.ipv4_address == COMMERCIALVENTVAC_BYTES, \
         f"cvv_ip_v4_by_addr.ipv4_address should be b'\xd0a\xbd\x1d' but is actually "\
         f"{cvv_ip_v4_by_addr.ipv4_address}"
+
+    down, slow = cvv_ip_v4_by_addr.ping4()
+    if down : cprint(f"{cvv_ip_v4_by_addr.name} is NOT pingable", 'red')
+    else: cprint(f"{cvv_ip_v4_by_addr.name} is pingable", "green")
+
+    assert not IPv4Address(name='192.168.0.143').ping4(production=False)[0], "192.168.0.143 is pingable and it should NOT be"
+    assert IPv4Address(name='google.com').ping4(production=False)[0], "google.com is not pingable and it should be"
+
 
     # This is mentioned in Issue 5
     cprint("IPv6 tests not implemented yet", "magenta", "on_yellow")
