@@ -5,21 +5,15 @@
 #
 
 
-
-
 from enum import Enum
 
-# https://pypi.python.org/pypi/termcolor
-from termcolor import colored, cprint
 import yaml
+# https://pypi.python.org/pypi/termcolor
+from termcolor import cprint
 
-import applications # OSI layer 7: HTTP, HTTPS
-import presentation # OSI layer 6:
-import session      # OSI layer 5: 
-import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network      # OSI layer 3: IPv4, IPv6 should be called network
-import mac          # OSI layer 2: # Media Access Control: arp, ndp
-import interfaces   # OSI layer 1: ethernet, WiFi
+import interfaces  # OSI layer 1: ethernet, WiFi
+import network  # OSI layer 3: IPv4, IPv6 should be called network
+import transports  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
@@ -36,6 +30,7 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
 
 """
 
+
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
 # https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
 # termcolor.colored
@@ -45,7 +40,6 @@ class Modes(Enum):
     DIAGNOSE = 3
     TEST = 4
     NOMINAL = 5
-
 
 class ErrorLevels(Enum):
     """
@@ -75,13 +69,12 @@ class ErrorLevels(Enum):
     SLOW = 2                # Up, but running slower than allowed
     DEGRADED = 3            #  Up, but something that this thing partly depends on is down
     DOWN = 4                # It flunks the test, cause unknown
-    DOWN_DEPENDENCY = 5     # It flunks the test, but it is known to be due
-# to a dependency
-    DOWN_ACKNOWLEDGED = 6   # It flunks the test, but somebody has
-# acknowledged the problem
+    DOWN_DEPENDENCY = 5     # It flunks the test, but it is known to be due to a dependency
+    DOWN_ACKNOWLEDGED = 6   # It flunks the test, but somebody has acknowledged the problem
     CHANGED = 7             # The resource works, but something about it has changed
     OTHER = 8               # A problem that doesn't fit into any of the above categories
-
+    UNKNOWN = 9             # We genuinely do not know the status of the entity, either because the test has not been
+    # run yet or conditions are such that the test cannot be run correctly.
 
 
 colors = {}
@@ -93,9 +86,6 @@ colors[ErrorLevels.DOWN_DEPENDENCY] = ['black', 'on_cyan']
 colors[ErrorLevels.DOWN_ACKNOWLEDGED] = ['black', 'on_magenta']
 colors[ErrorLevels.CHANGED] = ['white', 'on_black']
 colors[ErrorLevels.OTHER] = ['black', 'on_grey']
-
-
-
 
 
 class SystemDescription(object):
@@ -121,7 +111,7 @@ class SystemDescription(object):
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
 
-            self.applications : dict = {}   # For now
+            self.applications: dict = {}  # For now
 
             #        self.name_servers = nameservers.nameservers()
             #        self.applications = applications
@@ -136,24 +126,22 @@ class SystemDescription(object):
             for interface in self.interfaces:
                 self.ipv4_address = interfaces
 
-
     @staticmethod
     def describe_current_state():
         """This method goes through a system that is nominally configured and operating and records the configuration
         """
 
-    #        applications = Applications.find_applications()
-    #        applications = None
-    #        ipv4_routes = IPv4_route.find_ipv4_routes()
-    #        ipv6_routes = IPv6_route.find_ipv6_routes()
-    #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
-    #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
-    #        networks = Networks.find_networks()
-    #        networks = None
+        #        applications = Applications.find_applications()
+        #        applications = None
+        #        ipv4_routes = IPv4_route.find_ipv4_routes()
+        #        ipv6_routes = IPv6_route.find_ipv6_routes()
+        #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
+        #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
+        #        networks = Networks.find_networks()
+        #        networks = None
 
-    # nominal = SystemDescription.describe_current_state()
+        # nominal = SystemDescription.describe_current_state()
         pass
-
 
     #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
 
@@ -176,28 +164,26 @@ class SystemDescription(object):
 
 if __name__ == "__main__":
 
-    mode = Modes.NOMINAL    # For debugging
+    mode = Modes.NOMINAL  # For debugging
     current_system = SystemDescription()
     current_system_str = str(current_system)
-    print ( current_system_str )
+    print(current_system_str)
     current_system.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address ),\
-        f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, "\
+    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
+        f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, " \
         "should have returned a network.IPv4Address"
     current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address ),\
-        f"network.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, "\
+    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
+        f"network.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, " \
         "should have returned a network.IPv6Address"
     if current_system.default_ipv4_gateway.ping4():
         cprint("default IPv4 gateway pingable", "green")
     else:
         cprint("default IPv4 gateway is NOT pingable", "red")
-    if current_system.default_ipv6_gateway.ping6() :
+    if current_system.default_ipv6_gateway.ping6():
         cprint("default IPv6 gateway pingable", "green")
     else:
         cprint("default IPv6 gateway is NOT pingable", "red")
-
-
 
 """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
