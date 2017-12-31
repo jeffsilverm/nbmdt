@@ -11,9 +11,13 @@ import yaml
 # https://pypi.python.org/pypi/termcolor
 from termcolor import cprint
 
-import interfaces  # OSI layer 1: ethernet, WiFi
-import network  # OSI layer 3: IPv4, IPv6 should be called network
-import transports  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import applications # OSI layer 7: HTTP, HTTPS
+import presentation # OSI layer 6:
+import session      # OSI layer 5:
+import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import network      # OSI layer 3: IPv4, IPv6 should be called network
+import mac          # OSI layer 2: # Media Access Control: arp, ndp
+import interfaces   # OSI layer 1: ethernet, WiFi
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
@@ -104,9 +108,9 @@ class SystemDescription(object):
             self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
             # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
             self.ipv4_routes = network.IPv4Route.find_ipv4_routes()
-            self.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
+            self.default_ipv4_gateway : network.IPv4Address = network.IPv4Route.get_default_ipv4_gateway()
             self.ipv6_routes = network.IPv6Route.find_all_ipv6_routes()
-            self.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
+            self.default_ipv6_gateway : network.IPv6Address = network.IPv6Route.get_default_ipv6_gateway()
             # Create something... what?  to track transports (OSI layer 4)
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
