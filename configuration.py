@@ -10,6 +10,7 @@ system administrator and then changed as needed by the program
 import configparser
 import sys
 import os
+import network
 
 
 class FixedConfiguration(object):
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         """Make a test ini file """
         routing = IPv4Route()
         routing.find_ipv4_routes()
-        default_ipv4_gateway = routing.default_ipv4_gateway()
+        default_ipv4_gateway : network.IPv4Address = routing.default_ipv4_gateway()
         contents="""
 [default]
 ping_targets: redhat.com, canonical.com
