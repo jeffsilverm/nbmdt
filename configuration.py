@@ -26,7 +26,11 @@ class Configuration(object):
         :param executable_name:
         :return:    str fully qualified path to the executable
         """
+
+        # Come up with a list of good places to look.  Add a couple locations
+        # that might have been overlooked.
         path_list : list = os.environ['PATH'].split(":")
+        path_list += ["/sbin", "/usr/sbin", "/usr/local/sbin"]
         for path in path_list:
             # See https://stackoverflow.com/questions/82831/how-do-i-check-whether-a-file-exists-using-python
             candidate = os.path.join( path, executable_name )
@@ -40,8 +44,8 @@ class Configuration(object):
                     return candidate
                 else:
                     cprint(f"Found {candidate} but it's not executable", 'yellow', file=sys.stderr)
-        cprint(f"Could not find an executable named {executable_name}"\
-               f"Looked in {path}", 'white', 'on_red', file=sys.stderr )
+        cprint(f"Could not find an executable named {executable_name}.  "\
+               f"Looked in {path_list}", 'white', 'on_red', file=sys.stderr )
         return False
 
 
