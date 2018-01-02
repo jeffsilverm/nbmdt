@@ -10,7 +10,7 @@ system administrator and then changed as needed by the program
 import configparser
 import sys
 import os
-import network
+# import network
 from pathlib import Path
 import stat
 from termcolor import cprint
@@ -88,9 +88,11 @@ if __name__ == "__main__":
 
     def make_test_nbmdt_ini_file():
         """Make a test ini file """
+        from network import IPv4Route, IPv4Address
         routing_table_list = IPv4Route.find_ipv4_routes()
-        default_ipv4_gateway : network.IPv4Address = IPv4Route.default_ipv4_gateway
+        default_ipv4_gateway : IPv4Address = IPv4Route.default_ipv4_gateway
         cprint( f"The default IPv4 gateway is {default_ipv4_gateway}", 'green', file=sys.stderr )
+        for p in routing_table_list: cprint(p, 'green', file=sys.stderr )
         contents="""
 [default]
 ping_targets: redhat.com, canonical.com
