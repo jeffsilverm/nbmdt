@@ -40,6 +40,8 @@ class Configuration(object):
                     return candidate
                 else:
                     cprint(f"Found {candidate} but it's not executable", 'yellow', file=sys.stderr)
+        cprint(f"Could not find an executable named {executable_name}"\
+               f"Looked in {path}", 'white', 'on_red', file=sys.stderr )
         return False
 
 
