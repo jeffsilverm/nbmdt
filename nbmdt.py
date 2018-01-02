@@ -5,7 +5,9 @@
 #
 
 
-from enum import Enum
+from enum import Enum, auto
+import configuration
+
 
 import yaml
 # https://pypi.python.org/pypi/termcolor
@@ -18,6 +20,8 @@ import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import network      # OSI layer 3: IPv4, IPv6 should be called network
 import mac          # OSI layer 2: # Media Access Control: arp, ndp
 import interfaces   # OSI layer 1: ethernet, WiFi
+
+DEBUG = True
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
@@ -97,7 +101,27 @@ class SystemDescription(object):
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
-    def __init__(self, configuration_file: str = None) -> None:
+    # Issue 13
+    CURRENT = None
+
+    class Descriptions(Enum):
+        CURRENT = auto()
+        NOMINAL = auto()
+        NAMED = auto()
+
+        def is_current(super) -> bool:
+            return super.description == SystemDescription.Descriptions.CURRENT
+
+        def is_nominal(super) -> bool:
+            return super.description == SystemDescription.Descriptions.NAMED
+
+        def is_named(super) -> bool:
+            return super.description == SystemDescription.Descriptions.NAMED
+
+
+
+
+    def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
 
         if configuration_file is None:
             # This is what the system is currently is
@@ -109,11 +133,33 @@ class SystemDescription(object):
             # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
             self.ipv4_routes = network.IPv4Route.find_ipv4_routes()
             self.default_ipv4_gateway : network.IPv4Address = network.IPv4Route.get_default_ipv4_gateway()
-            self.ipv6_routes = network.IPv6Route.find_all_ipv6_routes()
+            self.ipv6_routes = network.IPv6Route.find_ipv6_routes()
             self.default_ipv6_gateway : network.IPv6Address = network.IPv6Route.get_default_ipv6_gateway()
             # Create something... what?  to track transports (OSI layer 4)
             self.transports_4 = transports.ipv4
             self.transports_6 = transports.ipv6
+            # Issue 13
+            if description is None or description == self.Descriptions.CURRENT:
+                # Assume current
+                self.description = self.Descriptions.CURRENT
+
+
+        else:
+            raise NotImplemented("configuration file is not implemented yet")
+
+        if not hasattr(self, "IP_COMMAND"):
+            self.IP_COMMAND = configuration.Configuration.find_executable('ip')
+        if not hasattr(self, "PING4_COMMAND"):
+            self.PING4_COMMAND = configuration.Configuration.find_executable('ping')
+        if not hasattr(self, "PING6_COMMAND"):
+            self.PING6_COMMAND = configuration.Configuration.find_executable('ping6')
+        if DEBUG:
+            import os
+            assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
+            assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
+
+
+
 
             self.applications: dict = {}  # For now
 
@@ -166,35 +212,36 @@ class SystemDescription(object):
         return result
 
 
-if __name__ == "__main__":
-
-    mode = Modes.NOMINAL  # For debugging
-    current_system = SystemDescription()
-    current_system_str = str(current_system)
-    print(current_system_str)
-    current_system.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
-        f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, " \
-        "should have returned a network.IPv4Address"
-    current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
-    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
-        f"network.IPv6Route.get_default_ipv4_gateway return a {type(current_system.default_ipv6_gateway)}, " \
-        "should have returned a network.IPv6Address"
-    if current_system.default_ipv4_gateway.ping4():
-        cprint("default IPv4 gateway pingable", "green")
-    else:
-        cprint("default IPv4 gateway is NOT pingable", "red")
-    if current_system.default_ipv6_gateway.ping6():
-        cprint("default IPv6 gateway pingable", "green")
-    else:
-        cprint("default IPv6 gateway is NOT pingable", "red")
+# This code must execute unconditionally, because configuration.py has to
+# know if the IP_COMMAND should come from a file or a command
+mode = Modes.NOMINAL  # For debugging
+current_system = SystemDescription(SystemDescription.CURRENT)
+current_system_str = str(current_system)
+print(current_system_str)
+current_system.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
+assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
+    f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, " \
+    "should have returned a network.IPv4Address"
+current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
+# Issue 14
+assert isinstance(current_system.default_ipv6_gateway, network.IPv6Address), \
+    f"network.IPv6Route.get_default_ipv6_gateway returned a {type(current_system.default_ipv6_gateway)}, " \
+    "should have returned a network.IPv6Address"
+if current_system.default_ipv4_gateway.ping4():
+    cprint("default IPv4 gateway pingable", "green")
+else:
+    cprint("default IPv4 gateway is NOT pingable", "red")
+if current_system.default_ipv6_gateway.ping6():
+    cprint("default IPv6 gateway pingable", "green")
+else:
+    cprint("default IPv6 gateway is NOT pingable", "red")
 
 """
-    nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
-    current_system_description = SystemDescription ( )
+nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
+current_system_description = SystemDescription ( )
 
-    mode = Modes.TEST   # This will be an option to the program some day.
+mode = Modes.TEST   # This will be an option to the program some day.
 
-    if mode == Modes.TEST :
-        test ( nominal_system_description, current_system_description )
+if mode == Modes.TEST :
+    test ( nominal_system_description, current_system_description )
 """

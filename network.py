@@ -9,14 +9,16 @@ import re
 from applications import DNSFailure
 from typing import Union
 from termcolor import colored, cprint
+from configuration import Configuration
+
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
 # Text highlights: on_grey, on_red, on_green, on_yellow, on_blue, on_magenta, on_cyan, on_white
 
-IP_COMMAND="/sbin/ip"
-PING_COMMAND = "/bin/ping"      # for now
-
-
+IP_COMMAND = Configuration.find_executable('ip')
+PING_COMMAND = Configuration.find_executable('ping')
+PING6_COMMAND = Configuration.find_executable('ping6')
+cprint(f"Debugging: {IP_COMMAND}, {PING_COMMAND}, {PING6_COMMAND}", 'green', file=sys.stderr)
 
 class NotPingable(Exception):
     def __init__(self, name : str = None) -> None:
@@ -433,7 +435,7 @@ class IPv6Route(object):
 
 
     @classmethod
-    def find_all_ipv6_routes(cls):
+    def find_ipv6_routes(cls):
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
 
@@ -534,6 +536,11 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
         if not hasattr(cls, "default_ipv6_gateway"):
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv6_routes()
+        # Issue 14
+        assert isinstance(cls.default_ipv6_gateway, cls.IPv6Address), \
+            f"In network.IPv6Route.get_default_ipv6_gateway will return a {type(cls.default_ipv6_gateway)}, " \
+            "should have returned a network.IPv6Address"
+
         return cls.default_ipv6_gateway
 
 

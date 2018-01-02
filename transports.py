@@ -3,8 +3,9 @@
 
 from enum import Enum
 # Issue 5 renamed IPv4_address to IPv4Address and IPv6_address to IPv6Address
-from network import IPv4Address as ipv4
-from network import IPv6Address as ipv6
+# Tracking down a pesky import problem
+# from network import IPv4Address as ipv4
+# from network import IPv6Address as ipv6
 from socket import AF_INET, AF_INET6
 from typing import Union
 
@@ -30,7 +31,8 @@ class Transports(object):
     """
 
     def add_connection(self, source_port : int, destination_port : int,
-                       remote_address : Union[ipv4, ipv6],
+#                       remote_address : Union[ipv4, ipv6],
+                       remote_address,
                        transport : TransportNames = TransportNames.TCP ) -> None:
         connection = ( source_port, destination_port, remote_address, transport )
         self._connections.append(connection)

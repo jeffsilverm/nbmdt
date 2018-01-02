@@ -11,9 +11,40 @@ import configparser
 import sys
 import os
 import network
+from pathlib import Path
+import stat
+from termcolor import cprint
 
 
-class FixedConfiguration(object):
+class Configuration(object):
+
+    @classmethod
+    def find_executable(cls, executable_name : str ) -> str:
+        """
+        python doesn't respect the PATH envar.  This method makes up for that
+
+        :param executable_name:
+        :return:    str fully qualified path to the executable
+        """
+        path_list : list = os.environ['PATH'].split(":")
+        for path in path_list:
+            # See https://stackoverflow.com/questions/82831/how-do-i-check-whether-a-file-exists-using-python
+            candidate = os.path.join( path, executable_name )
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                # in case you forgot. & is the bitwise AND operator
+                # I assume that this program runs in the context of a user account.  IXOTH is protected such anybody can
+                # execute it.  However, if candidate is protected such that the owner can execute it, others cannot
+                # execute it, the owner is root, and this process is running as root, then this test will be incorrect.
+                # Issue 15
+                if stat.S_IXOTH & os.stat(candidate)[stat.ST_MODE]:
+                    return candidate
+                else:
+                    cprint(f"Found {candidate} but it's not executable", 'yellow', file=sys.stderr)
+        return False
+
+
+
+class FixedConfiguration(Configuration):
     """
     An object of FixedConfiguration has the read-only configuration for nbmdt
     """
@@ -55,12 +86,11 @@ if __name__ == "__main__":
 
     from network import IPv4Route
 
-
     def make_test_nbmdt_ini_file():
         """Make a test ini file """
-        routing = IPv4Route()
-        routing.find_ipv4_routes()
-        default_ipv4_gateway : network.IPv4Address = routing.default_ipv4_gateway()
+        routing_table_list = IPv4Route.find_ipv4_routes()
+        default_ipv4_gateway : network.IPv4Address = IPv4Route.default_ipv4_gateway
+        cprint( f"The default IPv4 gateway is {default_ipv4_gateway}", 'green', file=sys.stderr )
         contents="""
 [default]
 ping_targets: redhat.com, canonical.com
@@ -93,6 +123,15 @@ ping_targets:
         return
 
 # Main test program
+    fixed_configuration = FixedConfiguration("nbmdt.ini")
+
+    assert fixed_configuration.find_executable("ip"), 'Did not find the ip command'
+    assert fixed_configuration.find_executable("ping"), 'Did not find the ping command'
+    assert fixed_configuration.find_executable("ping6"), 'Did not find the ping6 command'
+    assert not fixed_configuration.find_executable("xyzzy.exe"), 'Found the xyzzy.exe file'
+    assert not fixed_configuration.find_executable("dumpcap"), 'Thinks that dumpcap is executable by others'
+
+
     try:
         fixed_configuration = FixedConfiguration("XyZZy.txt")
     except FileNotFoundError as f:
@@ -100,15 +139,17 @@ ping_targets:
 
     make_test_nbmdt_ini_file()
 
+
     fixed_configuration = FixedConfiguration("nbmdt.ini")
 
-    try:
-        fixed_configuration.ip_command="This should fail: calling the set_ip_command method"
-    except NotImplementedError as n:
-        print("fixed_configuration.set.ip_command failed as expected with NotImplementedError")
-    else:
-        print("EPIC FAIL!!! fixed_configuration.set_ip_command worked! Should have raised NotImplementedError")
-    # ip_command = fixed_configuration.ip_command
+    assert fixed_configuration.find_executable("ip"), 'Did not find the ip command'
+    assert fixed_configuration.find_executable("ping"), 'Did not find the ping command'
+    assert fixed_configuration.find_executable("ping6"), 'Did not find the ping6 command'
+    assert not fixed_configuration.find_executable("xyzzy.exe"), 'Found the xyzzy.exe file'
+    assert not fixed_configuration.find_executable("dumpcap"), 'Thinks that dumpcap is executable by others'
+
+    sys.exit(0)
+    # This is coming....
     default_ping_list = fixed_configuration['default']['ping_targets']
     for section in fixed_configuration.sections():
         if "machine" in section:
