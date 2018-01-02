@@ -18,7 +18,7 @@ from configuration import Configuration
 IP_COMMAND = Configuration.find_executable('ip')
 PING_COMMAND = Configuration.find_executable('ping')
 PING6_COMMAND = Configuration.find_executable('ping6')
-cprint(f"Debugging: {IP_COMMAND}, {PING_COMMAND}, {PING6_COMMAND}", 'green', file=sys.stderr)
+cprint(f"Debugging network.py: {IP_COMMAND}, {PING_COMMAND}, {PING6_COMMAND}", 'green', file=sys.stderr)
 
 class NotPingable(Exception):
     def __init__(self, name : str = None) -> None:
@@ -185,7 +185,8 @@ True
         :param  slow_ms         The maximum amount of time, in milliseconds, that is allowed to transpire before the
                                 remote machine will be considered "slow"
         :param  production      If production is false, then ping4 won't raise a NotPingable exception
-
+        :return     Returns a 2-tuple.  This first element is True if pingable, number of good pings >= min_for_good
+                                The second element is True if the average response time (milliseconds) is >= slow_ms
         """
 
         SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
@@ -203,54 +204,55 @@ True
         # return status = 1 if the device is not pingable
         if cpi.returncode == 2:
             raise DNSFailure(name=name, query_type='A')
-        elif cpi.returncode == 1 and production:
-            raise NotPingable(name=name)
-        if cpi.returncode != 0:
+        elif cpi.returncode != 0 and cpi.returncode !=1 :
+            cprint(f"About to raise a subprocess.CalledProcessError exception. name={name} cpi={cpi} returncode is {cpi.returncode}",
+                   'red', file=sys.stderr)
             raise subprocess.CalledProcessError
-        # Because subprocess.run was called with encoding=utf-8, output will be a string
-        results = cpi.stdout
-        lines = results.split('\n')[
-                :-1]  # Don't use the last element, which is empty
+        elif cpi.returncode == 1 and production:
+            raise NotPingable( name= name )
+        else:
+            # Because subprocess.run was called with encoding=utf-8, output will be a string
+            results = cpi.stdout
+            lines = results.split('\n')[:-1]
+                  # Don't use the last element, which is empty
+            """
+jeffs@jeffs-laptop:~/nbmdt (development)*$ ping -c 4  f5.com
+PING f5.com (104.219.110.168) 56(84) bytes of data.
+64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=1 ttl=249 time=24.0 ms
+64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=2 ttl=249 time=23.8 ms
+64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=3 ttl=249 time=23.3 ms
+64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=4 ttl=249 time=46.3 ms
 
-        """
-        jeffs@jeffs-laptop:~/nbmdt (development)*$ ping -c 4  f5.com
-        PING f5.com (104.219.110.168) 56(84) bytes of data.
-        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=1 ttl=249 time=24.0 ms
-        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=2 ttl=249 time=23.8 ms
-        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=3 ttl=249 time=23.3 ms
-        64 bytes from 104.219.110.168 (104.219.110.168): icmp_seq=4 ttl=249 time=46.3 ms
-
-        --- f5.com ping statistics ---
-        4 packets transmitted, 4 received, 0% packet loss, time 3003ms
-        rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms
-        jeffs@jeffs-laptop:~/nbmdt (development)*$ 
-
-        """
-        # Failsafe initialization
-        slow : bool = True
-        down : bool = True
-        # loop through output of ping command
-        for line in lines:
-            if "transmitted " in line:
-                # re.findall returns a list of length 1 because there is 1 match to the RE
-                packet_counters = \
-                re.findall("(\d+).*?(\d+).*received.*(\d+).*()", line)[0]
-                packets_xmit = packet_counters[0]
-                packets_rcvd = packet_counters[1]
-                # If at least one packet was received, then the remote machine
-                # is pingable and the NotPingable exception will not be raised
-                down = int(packets_rcvd) < min_for_good
-            elif "rtt " == line[0:3]:  # crude, I will do something better, later
-                # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
-                # ['23.326', '29.399', '46.300', '9.762']
-                # >>>
-                # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
-                numbers = re.findall("\d+\.\d+", line)
-                slow = int(numbers[1]) > SLOW_MS
-            else:
-                pass
-
-        return (down, slow)
+--- f5.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3003ms
+rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms
+jeffs@jeffs-laptop:~/nbmdt (development)*$ 
+            """
+            # Failsafe initialization
+            slow : bool = True
+            up : bool = cpi.returncode == 0
+            # loop through output of ping command
+            for line in lines:
+                if "transmitted" in line:
+                    # re.findall returns a list of length 1 because there is 1 match to the RE
+                    packet_counters = \
+                    re.findall("(\d+).*?(\d+).*received.*(\d+).*()", line)[0]
+                    packets_xmit = packet_counters[0]
+                    packets_rcvd = packet_counters[1]
+                    # If at least one packet was received, then the remote machine
+                    # is pingable and the NotPingable exception will not be raised
+                    up = int(packets_rcvd)  >= min_for_good
+                elif "rtt " == line[0:4]:  # crude, I will do something better, later
+                    # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
+                    # ['23.326', '29.399', '46.300', '9.762']
+                    # >>>
+                    # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
+                    numbers = re.findall("\d+\.\d+", line)
+                    slow = float(numbers[1]) > slow_ms
+                else:
+                    pass
+            cprint(f"About to exit from ping4 up={up} slow={slow}", 'yellow')
+            return (up, slow)
 
 
 # Issue 5 renamed IPv6_address to IPv6Address
@@ -577,12 +579,36 @@ b'\xd0a\xbd\x1d'
         f"cvv_ip_v4_by_addr.ipv4_address should be b'\xd0a\xbd\x1d' but is actually "\
         f"{cvv_ip_v4_by_addr.ipv4_address}"
 
-    down, slow = cvv_ip_v4_by_addr.ping4()
-    if down : cprint(f"{cvv_ip_v4_by_addr.name} is NOT pingable", 'red')
-    else: cprint(f"{cvv_ip_v4_by_addr.name} is pingable", "green")
+    cprint("Running ping tests, plz be patient"
+           "", "green", file=sys.stderr )
+    up, slow = cvv_ip_v4_by_addr.ping4()
+    if up : cprint(f"{cvv_ip_v4_by_addr.name} is  pingable", 'green')
+    else: cprint(f"{cvv_ip_v4_by_addr.name} is NOT pingable", "red")
 
-    assert not IPv4Address(name='192.168.0.143').ping4(production=False)[0], "192.168.0.143 is pingable and it should NOT be"
+    production = False          # Do NOT raise the exception
+    answer = IPv4Address(name='192.168.0.143').ping4(production=production)
+    assert not answer[0] , f"192.168.0.143 is pingable and it should NOT be. " \
+                        f" Answer is {answer} "
+    try:
+        production = True
+        answer = IPv4Address(name='192.168.0.143').ping4(production=production)
+        assert not answer[0], f"192.168.0.143 is pingable and it should NOT be.  " \
+                           f"Answer is {answer} "
+    except NotPingable as n:
+        cprint(f"Handling the NotPingable exception on 192.168.0.143 production is {production} answer is {answer}", 'white', 'on_red', file=sys.stderr)
+
     assert IPv4Address(name='google.com').ping4(production=False)[0], "google.com is not pingable and it should be"
+    try:
+        answer = IPv4Address(name='spurious.spurious').ping4(production=False)[0]
+    except ( DNSFailure)  as d:
+        cprint("Detected a DNSFailure as expected", "green", file=sys.stderr )
+    except socket.gaierror as s:
+        cprint("Detected a socket.gaierror as expected", "green", file=sys.stderr)
+    else:
+        cprint("Did NOT Detect a DNSFailure or socket.gaierror.  This is an error", "red", file=sys.stderr)
+
+
+
 
 
     # This is mentioned in Issue 5
