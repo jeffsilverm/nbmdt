@@ -12,6 +12,7 @@ import configuration
 import yaml
 # https://pypi.python.org/pypi/termcolor
 from termcolor import cprint
+import optparse
 
 import applications # OSI layer 7: HTTP, HTTPS
 import presentation # OSI layer 6:
@@ -20,6 +21,8 @@ import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import network      # OSI layer 3: IPv4, IPv6 should be called network
 import mac          # OSI layer 2: # Media Access Control: arp, ndp
 import interfaces   # OSI layer 1: ethernet, WiFi
+import sys
+import constants
 
 DEBUG = True
 
@@ -39,61 +42,6 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
 """
 
 
-# If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
-# https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
-# termcolor.colored
-class Modes(Enum):
-    BOOT = 1
-    MONITOR = 2
-    DIAGNOSE = 3
-    TEST = 4
-    NOMINAL = 5
-
-class ErrorLevels(Enum):
-    """
-    From The_Network_Boot_Monitor_Diagnostic_Tool.html
-
-
-        Normal
-    All is well.  The resource is working properly in all respects
-        Slow
-    The monitor is measuring traffic flow through the resource or the delay required to reach the interface, and it is outside acceptable limits.  The interface is still working.
-        Degraded due to an upstream dependency failure.
-    The resource is at increased risk of failure because a dependency is down.  However, the dependency has some redundancy so the fact that there is an upstream failure does not mean that this interface is down.  For example, there are multiple DNS servers.  If a single server fails, the resolver will pick a different name server.  So DNS will work, but there will be fewer servers than normal and a greater risk of subsequent failure.
-        Down cause unknown
-    The resource is flunking a health check for some reason.
-        Down due to a missing or failed dependency
-    The resource is flunking a health check or is down because something it depends on is down.
-        Down Acknowledged
-    The resource is down and an operator has acknowledged that the interface is down.  This will only happen while monitoring, never at boot time or while diagnosing or designing
-        Changed
-    The resource is in the configuration file, but the monitor cannot find it, or the auto configuration methods found a resource that should be in the configuration file, but isn't.  Classic example is a NIC changing its MAC address.
-        Other problem
-    Something else is wrong that doesn't fit into the above categories.
-
-    """
-
-    NORMAL = 1              # Everything is working properly
-    SLOW = 2                # Up, but running slower than allowed
-    DEGRADED = 3            #  Up, but something that this thing partly depends on is down
-    DOWN = 4                # It flunks the test, cause unknown
-    DOWN_DEPENDENCY = 5     # It flunks the test, but it is known to be due to a dependency
-    DOWN_ACKNOWLEDGED = 6   # It flunks the test, but somebody has acknowledged the problem
-    CHANGED = 7             # The resource works, but something about it has changed
-    OTHER = 8               # A problem that doesn't fit into any of the above categories
-    UNKNOWN = 9             # We genuinely do not know the status of the entity, either because the test has not been
-    # run yet or conditions are such that the test cannot be run correctly.
-
-
-colors = {}
-colors[ErrorLevels.NORMAL] = ['black', 'on_green']
-colors[ErrorLevels.SLOW] = ['black', 'on_yellow']
-colors[ErrorLevels.DEGRADED] = ['black', 'on_magenta']
-colors[ErrorLevels.DOWN] = ['black', 'on_red']
-colors[ErrorLevels.DOWN_DEPENDENCY] = ['black', 'on_cyan']
-colors[ErrorLevels.DOWN_ACKNOWLEDGED] = ['black', 'on_magenta']
-colors[ErrorLevels.CHANGED] = ['white', 'on_black']
-colors[ErrorLevels.OTHER] = ['black', 'on_grey']
 
 
 class SystemDescription(object):
@@ -211,37 +159,52 @@ class SystemDescription(object):
             result += str(iface) + "\n"
         return result
 
+def main(args):
+    # This code must execute unconditionally, because configuration.py has to
+    # know if the IP_COMMAND should come from a file or a command
+    mode = Modes.NOMINAL  # For debugging
+    current_system = SystemDescription(SystemDescription.CURRENT)
+    current_system_str = str(current_system)
+    print(current_system_str)
+    # Issue 9
+    current_system.default_ipv4_gateway : network.IPv4Address = network.IPv4Route.get_default_ipv4_gateway()
+    assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
+        f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, " \
+        "should have returned a network.IPv4Address"
+    current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
+    # Issue 14
+    assert isinstance(current_system.default_ipv6_gateway, network.IPv6Address), \
+        f"network.IPv6Route.get_default_ipv6_gateway returned a {type(current_system.default_ipv6_gateway)}, " \
+        "should have returned a network.IPv6Address"
+    if current_system.default_ipv4_gateway.ping4():
+        cprint("default IPv4 gateway pingable", "green", file=sys.stderr)
+    else:
+        cprint("default IPv4 gateway is NOT pingable", "red", file=sys.stderr)
+    if current_system.default_ipv6_gateway.ping6():
+        cprint("default IPv6 gateway pingable", "green", file=sys.stderr)
+    else:
+        cprint("default IPv6 gateway is NOT pingable", "red", file=sys.stderr)
 
-# This code must execute unconditionally, because configuration.py has to
-# know if the IP_COMMAND should come from a file or a command
-mode = Modes.NOMINAL  # For debugging
-current_system = SystemDescription(SystemDescription.CURRENT)
-current_system_str = str(current_system)
-print(current_system_str)
-current_system.default_ipv4_gateway = network.IPv4Route.get_default_ipv4_gateway()
-assert isinstance(current_system.default_ipv4_gateway, network.IPv4Address), \
-    f"network.IPv4Route.get_default_ipv4_gateway return a {type(current_system.default_ipv4_gateway)}, " \
-    "should have returned a network.IPv4Address"
-current_system.default_ipv6_gateway = network.IPv6Route.get_default_ipv6_gateway()
-# Issue 14
-assert isinstance(current_system.default_ipv6_gateway, network.IPv6Address), \
-    f"network.IPv6Route.get_default_ipv6_gateway returned a {type(current_system.default_ipv6_gateway)}, " \
-    "should have returned a network.IPv6Address"
-if current_system.default_ipv4_gateway.ping4():
-    cprint("default IPv4 gateway pingable", "green")
-else:
-    cprint("default IPv4 gateway is NOT pingable", "red")
-if current_system.default_ipv6_gateway.ping6():
-    cprint("default IPv6 gateway pingable", "green")
-else:
-    cprint("default IPv6 gateway is NOT pingable", "red")
+    """
+    nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
+    current_system_description = SystemDescription ( )
+    
+    mode = Modes.TEST   # This will be an option to the program some day.
+    
+    if mode == Modes.TEST :
+        test ( nominal_system_description, current_system_description )
+    """
 
-"""
-nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
-current_system_description = SystemDescription ( )
+def arg_parser()
+    parser = optparse.OptionParser()
+    parser.add_option('--boot')
+    parser.add_option('--monitor')
+    parser.add_option('--diagnose')
+    parser.add_option('-p', '--port', type='int', default=8000,
+                      help='Port where server listens, default 8000')
 
-mode = Modes.TEST   # This will be an option to the program some day.
 
-if mode == Modes.TEST :
-    test ( nominal_system_description, current_system_description )
-"""
+if __name__ == "__main__":
+    args = arg_parser()
+    main(args)
+

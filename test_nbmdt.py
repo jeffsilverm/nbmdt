@@ -4,11 +4,11 @@
 # The Network Boot Monitor Diagnostic tool testing class
 #
 
-import unittest
+import pytest
 import nbmdt
 
 
-class TestIPv4Route (unittest.TestCase ):
+class TestIPv4Route (pytest.TestCase ):
 
     def setUP(self):
         self.route_list = nbmdt.IPv4_route.find_ipv4_routes()
@@ -42,5 +42,5 @@ class TestIPv4Route (unittest.TestCase ):
 
 
 if __name__ == "__main__" :
-    unittest.main()
+    pytest.main()
 

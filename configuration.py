@@ -29,6 +29,7 @@ class Configuration(object):
 
         # Come up with a list of good places to look.  Add a couple locations
         # that might have been overlooked.
+        # Issue 13
         path_list : list = os.environ['PATH'].split(":")
         path_list += ["/sbin", "/usr/sbin", "/usr/local/sbin"]
         for path in path_list:
