@@ -380,7 +380,9 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
             fields = line.split()
             destination : str = translate_destination(fields[0])
 
-            route=dict()
+            route=dict()    # route is a description of a route.  It is keyed by the name of a field in the output
+                            # of the ip route.  The first field is an address/subnet mask combination, so handle it
+                            # specially
             try:
                 route['ipv4_destination'] = IPv4Address(destination)
             except socket.gaierror as g:
@@ -388,10 +390,10 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
             except OSError as o:
                 cprint(f"Tried to add the destination {destination} to a route, and an OSError exception was raised", 'red', file=sys.stderr )
 
-            for i in range(1, len(fields), 2):
+            for i in range(1, len(fields)-1, 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
-                    break
+                    break   # linkdown is a flag, not the title of a field.
                 # A string that identifies the value that follows it.
                 route[fields[i]] = fields[i+1]
             ipv4_route = IPv4Route( route=route )
