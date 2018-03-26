@@ -23,15 +23,17 @@ import mac          # OSI layer 2: # Media Access Control: arp, ndp
 import interfaces   # OSI layer 1: ethernet, WiFi
 import sys
 import constants
+import typing
+
 
 DEBUG = True
 
 """
-Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
-7	host	    	Application 	Application	Application		        	Data
-6	    	    	Presentation	"		"
-5		        	Session	    	"		"
-4		    	    Transport   	Transport	Transport	UDP,TCP,SCTP	Segments
+Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
+7	host	    	Application 	Application	Application		        	Data      nbmdt, dns, ntp
+6	host   	    	Presentation	"	    "   "
+5	host        	Session	    	"		"   "
+4	host    	    Transport   	Transport	Transport	UDP,TCP,SCTP	Segments    
 3	router  		Network 		Internet	Network		IPv4, IPv6  	Packets
 2	Switch/Bridge	Data link   	Link		Data Link	CSMA/CD,CSMA/CA	Frames
 1	hub/repeater	physical        "		    Physical	Ethernet, WiFI	bits
@@ -40,9 +42,6 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU
 
 
 """
-
-
-
 
 class SystemDescription(object):
     """Refer to the OSI stack, for example, at https://en.wikipedia.org/wiki/OSI_model.  Objects of this class describe
@@ -68,81 +67,79 @@ class SystemDescription(object):
 
 
 
-
-    def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
-
-        if configuration_file is None:
-            # This is what the system is currently is
-
-            # Create a dictionary, keyed by link name, of the physical interfaces
-            self.phys_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
-            # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
-            self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
-            # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
-            self.ipv4_routes = network.IPv4Route.find_ipv4_routes()
-            self.default_ipv4_gateway : network.IPv4Address = network.IPv4Route.get_default_ipv4_gateway()
-            self.ipv6_routes = network.IPv6Route.find_ipv6_routes()
-            self.default_ipv6_gateway : network.IPv6Address = network.IPv6Route.get_default_ipv6_gateway()
-            # Create something... what?  to track transports (OSI layer 4)
-            self.transports_4 = transports.ipv4
-            self.transports_6 = transports.ipv6
-            # Issue 13
-            if description is None or description == self.Descriptions.CURRENT:
-                # Assume current
-                self.description = self.Descriptions.CURRENT
-
-
-        else:
-            raise NotImplemented("configuration file is not implemented yet")
-
-        if not hasattr(self, "IP_COMMAND"):
-            self.IP_COMMAND = configuration.Configuration.find_executable('ip')
-        if not hasattr(self, "PING4_COMMAND"):
-            self.PING4_COMMAND = configuration.Configuration.find_executable('ping')
-        if not hasattr(self, "PING6_COMMAND"):
-            self.PING6_COMMAND = configuration.Configuration.find_executable('ping6')
-        if DEBUG:
-            import os
-            assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
-            assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
-
-
-
-
-            self.applications: dict = {}  # For now
-
-            #        self.name_servers = nameservers.nameservers()
-            #        self.applications = applications
-            # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
-
-            # To find all IPv6 machines on an ethernet, use ip -6 neigh show
-            #        self.networks = networks
-            #        self.name = name
-        else:
-            y = yaml.safe_load(configuration_file)
-            self.interfaces = y['interfaces']
-            for interface in self.interfaces:
-                self.ipv4_address = interfaces
-
-    @staticmethod
-    def describe_current_state():
-        """This method goes through a system that is nominally configured and operating and records the configuration
-        """
-
-        #        applications = Applications.find_applications()
-        #        applications = None
-        #        ipv4_routes = IPv4_route.find_ipv4_routes()
-        #        ipv6_routes = IPv6_route.find_ipv6_routes()
-        #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
-        #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
-        #        networks = Networks.find_networks()
-        #        networks = None
-
-        # nominal = SystemDescription.describe_current_state()
-        pass
-
-    #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
-
+    """
+        def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
+    
+            if configuration_file is None:
+                # This is what the system is currently is
+    
+                # Create a dictionary, keyed by link name, of the physical interfaces
+                self.phys_db = interfaces.PhysicalInterface.get_all_physical_interfaces()
+                # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
+                self.data_link_db = interfaces.LogicalInterface.get_all_logical_interfaces()
+                # Create lists, sorted from smallest netmask to largest netmask of IPv4 and IPv6 routes
+                self.ipv4_routes = network.IPv4Route.find_ipv4_routes()
+                self.default_ipv4_gateway : network.IPv4Address = network.IPv4Route.get_default_ipv4_gateway()
+                self.ipv6_routes = network.IPv6Route.find_ipv6_routes()
+                self.default_ipv6_gateway : network.IPv6Address = network.IPv6Route.get_default_ipv6_gateway()
+                # Create something... what?  to track transports (OSI layer 4)
+                self.transports_4 = transports.ipv4
+                self.transports_6 = transports.ipv6
+                # Issue 13
+                if description is None or description == self.Descriptions.CURRENT:
+                    # Assume current
+                    self.description = self.Descriptions.CURRENT
+    
+    
+            else:
+                raise NotImplemented("configuration file is not implemented yet")
+    
+            if not hasattr(self, "IP_COMMAND"):
+                self.IP_COMMAND = configuration.Configuration.find_executable('ip')
+            if not hasattr(self, "PING4_COMMAND"):
+                self.PING4_COMMAND = configuration.Configuration.find_executable('ping')
+            if not hasattr(self, "PING6_COMMAND"):
+                self.PING6_COMMAND = configuration.Configuration.find_executable('ping6')
+            if DEBUG:
+                import os
+                assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
+                assert os.stat.S_IXUSR & os.stat(os.path)[os.stat.ST_MODE]
+                self.applications: dict = {}  # For now
+    
+                #        self.name_servers = nameservers.nameservers()
+                #        self.applications = applications
+                # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
+    
+                # To find all IPv6 machines on an ethernet, use ip -6 neigh show
+                #        self.networks = networks
+                #        self.name = name
+            else:
+                y = yaml.safe_load(configuration_file)
+                self.interfaces = y['interfaces']
+                for interface in self.interfaces:
+                    self.ipv4_address = interfaces
+    
+    """
+    """
+        @staticmethod
+        def describe_current_state():
+            "This method goes through a system that is nominally configured and operating and records the configuration
+            "
+    
+            #        applications = Applications.find_applications()
+            #        applications = None
+            #        ipv4_routes = IPv4_route.find_ipv4_routes()
+            #        ipv6_routes = IPv6_route.find_ipv6_routes()
+            #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
+            #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
+            #        networks = Networks.find_networks()
+            #        networks = None
+    
+            # nominal = SystemDescription.describe_current_state()
+            pass
+    
+        #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
+    """
     def __str__(self):
         """This generates a nicely formatted report of the state of this system"""
         result = "Applications:\n" + "*" * 80
@@ -162,7 +159,7 @@ class SystemDescription(object):
 def main(args):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
-    mode = Modes.NOMINAL  # For debugging
+    mode = constants.Modes.NOMINAL   # For debugging
     current_system = SystemDescription(SystemDescription.CURRENT)
     current_system_str = str(current_system)
     print(current_system_str)
@@ -195,14 +192,21 @@ def main(args):
         test ( nominal_system_description, current_system_description )
     """
 
-def arg_parser()
+def arg_parser() -> typing.Tuple:
     parser = optparse.OptionParser()
-    parser.add_option('--boot')
-    parser.add_option('--monitor')
-    parser.add_option('--diagnose')
-    parser.add_option('-p', '--port', type='int', default=8000,
-                      help='Port where server listens, default 8000')
+    parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
+                                     "subsystems, and then exits", action="count", dest="boot")
+    parser.add_option('--monitor', help="Use while system is running.  Presents a RESTful API that a client can use to "
+                                        "monitor the state of the network on a host", action="count", dest="monitor")
+    parser.add_option('--diagnose', help=f"Use when a problem is detected. Use TCP port {constants.port} by default "
+                                         f"unless changed by the -p or --port switch", action="count", dest="diagnose")
+    parser.add_option('-p', '--port', type='int', default=constants.port,
+                      help=f'Port where server listens when in monitor mode, default {constants.port}'  )
+    (options, args) = parser.parse_args()
 
+    if options.boot + options.monitor + options.diagnose == 1:
+        return (options, args)
+    raise ValueError ("Must have exactly one of --boot, --monitor, --diagnose")
 
 if __name__ == "__main__":
     args = arg_parser()
