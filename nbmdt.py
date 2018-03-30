@@ -59,6 +59,7 @@ class SystemDescription(object):
     # Issue 13
     CURRENT = None
 
+# Move the contents of class Descriptions into constants.py and class Constants.
     class Descriptions(Enum):
         CURRENT = auto()
         NOMINAL = auto()
