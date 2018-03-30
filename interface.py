@@ -16,7 +16,10 @@ IP_COMMAND = "/usr/sbin/ip"
 def none_if_None(s):
     return s if s is not None else "None"
 
+class Interface(object):
+    pass
 
+# Rename this class to Interface
 class PhysicalInterface(object):
     def __init__(self, intf_name, intf_description):
         self.intf_name = intf_name
@@ -73,7 +76,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
 
 # There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
 
-
+# Move this class to network.py
 class LogicalInterface(object):
     """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
 

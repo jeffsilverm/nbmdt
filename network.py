@@ -6,7 +6,7 @@ import socket
 import subprocess
 import sys
 import re
-from applications import DNSFailure
+from application import DNSFailure
 from typing import Union
 from termcolor import colored, cprint
 from configuration import Configuration
@@ -26,8 +26,11 @@ class NotPingable(Exception):
     pass
 
 
+class Network(object):
+    pass
+
 # Issue 5 renamed IPv4_address to IPv4Address.   Reflecting what PEP-8 says
-class IPv4Address(object):
+class IPv4Address(Network):
     """
     This object has an IPv4 object.  It has two attributes: name and ipv4_address.
     If the name has not been specified, then it is None
@@ -256,7 +259,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
 
 
 # Issue 5 renamed IPv6_address to IPv6Address
-class IPv6Address(object):
+class IPv6Address(Network):
     def __init__(self, name : str = None, ipv6_address : Union[str, bytes ] = None ) -> None:
         """
         :param name:    str remote computer name

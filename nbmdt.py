@@ -14,19 +14,27 @@ import yaml
 from termcolor import cprint
 import optparse
 
-import applications # OSI layer 7: HTTP, HTTPS
+import application # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import presentation # OSI layer 6:
 import session      # OSI layer 5:
-import transports   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import transport   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import network      # OSI layer 3: IPv4, IPv6 should be called network
 import mac          # OSI layer 2: # Media Access Control: arp, ndp
-import interfaces   # OSI layer 1: ethernet, WiFi
+import interface   # OSI layer 1: ethernet, WiFi
 import sys
 import constants
-import typing
+from typing import List, Dict, Tuple
 
 
 DEBUG = True
+type_application_dict = Dict[application.Application]
+type_presentation_dict = Dict[presentation.Presentation]
+type_session_dict = Dict[session.Session]
+type_transport_dict = Dict[transport.Transports]
+type_network_dict = Dict[network.Network]
+type_mac_dict = Dict[mac.Mac]
+type_interface_dict = Dict[interface.Interface]
+
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
@@ -57,13 +65,56 @@ class SystemDescription(object):
         NAMED = auto()
 
         def is_current(super) -> bool:
-            return super.description == SystemDescription.Descriptions.CURRENT
+            return super.description == constants.Modes.CURRENT
 
         def is_nominal(super) -> bool:
-            return super.description == SystemDescription.Descriptions.NAMED
+            return super.description == constants.Modes.NOMINAL
 
         def is_named(super) -> bool:
-            return super.description == SystemDescription.Descriptions.NAMED
+            return super.description == constants.Modes.NAMED
+
+
+    def __init__(self, applications : type_application_dict = None,
+                 presentations : type_presentation_dict = None,
+                 sessions : type_session_dict = None,
+                 transports : type_transport_dict = None,
+                 networks : type_network_dict = None,
+                 macs : type_mac_dict = None,
+                 interfaces : type_interface_dict = None,
+                 mode = CURRENT,
+                 configuration_filename : str = None
+                 ):
+
+        if mode == SystemDescription.CURRENT:
+# We want to find out what the current state of the system is, regardless of what it is supposed to be
+            applications = application.discover()
+            presentations = presentation.discover()
+            sessions = session.discover()
+            transports = transport.discover()
+            networks = network.discover()
+            macs = mac.discover()
+            interfaces = interface.discover()
+        elif mode == SystemDescription.NAMED:
+            (applications, presentations, sessions, transports, networks, macs, interfaces) = \
+                self.read_configuration (configuration_filename)
+        elif mode != SystemDescription.NOMINAL:
+            raise ValueError("mode is %s but should be one of CURRENT, NAMED, or NOMINAL" % mode)
+        self.applications = applications
+        self.presentations = presentations
+        self.sessions = sessions
+        self.transports = transports
+        self.networks = networks
+        self.mac = macs
+        self.interfaces = interfaces
+        self.mode = mode
+
+
+    def read_configuration(self, filename):
+        pass
+
+    def write_configuration(self, filename):
+        pass
+
 
 
 
@@ -160,7 +211,8 @@ def main(args):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     mode = constants.Modes.NOMINAL   # For debugging
-    current_system = SystemDescription(SystemDescription.CURRENT)
+    current_system = SystemDescription(mode)
+    """
     current_system_str = str(current_system)
     print(current_system_str)
     # Issue 9
@@ -182,7 +234,6 @@ def main(args):
     else:
         cprint("default IPv6 gateway is NOT pingable", "red", file=sys.stderr)
 
-    """
     nominal_system_description = SystemDescription ( configuration_file="nominal.txt" )
     current_system_description = SystemDescription ( )
     
@@ -192,14 +243,14 @@ def main(args):
         test ( nominal_system_description, current_system_description )
     """
 
-def arg_parser() -> typing.Tuple:
+def arg_parser() -> Tuple:
     parser = optparse.OptionParser()
-    parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
+    parser.add_option('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
                                      "subsystems, and then exits", action="count", dest="boot")
     parser.add_option('--monitor', help="Use while system is running.  Presents a RESTful API that a client can use to "
                                         "monitor the state of the network on a host", action="count", dest="monitor")
     parser.add_option('--diagnose', help=f"Use when a problem is detected. Use TCP port {constants.port} by default "
-                                         f"unless changed by the -p or --port switch", action="count", dest="diagnose")
+                                        "unless changed by the -p or --port switch", action="count", dest="diagnose")
     parser.add_option('-p', '--port', type='int', default=constants.port,
                       help=f'Port where server listens when in monitor mode, default {constants.port}'  )
     (options, args) = parser.parse_args()

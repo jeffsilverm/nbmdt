@@ -61,6 +61,14 @@ def test_argparse():
     find_multiple_args(["--monitor", "--boot", "--diagnose"])
     find_multiple_args([])
 
+    with pytest.raises(FileNotFoundError):
+        sys.argv = ["nbmdt.py", "--file", "xyzzy.txt"]
+        nbmdt.main()
+
+
+
+
+
 
 """
 class TestIPv4Route (pytest.TestCase ):
