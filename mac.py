@@ -1,0 +1,2 @@
+class Mac(object):
+    pass
