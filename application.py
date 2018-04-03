@@ -9,8 +9,10 @@ import dns
 from dns import resolver, rdatatype  # rdataclass,
 
 
-class Applications(object):
-    pass
+class Application(object):
+
+    def discover(self):
+        pass
 
 
 # DNS sits at the application layer in the OSI model, according to

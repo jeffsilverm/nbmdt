@@ -17,6 +17,10 @@ def none_if_None(s):
     return s if s is not None else "None"
 
 class Interface(object):
+
+    def discover(self):
+        pass
+
     pass
 
 # Rename this class to Interface

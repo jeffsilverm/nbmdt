@@ -14,6 +14,10 @@ class Transports(object):
     """A class for monitoring transports: TCP, UDP
 
     """
+
+    def discover(self):
+        pass
+
     class TransportNames(Enum):
         TCP = 1
         UDP = 2

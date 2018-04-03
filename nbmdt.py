@@ -5,26 +5,18 @@
 #
 
 
-from enum import Enum, auto
-import configuration
-
-
-import yaml
 # https://pypi.python.org/pypi/termcolor
-from termcolor import cprint
 import optparse
+from typing import Dict, Tuple
 
-import application # OSI layer 7: HTTP, HTTPS, DNS, NTP
-import presentation # OSI layer 6:
-import session      # OSI layer 5:
-import transport   # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network      # OSI layer 3: IPv4, IPv6 should be called network
-import mac          # OSI layer 2: # Media Access Control: arp, ndp
-import interface   # OSI layer 1: ethernet, WiFi
-import sys
+import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-from typing import List, Dict, Tuple
-
+import interface  # OSI layer 1: ethernet, WiFi
+import mac  # OSI layer 2: # Media Access Control: arp, ndp
+import network  # OSI layer 3: IPv4, IPv6 should be called network
+import presentation  # OSI layer 6:
+import session  # OSI layer 5:
+import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 DEBUG = True
 type_application_dict = Dict[application.Application]
@@ -34,7 +26,6 @@ type_transport_dict = Dict[transport.Transports]
 type_network_dict = Dict[network.Network]
 type_mac_dict = Dict[mac.Mac]
 type_interface_dict = Dict[interface.Interface]
-
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
@@ -51,54 +42,41 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Mod
 
 """
 
+
 class SystemDescription(object):
     """Refer to the OSI stack, for example, at https://en.wikipedia.org/wiki/OSI_model.  Objects of this class describe
      the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
      associated with them"""
 
     # Issue 13
-    CURRENT = None
-
-# Move the contents of class Descriptions into constants.py and class Constants.
-    class Descriptions(Enum):
-        CURRENT = auto()
-        NOMINAL = auto()
-        NAMED = auto()
-
-        def is_current(super) -> bool:
-            return super.description == constants.Modes.CURRENT
-
-        def is_nominal(super) -> bool:
-            return super.description == constants.Modes.NOMINAL
-
-        def is_named(super) -> bool:
-            return super.description == constants.Modes.NAMED
+#    CURRENT = None
 
 
-    def __init__(self, applications : type_application_dict = None,
-                 presentations : type_presentation_dict = None,
-                 sessions : type_session_dict = None,
-                 transports : type_transport_dict = None,
-                 networks : type_network_dict = None,
-                 macs : type_mac_dict = None,
-                 interfaces : type_interface_dict = None,
-                 mode = CURRENT,
-                 configuration_filename : str = None
+    def __init__(self, applications: type_application_dict = None,
+                 presentations: type_presentation_dict = None,
+                 sessions: type_session_dict = None,
+                 transports: type_transport_dict = None,
+                 networks: type_network_dict = None,
+                 macs: type_mac_dict = None,
+                 interfaces: type_interface_dict = None,
+                 mode=constants.Modes.BOOT,
+                 configuration_filename: str = None
                  ):
 
-        if mode == SystemDescription.CURRENT:
-# We want to find out what the current state of the system is, regardless of what it is supposed to be
-            applications = application.discover()
-            presentations = presentation.discover()
-            sessions = session.discover()
-            transports = transport.discover()
-            networks = network.discover()
-            macs = mac.discover()
-            interfaces = interface.discover()
-        elif mode == SystemDescription.NAMED:
+        if mode == constants.Modes.BOOT:
+            # We want to find out what the current state of the system is, regardless of what it is supposed to be
+            # and output as something then user can see at boot time
+            applications = application.Application.discover(self)
+            presentations = presentation.Presentation.discover(self)
+            sessions = session.Session.discover(self)
+            transports = transport.Transports.discover(self)
+            networks = network.Network.discover(self)
+            macs = mac.Mac.discover(self)
+            interfaces = interface.Interface.discover(self)
+        elif mode == constants.Modes.MONITOR:
             (applications, presentations, sessions, transports, networks, macs, interfaces) = \
-                self.read_configuration (configuration_filename)
-        elif mode != SystemDescription.NOMINAL:
+                self.read_configuration(configuration_filename)
+        elif mode != constants.Modes.NOMINAL:
             raise ValueError("mode is %s but should be one of CURRENT, NAMED, or NOMINAL" % mode)
         self.applications = applications
         self.presentations = presentations
@@ -108,15 +86,6 @@ class SystemDescription(object):
         self.mac = macs
         self.interfaces = interfaces
         self.mode = mode
-
-
-    def read_configuration(self, filename):
-        pass
-
-    def write_configuration(self, filename):
-        pass
-
-
 
 
     """
@@ -192,26 +161,38 @@ class SystemDescription(object):
     
         #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
     """
+
+    def read_configuration(self, filename):
+        # applications, presentations, sessions, transports, networks, macs, interface
+        return (None, None, None, None, None, None, None)
+
+    def write_configuration(self, filename):
+        return None
+
+
+
     def __str__(self):
         """This generates a nicely formatted report of the state of this system"""
         result = "Applications:\n" + "*" * 80
         for app in self.applications:
             result += str(app) + "\n"
         result = result + "\nIPv4 routes\n" + "*" * 80
-        for r4 in self.ipv4_routes:
+        for r4 in self.networks.ipv4_routes:
             result += str(r4) + "\n"
         result = result + "\nIPv6 routes\n" + "*" * 80
-        for r6 in self.ipv6_routes:
+        for r6 in self.networks.ipv6_routes:
             result += str(r6) + "\n"
         result = result + "\ninterfaces\n" + "*" * 80
-        for iface in self.data_link_db:
+        for iface in self.interfaces:
             result += str(iface) + "\n"
         return result
+
 
 def main(args):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
-    mode = constants.Modes.NOMINAL   # For debugging
+    (options, args_) = arg_parser()
+    mode = constants.Modes.NOMINAL  # For debugging
     current_system = SystemDescription(mode)
     """
     current_system_str = str(current_system)
@@ -244,23 +225,25 @@ def main(args):
         test ( nominal_system_description, current_system_description )
     """
 
+
 def arg_parser() -> Tuple:
     parser = optparse.OptionParser()
     parser.add_option('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
                                      "subsystems, and then exits", action="count", dest="boot")
     parser.add_option('--monitor', help="Use while system is running.  Presents a RESTful API that a client can use to "
                                         "monitor the state of the network on a host", action="count", dest="monitor")
-    parser.add_option('--diagnose', help=f"Use when a problem is detected. Use TCP port {constants.port} by default "
-                                        "unless changed by the -p or --port switch", action="count", dest="diagnose")
+    parser.add_option('--diagnose', help=
+    "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
+        constants.port, action="count", dest="diagnose")
     parser.add_option('-p', '--port', type='int', default=constants.port,
-                      help=f'Port where server listens when in monitor mode, default {constants.port}'  )
+                      help='Port where server listens when in monitor mode, default ' % constants.port)
     (options, args) = parser.parse_args()
 
     if options.boot + options.monitor + options.diagnose == 1:
-        return (options, args)
-    raise ValueError ("Must have exactly one of --boot, --monitor, --diagnose")
+        return options, args
+    raise ValueError("Must have exactly one of --boot, --monitor, --diagnose")
+
 
 if __name__ == "__main__":
     args = arg_parser()
     main(args)
-

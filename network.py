@@ -27,6 +27,10 @@ class NotPingable(Exception):
 
 
 class Network(object):
+
+    def discover(self):
+        pass
+
     pass
 
 # Issue 5 renamed IPv4_address to IPv4Address.   Reflecting what PEP-8 says

@@ -1,2 +1,5 @@
 class Presentation(object):
-    pass
+
+    def discover(self):
+        pass
+
