@@ -8,6 +8,7 @@
 # https://pypi.python.org/pypi/termcolor
 import optparse
 from typing import Dict, Tuple
+import typing
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
@@ -19,13 +20,13 @@ import session  # OSI layer 5:
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 DEBUG = True
-type_application_dict = Dict[application.Application]
-type_presentation_dict = Dict[presentation.Presentation]
-type_session_dict = Dict[session.Session]
-type_transport_dict = Dict[transport.Transports]
-type_network_dict = Dict[network.Network]
-type_mac_dict = Dict[mac.Mac]
-type_interface_dict = Dict[interface.Interface]
+type_application_dict = typing.Dict[str, application.Application]
+type_presentation_dict = typing.Dict[str, presentation.Presentation]
+type_session_dict = typing.Dict[str, session.Session]
+type_transport_dict = typing.Dict[str, transport.Transports]
+type_network_dict = typing.Dict[str, network.Network]
+type_mac_dict = typing.Dict[str, mac.Mac]
+type_interface_dict = typing.Dict[str, interface.Interface]
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
@@ -61,7 +62,7 @@ class SystemDescription(object):
                  interfaces: type_interface_dict = None,
                  mode=constants.Modes.BOOT,
                  configuration_filename: str = None
-                 ):
+                 ) -> None:
 
         if mode == constants.Modes.BOOT:
             # We want to find out what the current state of the system is, regardless of what it is supposed to be
@@ -236,7 +237,7 @@ def arg_parser() -> Tuple:
     "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
         constants.port, action="count", dest="diagnose")
     parser.add_option('-p', '--port', type='int', default=constants.port,
-                      help='Port where server listens when in monitor mode, default ' % constants.port)
+                      help='Port where server listens when in monitor mode, default %s' % constants.port)
     (options, args) = parser.parse_args()
 
     if options.boot + options.monitor + options.diagnose == 1:
