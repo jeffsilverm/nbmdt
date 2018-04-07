@@ -20,11 +20,6 @@ class Descriptions(Enum):
     NOMINAL = auto()
     NAMED = auto()
 
-    def __init__ (self, description ) -> None :
-        assert isinstance(description, Descriptions), f"description is of " \
-                                                      f"type {str(type(description))} but " \
-                                                      f"should be Descriptions "
-        self.description = description
 
     def is_current(self) -> bool:
         return self.description == self.CURRENT

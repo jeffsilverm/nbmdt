@@ -8,12 +8,21 @@ from enum import Enum
 # from network import IPv6Address as ipv6
 from socket import AF_INET, AF_INET6
 from typing import Union
-
+from layer import Layer
+from constants import ErrorLevels
 
 class Transports(object):
     """A class for monitoring transports: TCP, UDP
 
     """
+
+    def __init__(self):
+        self.layer = Layer()
+
+    def get_status(self) -> ErrorLevels:
+        return self.layer.get_status()
+
+    pass
 
     def discover(self):
         pass

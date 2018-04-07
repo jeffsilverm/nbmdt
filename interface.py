@@ -4,6 +4,8 @@
 import collections
 import subprocess
 import sys
+from layer import Layer
+from constants import ErrorLevels
 
 # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was symlink it so that both /bin/ip and
 # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
@@ -16,7 +18,13 @@ IP_COMMAND = "/usr/sbin/ip"
 def none_if_None(s):
     return s if s is not None else "None"
 
-class Interface(object):
+class Interface(Layer):
+
+    def __init__(self):
+        self.layer = Layer()
+
+    def get_status(self) -> ErrorLevels :
+        return self.layer.get_status()
 
     def discover(self):
         pass

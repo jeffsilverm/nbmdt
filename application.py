@@ -7,12 +7,19 @@ from termcolor import cprint as cprint
 import sys
 import dns
 from dns import resolver, rdatatype  # rdataclass,
-
+from layer import Layer
+from constants import ErrorLevels
 
 class Application(object):
 
     def discover(self):
         pass
+
+    def __init__(self):
+        self.layer = Layer()
+
+    def get_status(self)  -> ErrorLevels:
+        return self.layer.get_status()
 
 
 # DNS sits at the application layer in the OSI model, according to

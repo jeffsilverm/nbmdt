@@ -10,14 +10,15 @@ import optparse
 from typing import Dict, Tuple
 import typing
 
-import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-import interface  # OSI layer 1: ethernet, WiFi
-import mac  # OSI layer 2: # Media Access Control: arp, ndp
-import network  # OSI layer 3: IPv4, IPv6 should be called network
+import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import presentation  # OSI layer 6:
 import session  # OSI layer 5:
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import network  # OSI layer 3: IPv4, IPv6 should be called network
+import mac  # OSI layer 2: # Media Access Control: arp, ndp
+import interface  # OSI layer 1: ethernet, WiFi
+
 
 DEBUG = True
 type_application_dict = typing.Dict[str, application.Application]
@@ -63,22 +64,43 @@ class SystemDescription(object):
                  mode=constants.Modes.BOOT,
                  configuration_filename: str = None
                  ) -> None:
+        """
+        Populate a description of the system.  This discription can come from a file (MONITOR, DIAGNOSE), from the
+        current state of the system (BOOT, TEST, NOMINAL).  The description can be displayed colorized and scrolling
+        (BOOT), displayed using VT100 (ANSI-X3.64) cursor addressing (MONITOR), or recorded to a configuration file (NOMINAL)
 
-        if mode == constants.Modes.BOOT:
-            # We want to find out what the current state of the system is, regardless of what it is supposed to be
-            # and output as something then user can see at boot time
-            applications = application.Application.discover(self)
-            presentations = presentation.Presentation.discover(self)
-            sessions = session.Session.discover(self)
-            transports = transport.Transports.discover(self)
-            networks = network.Network.discover(self)
-            macs = mac.Mac.discover(self)
-            interfaces = interface.Interface.discover(self)
-        elif mode == constants.Modes.MONITOR:
+        :param applications:
+        :param presentations:
+        :param sessions:
+        :param transports:
+        :param networks:
+        :param macs:
+        :param interfaces:
+        :param mode:
+        :param configuration_filename:
+        """
+        # BOOT = 1
+        # MONITOR = 2
+        # DIAGNOSE = 3
+        # TEST = 4
+        # NOMINAL = 5
+        if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT or mode == constants.Modes.TEST:
+            # We want to find out what the current state of the system is and record it in a file if
+            # in NOMINAL mode or else display it if in BOOT mode
+            applications = application.Application.discover()
+            presentations = presentation.Presentation.discover()
+            sessions = session.Session.discover()
+            transports = transport.Transports.discover()
+            networks = network.Network.discover()
+            macs = mac.Mac.discover()
+            interfaces = interface.Interface.discover()
+        elif mode == constants.Modes.MONITOR or mode == constants.Modes.DIAGNOSE:
+            # Compare the current configuration against a "nominal" configuration in the file and
+            # note any changes
             (applications, presentations, sessions, transports, networks, macs, interfaces) = \
                 self.read_configuration(configuration_filename)
         elif mode != constants.Modes.NOMINAL:
-            raise ValueError("mode is %s but should be one of CURRENT, NAMED, or NOMINAL" % mode)
+            raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
         self.applications = applications
         self.presentations = presentations
         self.sessions = sessions
@@ -173,19 +195,15 @@ class SystemDescription(object):
 
 
     def __str__(self):
-        """This generates a nicely formatted report of the state of this system"""
-        result = "Applications:\n" + "*" * 80
-        for app in self.applications:
-            result += str(app) + "\n"
-        result = result + "\nIPv4 routes\n" + "*" * 80
-        for r4 in self.networks.ipv4_routes:
-            result += str(r4) + "\n"
-        result = result + "\nIPv6 routes\n" + "*" * 80
-        for r6 in self.networks.ipv6_routes:
-            result += str(r6) + "\n"
-        result = result + "\ninterfaces\n" + "*" * 80
-        for iface in self.interfaces:
-            result += str(iface) + "\n"
+        """This generates a nicely formatted report of the state of this system
+        This method is probably most useful in BOOT mode"""
+        result = application.__str__(mode=self.mode) + "\n" + \
+            presentation.__str__(mode=self.mode) + "\n" + \
+            session.__str__(mode=self.mode) + "\n" + \
+            transport.__str__(mode=self.mode) + "\n" + \
+            network.__str__(mode=self.mode) + "\n" + \
+            mac.__str__(mode=self.mode) + "\n" + \
+            interface.__str__(mode=self.mode)
         return result
 
 
@@ -193,8 +211,18 @@ def main(args):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     (options, args_) = arg_parser()
-    mode = constants.Modes.NOMINAL  # For debugging
-    current_system = SystemDescription(mode)
+    mode = constants.Modes.BOOT  # For debugging
+    current_system = SystemDescription(mode=mode)
+    if mode == constants.Modes.BOOT:
+        application_status: constants.ErrorLevels = application.get_status()
+        presentation_status: constants.ErrorLevels = presentation.get_status()
+        session_status: constants.ErrorLevels = session.get_status()
+        transport_status: constants.ErrorLevels = transport.get_status()
+        network_status: constants.ErrorLevels = network.get_status()
+        mac_status: constants.ErrorLevels = mac.get_status()
+        interface_status: constants.ErrorLevels = interface.get_status()
+
+
     """
     current_system_str = str(current_system)
     print(current_system_str)
