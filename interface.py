@@ -6,11 +6,10 @@ import subprocess
 import sys
 from layer import Layer
 from constants import ErrorLevels
+from utilities import OsCliInter
+from platform import system, win32_ver, linux_distribution, mac_ver
 
-# This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was symlink it so that both /bin/ip and
-# /usr/sbin/ip work.  But I can do that because I am a sysadmin.
-# Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
-IP_COMMAND = "/usr/sbin/ip"
+
 
 
 # There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
@@ -20,16 +19,61 @@ def none_if_None(s):
 
 class Interface(Layer):
 
-    def __init__(self):
+
+    my_os = system()
+    if my_os == 'Linux':
+        # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
+        # symlink it so that both /bin/ip and
+        # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
+        # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
+        IP_COMMAND = "/bin/ip"
+        discover_command = [IP_COMMAND, "--oneline", "link", "list"]
+        get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show" ]
+    elif my_os == 'Windows':
+        raise NotImplemented(f"System is {my_os} and I haven't written it yet")
+    elif my_os == 'Mac OS':
+        raise NotImplemented(f"System is {my_os} and I haven't written it yet")
+    else:
+        raise ValueError(f"System is {my_os} and I don't recognize it")
+
+    def __init__(self, name=None):
         self.layer = Layer()
+        self.name=name
 
     def get_status(self) -> ErrorLevels :
         return self.layer.get_status()
 
+    @classmethod
     def discover(self):
-        pass
+        """
+        Discover all of the interfaces on this machine
 
-    pass
+        :return:    a dictionary of interfaces, key'd by name.  The value is an Interface object
+        """
+
+
+        completed_str = OsCliInter.run_command (self.discover_command )
+        links_list = completed_str.split('\n')
+        link_db = dict()
+        for link in links_list:
+            if len(
+                    link) == 0:  # there may be an empty trailing line in the output
+                break
+            fields = link.split()
+            intf_description = collections.OrderedDict()
+            # fields[0] is the line number, skip that.  fields[1] is the device name
+            intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+            # fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
+            intf_description['flags'] = fields[2]
+            # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
+            for idx in range(3, len(fields) - 1, 2):
+                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
+                # Discipline" and it's vital.
+                intf_description[fields[idx]] = fields[idx + 1]
+            link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
+
+        return link_db
+
 
 # Rename this class to Interface
 class PhysicalInterface(object):
@@ -50,7 +94,7 @@ class PhysicalInterface(object):
         """
 
         completed = subprocess.run(
-            [IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
+            [self.IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
             input=None,
             stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
             check=False)
@@ -148,8 +192,8 @@ jeffs@jeffs-desktop:/home/jeffs  $
         """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
         command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
         show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
-
-        completed = subprocess.run([IP_COMMAND, "--oneline", "address", "list"],
+        IP_COMMAND="/usr/bin/ip"
+        completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
                                    stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None,
                                    shell=False, timeout=None, check=False)

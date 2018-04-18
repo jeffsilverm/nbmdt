@@ -5,14 +5,34 @@
 
 from enum import Enum
 import json
+import subprocess
+from typing import List
+import platform
+"""
+>>> platform.system()
+'Linux'
+>>> 
+>>> platform.linux_distribution()
+('Ubuntu', '18.04', 'bionic')
+>>> platform.dist()
+('Ubuntu', '18.04', 'bionic')
+>>> 
 
-class Source(Enum):
-    FILE = 1                # populate the object from a file.  This is "nominal"
-    RUNNING = 2             # populate the object by querying the system.  This is "current"
+>>> platform.mac_ver()
+('', ('', '', ''), '')
+>>> 
+>>> platform.win32_ver()
+('', '', '', '')
+>>> 
+>>> platform.mac_ver()
+('', ('', '', ''), '')
+>>> 
 
-class Comparison(Enum):
-    NOMINAL = 1001
-    OTHER = 1002
+
+"""
+
+
+
 
 
 
@@ -43,6 +63,28 @@ class SystemConfigurationFile(object):
         """
         pass
 
+
+class OsCliInter(object):
+    """
+    A collection of methods for running CLI commands.
+    """
+
+    @classmethod
+    def run_command(self, command : List[str] ) -> str:
+        """
+        Run the command on the CLI
+
+        :param command:
+        :return:
+        """
+
+        completed = subprocess.run( command,
+            stdin=None,
+            input=None,
+            stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
+            check=False)
+        completed_str = completed.stdout.decode('ascii')
+        return completed_str
 
 
 
