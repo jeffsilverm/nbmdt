@@ -3,83 +3,95 @@
 
 import collections
 import subprocess
-import sys
 from layer import Layer
 from constants import ErrorLevels
 from utilities import OsCliInter
-from platform import system, win32_ver, linux_distribution, mac_ver
+from platform import system
+from typing import Union
+import datetime
+import os
 
 
+# There is an ip command cheat sheet at
+# https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
 
-
-# There is an ip command cheat sheet at https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
-
-def none_if_None(s):
+def none_if_none(s):
     return s if s is not None else "None"
 
+
 class Interface(Layer):
-
-
     my_os = system()
     if my_os == 'Linux':
         # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
         # symlink it so that both /bin/ip and
         # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
         # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
-        IP_COMMAND = "/bin/ip"
-        discover_command = [IP_COMMAND, "--oneline", "link", "list"]
-        get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show" ]
+        if os.path.isfile("/bin/ip"):
+            IP_COMMAND = "/bin/ip"
+        elif os.path.isfile("/usr/bin/ip"):
+            IP_COMMAND = "/usr/bin/ip"
+        else:
+            raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
+        discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
+        get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show"]
     elif my_os == 'Windows':
-        raise NotImplemented(f"System is {my_os} and I haven't written it yet")
+        raise NotImplementedError(f"System is {my_os} and I haven't written it yet")
     elif my_os == 'Mac OS':
-        raise NotImplemented(f"System is {my_os} and I haven't written it yet")
+        raise NotImplementedError(f"System is {my_os} and I haven't written it yet")
     else:
         raise ValueError(f"System is {my_os} and I don't recognize it")
 
-    def __init__(self, name=None):
-        self.layer = Layer()
-        self.name=name
+    def __init__(self, name: str, lnk_str: str =None) -> None:
+        self.layer = Layer(),
+        # Did the caller specify a string with the description of the interface?  That might be if the caller called
+        # the ip link list command instead of the ip link show DEV command
+        if lnk_str is None:
+            command: list = self.get_details_command.append(name)
+            lnk_str: str = OsCliInter.run_command(command)
+        fields = lnk_str.split()
+        # fields[0] is the line number, skip that.  fields[1] is the device name
+        self.name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+        flags = fields[2]
+        self.state_up = "UP" in flags
+        self.broadcast = "BROADCAST" in flags
+        self.lower_up = "LOWER_UP" in flags
+        for idx in range(3, len(fields) - 1, 2):
+            # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
+            # Discipline" and it's vital.
+            self.__setattr__(fields[idx], fields[idx + 1])
+        self.time = datetime.datetime.now()
 
-    def get_status(self) -> ErrorLevels :
+    def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
     @classmethod
-    def discover(self):
+    def discover(cls):
         """
         Discover all of the interfaces on this machine
 
         :return:    a dictionary of interfaces, key'd by name.  The value is an Interface object
         """
 
-
-        completed_str = OsCliInter.run_command (self.discover_command )
+        completed_str = OsCliInter.run_command(cls.discover_command)
         links_list = completed_str.split('\n')
-        link_db = dict()
-        for link in links_list:
-            if len(
-                    link) == 0:  # there may be an empty trailing line in the output
+        link_dict = dict()
+        for lnk in links_list:
+            if len(lnk) == 0:  # there may be an empty trailing line in the output
                 break
-            fields = link.split()
-            intf_description = collections.OrderedDict()
+            fields = completed_str.split()
             # fields[0] is the line number, skip that.  fields[1] is the device name
             intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-            # fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
-            intf_description['flags'] = fields[2]
-            # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
-            for idx in range(3, len(fields) - 1, 2):
-                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-                # Discipline" and it's vital.
-                intf_description[fields[idx]] = fields[idx + 1]
-            link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
+        link_dict[intf_name] = Interface(intf_name, lnk)
 
-        return link_db
+        return link_dict
 
 
 # Rename this class to Interface
 class PhysicalInterface(object):
-    def __init__(self, intf_name, intf_description):
+    def __init__(self, intf_name, intf_description: Union[str, list]):
         self.intf_name = intf_name
-        self.intf_description = intf_description.copy()
+        if isinstance(intf_description, list):
+            self.intf_description = intf_description.copy()
 
     def __str__(self):
         s = "name: " + self.intf_name
@@ -116,14 +128,14 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
                 break
             fields = link.split()
             intf_description = collections.OrderedDict()
-# fields[0] is the line number, skip that.  fields[1] is the device name
+            # fields[0] is the line number, skip that.  fields[1] is the device name
             intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-# fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
+            # fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
             intf_description['flags'] = fields[2]
             # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
             for idx in range(3, len(fields) - 1, 2):
-# Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-# Discipline" and it's vital.
+                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
+                # Discipline" and it's vital.
                 intf_description[fields[idx]] = fields[idx + 1]
             link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
 
@@ -138,11 +150,11 @@ class LogicalInterface(object):
 
     """
 
-    logical_link_db : dict = dict()
+    logical_link_db: dict = dict()
 
     # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
     # dictionary.
-    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
+    def __init__(self, addr_name, addr_family, addr_addr, addr_descr):
         """This creates a logical interface object.
         :param  addr_name   The name of this logical interface
         :param  addr_family "inet" or "inet6"
@@ -171,11 +183,11 @@ jeffs@jeffs-desktop:/home/jeffs  $
         # article on IPv6 doesn't mention host scope.  ULAs are global.
         self.scope = addr_descr["scope"]
         for key in addr_descr.keys():
-            setattr(self, key, addr_descr[key] )
+            setattr(self, key, addr_descr[key])
         if not hasattr(self, 'broadcast'):
             self.broadcast = None
 
-    def __str__(self):
+    """def __str__(self):
         s = "name: " + self.addr_name + '\t'
         s += "family:" + self.addr_family + '\t'
         s += "address: " + self.addr_addr + '\t'
@@ -183,16 +195,14 @@ jeffs@jeffs-desktop:/home/jeffs  $
             s += ("scope: " + none_if_None(self.scope) + "\t")
         else:
             s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
-        return s
-
-
+        return s"""
 
     @classmethod
     def get_all_logical_interfaces(self):
         """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
         command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
         show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
-        IP_COMMAND="/usr/bin/ip"
+        IP_COMMAND = "/usr/bin/ip"
         completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
                                    stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None,
@@ -224,10 +234,10 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $
             # addr_desc is a further description of an an address
             addr_desc = collections.OrderedDict()
             fields = addr.split()
-            addr_name = fields[1]       # Field 0 is a number, skip it
+            addr_name = fields[1]  # Field 0 is a number, skip it
             addr_family = fields[2]  # Either inet or inet6
             assert addr_family == "inet" or addr_family == "inet6"
-            addr_addr = fields[3]       # Either IPv4 or IPv6 address
+            addr_addr = fields[3]  # Either IPv4 or IPv6 address
             # All of the rest of strings in the ip addr list command are in the
             # of key value pairs, delimited by spaces
             for idx in range(4, len(fields) - 1, 2):
@@ -263,10 +273,10 @@ if __name__ == "__main__":
 
     print("links ", '*' * 40)
     for link in link_db.keys():
-        link_int_descr=link_db[link].intf_description
+        link_int_descr = link_db[link].intf_description
         mac_addr = link_int_descr['link/ether'] if 'link/ether' in \
                                                    link_int_descr else "00:00:00:00:00:00"
-        print(link, mac_addr, link_int_descr['state'] )
+        print(link, mac_addr, link_int_descr['state'])
 
     print("Addresses ", '*' * 40)
     for addr_name in addr_db:
