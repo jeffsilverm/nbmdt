@@ -45,6 +45,9 @@ class Interface(Layer):
         self.layer = Layer(),
         # Did the caller specify a string with the description of the interface?  That might be if the caller called
         # the ip link list command instead of the ip link show DEV command
+        # For a complete list of flags and parameters, see
+        # http://man7.org/linux/man-pages/man7/netdevice.7.html
+
         if lnk_str is None:
             command: list = self.get_details_command.append(name)
             lnk_str: str = OsCliInter.run_command(command)
@@ -55,6 +58,9 @@ class Interface(Layer):
         self.state_up = "UP" in flags
         self.broadcast = "BROADCAST" in flags
         self.lower_up = "LOWER_UP" in flags
+        self.carrier = "NO-CARRIER" not in flags
+        self.multicase = "MULTICAST" in flags
+
         for idx in range(3, len(fields) - 1, 2):
             # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
             # Discipline" and it's vital.

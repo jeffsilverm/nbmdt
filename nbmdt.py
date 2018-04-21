@@ -264,11 +264,14 @@ def arg_parser() -> Tuple:
     parser.add_option('--diagnose', help=
     "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
         constants.port, action="count", dest="diagnose")
+    parser.add_option('--nominal', help="Use when the system is working properly to capture the current state."
+                                         "This state will serve as a reference for future testing", action="count", dest="nominal")
     parser.add_option('-p', '--port', type='int', default=constants.port,
                       help='Port where server listens when in monitor mode, default %s' % constants.port)
     (options, args) = parser.parse_args()
 
-    if options.boot + options.monitor + options.diagnose == 1:
+    # Select one and only one of these options
+    if ( options.boot is None) + ( options.monitor is None)  + ( options.diagnose is None) + ( options.nominal is None ) == 1:
         return options, args
     raise ValueError("Must have exactly one of --boot, --monitor, --diagnose")
 

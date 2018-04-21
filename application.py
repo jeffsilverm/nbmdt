@@ -5,6 +5,7 @@
 
 from termcolor import cprint as cprint
 import sys
+# dnspython DNS toolkit
 import dns
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
