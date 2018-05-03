@@ -5,6 +5,7 @@
 from platform import system
 # from unittest import mock
 from unittest.mock import patch
+import datetime
 
 import interface
 
@@ -36,10 +37,15 @@ def test_init_eno1(mock_run_command):
 
     # Assert that the test passed
     assert eno1_obj.name == interface_name
+    assert hasattr(eno1_obj, "mtu")
     assert eno1_obj.mtu == '1500'
     assert eno1_obj.state_up
     assert eno1_obj.broadcast
     assert eno1_obj.lower_up
+    delta_time = abs ( eno1_obj.layer.time - datetime.datetime.now() )
+    limit = 10000
+    assert  abs(delta_time) < datetime.timedelta(0,0,limit), \
+        f"it took longer than f{limit} microseconds to read interface eno1. {delta_time}"
 
 
 @patch("utilities.OsCliInter.run_command")
@@ -86,11 +92,12 @@ def test_init_enp3s0(mock_run_command):
     enp3s0_obj = interface.Interface(interface_name)
     # Assert that the test passed
     assert enp3s0_obj.name == interface_name
-    assert not hasattr(enp3s0_obj, 'carrier')
-    assert enp3s0_obj.lower_up
-    assert enp3s0_obj.carrier  # This failed
-    assert enp3s0_obj.state == "DOWN"
-    assert enp3s0_obj.brd == "ff:ff:ff:ff:ff:ff"
+    assert hasattr(enp3s0_obj, 'carrier')
+    assert not enp3s0_obj.carrier, f"enp3s0 No carrier"  # This failed
+    assert hasattr(enp3s0_obj, 'lower_up'), "enp3s0 No attribute lower_up"
+    assert not enp3s0_obj.lower_up, "enp3s0 lower_up is True and should be False"
+    assert enp3s0_obj.state == "DOWN", f"enp3s0 should be DOWN but is {enp3s0_obj.state} instead"
+    assert enp3s0_obj.brd == "ff:ff:ff:ff:ff:ff", f"enp3s0_obj.brd should be ff:ff:ff:ff:ff:ff but is {enp3s0_obj.brd}"
 
 
 @patch("utilities.OsCliInter.run_command")
