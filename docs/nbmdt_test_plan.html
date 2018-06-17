@@ -1,0 +1,306 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+<link rel="stylesheet" type="text/css" href="homepage.css">
+
+<title>Network Boot Monitor Diagnostic Test program test plan</title>
+
+ 
+<link rel="stylesheet" type="text/css" href="homepage.css">
+
+</head><body style=" color: rgb(0, 0, 0); background-color: rgb(204, 204, 204);" vlink="#FF0000" alink="#000088" link="#0000FF">
+<h1><a name="mozTocId288716" class="mozTocH1"></a>The NBMDT program test plan</h1>
+
+<p>This document describes how to test the NBMDT program.&nbsp; It was written in parallel with the <a href="nbmdt_requirements.html">NBMDT Requirements document</a>.&nbsp; Since this document is a test plan and not a test requirements document, it is free to suggest implementations.<br>
+</p>
+
+<p>In general, the test plan is to simulate a failure condition using a mock and verify that the NBMDT detects the problem.</p>
+<p>In all cases, the term "report" SHALL mean that the NBMDT will 
+identify the severity of the problem, the component that is failing, and
+ why the NBMDT thinks the component is a problem.&nbsp; If there is a 
+known dependency, then the NBMDT will identify that as well.</p>
+
+<h2><a name="mozTocId129727" class="mozTocH3"></a>Physical</h2>
+<p><br>
+</p>
+
+
+<h3><a name="mozTocId338377" class="mozTocH4"></a>Ethernet</h3>
+<h4>Linux<br>
+</h4>
+<p>There is a response in <a href="https://stackoverflow.com/questions/36715664/using-ip-what-does-lower-up-mean" style="">stackoverflow</a> that says:<br>
+</p>
+
+
+
+
+<p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: inherit; font-variant-east-asian: inherit; font-weight: 400; font-stretch: inherit; line-height: inherit; font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-size: 15px; vertical-align: baseline; box-sizing: inherit; clear: both; color: rgb(36, 39, 41); letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>is a physical layer link flag (the layer below the network layer, where<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">IP</code><span>&nbsp;</span>is generally located).<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>indicates that an Ethernet cable was plugged in and that the device is connected to the network.</p>
+
+
+<p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: inherit; font-variant-east-asian: inherit; font-weight: 400; font-stretch: inherit; line-height: inherit; font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-size: 15px; vertical-align: baseline; box-sizing: inherit; clear: both; color: rgb(36, 39, 41); letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>differs from<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">UP</code>, which additionally requires the network interface to be enabled.</p>
+
+
+<p>The string UP must be present, otherwise the interface is administratively down<br>
+</p>
+
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip --statistics link show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000<br>    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff<br>    RX: bytes  packets  errors  dropped overrun mcast   <br>    684108602  552228   0       0       0       939     <br>    TX: bytes  packets  errors  dropped carrier collsns <br>    38949950   317672   366     0       0       89186   <br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br><br></pre>
+
+
+<p>Note that the ip command confuses ethernet link with IP address</p>
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip --statistics addr show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000<br>    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff<br>    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1<br>       valid_lft 65020sec preferred_lft 65020sec<br>    inet6 2602:61:7120:ef00:626c:4b12:cb68:ff3f/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute <br>       valid_lft forever preferred_lft forever<br>    RX: bytes  packets  errors  dropped overrun mcast   <br>    684126132  552399   0       0       0       942     <br>    TX: bytes  packets  errors  dropped carrier collsns <br>    38973430   317840   366     0       0       89186   <br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br><br></pre>
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip -6 --statistics addr show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 state UP qlen 1000<br>    inet6 2602:61:7120:ef00:626c:4b12:cb68:ff3f/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute <br>       valid_lft forever preferred_lft forever<br><br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br></pre>
+
+
+<p>Look at how the LOWER_UP and&nbsp; flags change as the interface is administratively up'd and down'd.</p>
+
+
+<pre><font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ sudo ip link set dev enp3s0 down
+[sudo] password for jeffs: 
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;BROADCAST,MULTICAST&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ sudo ip link set dev enp3s0 up
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ 
+</pre>
+
+
+If the NO-CARRIER string is present, then the NBMDT must report that the cable is not plugged in.
+<p>There is a response in <a href="https://stackoverflow.com/questions/36715664/using-ip-what-does-lower-up-mean" style="">stackoverflow</a> that says:<br>
+</p>
+
+
+
+
+<p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: inherit; font-variant-east-asian: inherit; font-weight: 400; font-stretch: inherit; line-height: inherit; font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-size: 15px; vertical-align: baseline; box-sizing: inherit; clear: both; color: rgb(36, 39, 41); letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>is a physical layer link flag (the layer below the network layer, where<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">IP</code><span>&nbsp;</span>is generally located).<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>indicates that an Ethernet cable was plugged in and that the device is connected to the network.</p>
+
+
+<p style="margin: 0px 0px 1em; padding: 0px; border: 0px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-variant-numeric: inherit; font-variant-east-asian: inherit; font-weight: 400; font-stretch: inherit; line-height: inherit; font-family: Arial, &quot;Helvetica Neue&quot;, Helvetica, sans-serif; font-size: 15px; vertical-align: baseline; box-sizing: inherit; clear: both; color: rgb(36, 39, 41); letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255); text-decoration-style: initial; text-decoration-color: initial;"><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">LOWER_UP</code><span>&nbsp;</span>differs from<span>&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; font-size: 13px; vertical-align: baseline; box-sizing: inherit; background-color: rgb(239, 240, 241); white-space: pre-wrap;">UP</code>, which additionally requires the network interface to be enabled.</p>
+
+
+<p>The string UP must be present, otherwise the interface is administratively down<br>
+</p>
+
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip --statistics link show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000<br>    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff<br>    RX: bytes  packets  errors  dropped overrun mcast   <br>    684108602  552228   0       0       0       939     <br>    TX: bytes  packets  errors  dropped carrier collsns <br>    38949950   317672   366     0       0       89186   <br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br><br></pre>
+
+
+<p>Note that the ip command confuses ethernet link with IP address</p>
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip --statistics addr show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000<br>    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff<br>    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1<br>       valid_lft 65020sec preferred_lft 65020sec<br>    inet6 2602:61:7120:ef00:626c:4b12:cb68:ff3f/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute <br>       valid_lft forever preferred_lft forever<br>    RX: bytes  packets  errors  dropped overrun mcast   <br>    684126132  552399   0       0       0       942     <br>    TX: bytes  packets  errors  dropped carrier collsns <br>    38973430   317840   366     0       0       89186   <br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br><br></pre>
+
+
+<pre>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ ip -6 --statistics addr show eno1<br>3: eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 state UP qlen 1000<br>    inet6 2602:61:7120:ef00:626c:4b12:cb68:ff3f/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute <br>       valid_lft forever preferred_lft forever<br>    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute <br>       valid_lft forever preferred_lft forever<br><br>jeffs@jeffs-desktop:/home/jeffs/logbooks  (master) *  $ <br></pre>
+
+
+<p>Look at how the LOWER_UP and&nbsp; flags change as the interface is administratively up'd and down'd.</p>
+
+
+<pre><font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ sudo ip link set dev enp3s0 down
+[sudo] password for jeffs: 
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;BROADCAST,MULTICAST&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ sudo ip link set dev enp3s0 up
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ ip link show dev enp3s0
+2: enp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+<font color="#4E9A06">jeffs@jeffs-desktop:/home/jeffs/python/nbmdt </font> <font color="#06989A">(development)</font> <font color="#CC0000">* </font> $ 
+</pre>
+
+
+If the NO-CARRIER string is present, then the NBMDT must report that the cable is not plugged in.
+
+<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
+
+  <tbody>
+    <tr>
+      <th>Stimulus or setup</th>
+      <th>Response</th>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that has the NO-CARRIER string<br>
+      </td>
+      <td style="vertical-align: top;">report <a href="nbmdt_requirements.html#FAILURE">FAILURE</a><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that does not have the UP string 
+      </td>
+      <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#FAILURE">FAILURE</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"> Present a response to the ip --statistics link show device command which has a non-zero errors counter<br>
+
+      </td>
+      <td style="vertical-align: top;">report <a href="nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a>
+      </td>
+    </tr>
+    <tr>
+  <td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero dropped counter<br>
+  </td>
+  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
+</tr>
+<tr>
+  <td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero overrun counter</td>
+  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
+</tr>
+<tr>
+      <td style="vertical-align: top;">Present a response to the ip 
+--statistics link show device command that has a certain number of RX 
+bytes and packets.&nbsp; Then (after simulating a delay) present another
+ response which has the same number of RX bytes and packets
+      </td>
+      <td style="vertical-align: top;">report<br>
+<a href="nbmdt_requirements.html#DEPENDENC_FAILURE">DEPENDENCY FAILURE</a>
+ (because this test depends on the network.&nbsp; If everything else is 
+working and we're not getting any packets, then something is wrong with 
+the network.&nbsp; For a diagnostic test, ping the router or try arping something)<br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><span style="text-decoration: underline;">insert other tests here</span>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br>
+</p>
+
+<h4><a name="mozTocId130232" class="mozTocH4"></a>WiFi</h4>
+
+<p>See <a href="https://help.ubuntu.com/stable/ubuntu-help/net-wireless-troubleshooting.html.en">Ubuntu  Wireless network troubleshooter</a><br>
+</p>
+
+<h3><a name="mozTocId704626" class="mozTocH3"></a>Network or IP</h3>
+
+<p>If I can think of some tests that are common to both IPv4 and IPv6, then they would go here.<br>
+</p>
+
+<p><br>
+</p>
+
+<h4><a name="mozTocId173450" class="mozTocH4"></a>IPv4</h4>
+
+<h5><a name="mozTocId373501" class="mozTocH5"></a>IPv4 Routing table</h5>
+
+<p>Verify that the IPv4 routing table exists and is sane<br>
+</p>
+
+<h5><a name="mozTocId288178" class="mozTocH5"></a>Default Router IPv4 pingable<br>
+</h5>
+
+<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
+
+  <tbody>
+    <tr>
+      <th>Stimulus or setup<br>
+      </th>
+      <th>Response<br>
+      </th>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">Get the default IPv4 route from the routing table</td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">ping the default router.</td>
+      <td style="vertical-align: top;">If the packet loss rate is 0%, then NBMDT MUST report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#N%20ORMAL">NORMAL</a>.<br>
+&nbsp; Else if the packet loss rate is greater than 0% but less than 100%, then NBMDT MUST report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_REDUNDANT">DEGRADED_REDUNDANT</a>. <br>
+&nbsp;&nbsp; Else if the NBMDT has already detected a problem at the physical level,
+ then the NBMDT MUST report a <a href="The_Network_Boot_Monitor_Diagnostic_Tool.html">DEPENDENCY_FAILURE</a><br>
+&nbsp; Else the NBMDT MUST report&nbsp;a <a href="nbmdt_requirements.html#FAILURE">FAILURE</a>.<br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br>
+</p>
+
+<p><br>
+</p>
+
+<h5><a name="mozTocId292116" class="mozTocH5"></a>Next router pingable</h5>
+
+<p>Use tracepath to find the next router beyond the default router<br>
+</p>
+
+<p><br>
+</p>
+
+<h4><a name="mozTocId421343" class="mozTocH4"></a>IPv6</h4>
+
+<p>Verify that the IPv6 routing table exists and is sane</p>
+
+<h5><a name="mozTocId912478" class="mozTocH5"></a>Default Router IPv6 pingable</h5>
+
+<p><br>
+</p>
+
+
+<h5><a name="mozTocId612710" class="mozTocH5"></a>Next router pingable</h5>
+
+
+<p>Use tracepath6 to find the next router beyond the default router<br>
+</p>
+
+
+<p><br>
+</p>
+<h2>Mac OS X<br>
+</h2>
+<p><br>
+</p>
+<p><br>
+</p>
+<p><br>
+</p>
+
+<hr style="width: 100%; height: 2px;">
+<ol id="mozToc">
+<!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId288716">The NBMDT program test plan</a><ol><li><a href="#mozTocId117905">Linux</a><ol><li><a href="#mozTocId129727">Physical
+</a><ol><li><a href="#mozTocId338377">Ethernet</a></li><li><a href="#mozTocId130232">WiFi</a></li></ol></li><li><a href="#mozTocId704626">Network or IP</a><ol><li><a href="#mozTocId173450" style="">IPv4</a><ol><li><a href="#mozTocId373501">IPv4 Routing table</a></li><li><a href="#mozTocId288178">Default Router IPv4 pingable
+</a></li><li><a href="#mozTocId292116">Next router pingable</a></li></ol></li><li><a href="#mozTocId421343">IPv6</a><ol><li><a href="#mozTocId912478">Default Router IPv6 pingable</a></li><li><a href="#mozTocId612710">Next router pingable</a></li></ol></li></ol></li></ol></li></ol></li>
+</ol>
+<p><br>
+</p>
+
+
+
+
+</body></html>
