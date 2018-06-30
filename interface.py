@@ -42,7 +42,8 @@ class Interface(Layer):
         raise ValueError(f"System is {my_os} and I don't recognize it")
 
     def __init__(self, name: str, lnk_str: str =None) -> None:
-        self.layer = Layer(),
+        layer_t = Layer()
+        self.layer = layer_t
         # Did the caller specify a string with the description of the interface?  That might be if the caller called
         # the ip link list command instead of the ip link show DEV command
         # For a complete list of flags and parameters, see
@@ -65,7 +66,7 @@ class Interface(Layer):
             # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
             # Discipline" and it's vital.
             self.__setattr__(fields[idx], fields[idx + 1])
-        self.time = datetime.datetime.now()
+
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
