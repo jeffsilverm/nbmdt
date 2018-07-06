@@ -1,0 +1,73 @@
+/* -- add   
+
+<link rel=stylesheet type="text/css" href="homepage.css">
+
+to the header section of the HTML file to reference this */
+             BODY { background: white; color: black}
+             A:link { color: red }
+             A:visited { color: maroon }
+             A:active { color: fuchsia }
+             H1.myclass {border-width: thin; border: solid; text-align: center}
+             H1, .h1 { font-size: 36pt; font-weight: bold; background: #ffdcdc; margin-left: 18pt }
+             H2, .h2 { font-size: 30pt; font-weight: bold; background: #ffffcc; margin-left: 36pt }
+             H3, .h3 { font-size: 24pt; font-weight: bold; background: #ccffcc; margin-left: 54pt }
+             H4, .h4 { font-size: 20pt; font-weight: bold; background: #ccffff; margin-left: 72pt }
+             H5, .h5 { font-size: 16pt; font-weight: bold; background: #ccccff; margin-left: 72pt }
+             H6, .h6 { font-size: 14pt; font-weight: bold; background: #cccccc; margin-left: 90pt }
+             P { background: #fefefe }
+             .sat { background: #c0ffc0 }
+             .sun { background: #c0c0ff }
+	     .wkd { background: #e0e0e0 }
+             .hol { background: #ffffc0 }
+             .toc { background: #ffc0c0 }
+	code, kbd, var { white-space: pre; font-size: 10pt; }
+	.kbd { text-decoration: underline; font-family: monospace; }
+	ACRONYM, .acronym { text-decoration: underline; font-family: monospace; background: #eeeeff }
+	SAMP, .samp { font-family: monospace; background: LightYellow }
+	.var { font-style: italic; font-family: monospace; }
+	pre { background: #fefefe; }
+/*	kbd { white-space: pre; text-decoration: underline; font-size: 10pt; }	*/
+        .appointments { color: red; background: #f0f0f0 }
+	.financial { color: white; background: #00cc00 }
+        .important { background: #00ff00 }
+	.tbd { color: white; background: red }
+	.inferred { color: blue; background: yellow }
+	OL        { list-style-type: decimal }      /* 1 2 3 4 5 etc. */
+	OL OL     { list-style-type: upper-alpha }  /* A B C D E etc. */
+	OL OL OL  { list-style-type: decimal } 
+	OL OL OL OL { list-style-type: upper-roman }  /* i ii iii iv v etc. */
+	OL OL OL OL OL     { list-style-type: lower-alpha }  /* a b c d e etc. */
+        .hotthought {border-width: thin; border: solid; color: red }
+	.thought { color: red }
+	blockquote {
+	  border-left-color: blue;
+	  border-left-style: groove;
+	  padding: 20px; }
+
+
+pre, tt, code {
+  font-family: monaco, "dejavu sans mono", "luxi mono", monospace;  font-size: 10pt;
+  }
+
+/* http://www.htmlhelp.com/reference/css/properties.html */
+pre.programlisting {
+  border-top: 2px solid #666666;
+  border-right: 4px solid #666666;
+  border-bottom: 4px groove #666666;
+  border-left: 1px dashed #666666;
+  background-color: #fbfbff;
+  padding: 5px;
+  }
+
+.code {
+    /* credits : http://lea.verou.me/demos/css3-patterns.html Also http://stackoverflow.com/questions/25804783/coloring-rows-with-css?noredirect=1&lq=1 */
+    font-family: monospace; 
+    background-color: #ccc;     /* was 0ae */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.2) 50%, transparent 50%, transparent);
+        
+    background-size: 4em 4em; /* should be 2x line-height */
+    line-height: 2em;
+    padding-left: 4px;
+}
+
+

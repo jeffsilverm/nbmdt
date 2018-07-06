@@ -27,7 +27,107 @@ known dependency, then the NBMDT will identify that as well.</p>
 
 
 <h3><a name="mozTocId338377" class="mozTocH4"></a>Ethernet</h3>
-<h4>Linux<br>
+<p><br>
+
+</p>
+<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
+
+
+  <tbody>
+    <tr>
+      <th>Error syndrome<br>
+  </th>
+<th>Stimulus or setup</th>
+      <th>Response</th>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><a name="Cable_not_plugged_in_no_carrier"></a>Cable not plugged in (no carrier)<br>
+  </td>
+<td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that has the NO-CARRIER string<br>
+      </td>
+      <td style="vertical-align: top;">report <a href="file:///home/jeffs/python/nbmdt/docs/nbmdt_requirements.html#FAILURE">FAILURE</a><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><a name="Interface_is_administratively_downed"></a>Interface is administratively downed<br>
+  </td>
+<td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that does not have the UP string 
+      </td>
+      <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#FAILURE">FAILURE</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><a name="Excessive_errors"></a>Excessive errors<br>
+  </td>
+<td style="vertical-align: top;"> Present a response to the ip --statistics link show device command which has a non-zero errors counter<br>
+
+      </td>
+      <td style="vertical-align: top;">report <a href="file:///home/jeffs/python/nbmdt/docs/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a>
+      </td>
+    </tr>
+    <tr>
+  <td style="vertical-align: top;"><a name="Dropping_packets"></a>Dropping packets<br>
+  </td>
+<td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero dropped counter<br>
+  </td>
+  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
+</tr>
+<tr>
+  <td style="vertical-align: top;"><a name="Buffer_overrun"></a>Buffer overrun<br>
+  </td>
+<td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero overrun counter</td>
+  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
+</tr>
+<tr>
+      <td style="vertical-align: top;"><a name="Not_receiving_any_packets"></a>Not receiving any packets<br>
+  </td>
+<td style="vertical-align: top;">Present a response to the ip 
+--statistics link show device command that has a certain number of RX 
+bytes and packets.&nbsp; Then (after simulating a delay) present another
+ response which has the same number of RX bytes and packets
+      </td>
+      <td style="vertical-align: top;">report<br>
+<a href="file:///home/jeffs/python/nbmdt/docs/nbmdt_requirements.html#DEPENDENC_FAILURE">DEPENDENCY FAILURE</a>
+ (because this test depends on the network.&nbsp; If everything else is 
+working and we're not getting any packets, then something is wrong with 
+the network.&nbsp; For a diagnostic test, ping the router or try arping something)<br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+  </td>
+<td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+  </td>
+<td style="vertical-align: top;"><span style="text-decoration: underline;">insert other tests here</span>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+  </td>
+<td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+<p><br>
+</p>
+
+
+<h4><a name="mozTocId130232" class="mozTocH4"></a></h4>
+
+<h4><a name="mozTocId586224" class="mozTocH4"></a>Linux<br>
 </h4>
 <p>There is a response in <a href="https://stackoverflow.com/questions/36715664/using-ip-what-does-lower-up-mean" style="">stackoverflow</a> that says:<br>
 </p>
@@ -126,81 +226,7 @@ If the NO-CARRIER string is present, then the NBMDT must report that the cable i
 </pre>
 
 
-If the NO-CARRIER string is present, then the NBMDT must report that the cable is not plugged in.
-
-<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
-
-  <tbody>
-    <tr>
-      <th>Stimulus or setup</th>
-      <th>Response</th>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that has the NO-CARRIER string<br>
-      </td>
-      <td style="vertical-align: top;">report <a href="nbmdt_requirements.html#FAILURE">FAILURE</a><br>
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;">Present a response to the <acronym>ip link show dev <var>device</var></acronym> command that does not have the UP string 
-      </td>
-      <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#FAILURE">FAILURE</a>
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;"> Present a response to the ip --statistics link show device command which has a non-zero errors counter<br>
-
-      </td>
-      <td style="vertical-align: top;">report <a href="nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a>
-      </td>
-    </tr>
-    <tr>
-  <td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero dropped counter<br>
-  </td>
-  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
-</tr>
-<tr>
-  <td style="vertical-align: top;">Present a response to the ip --statistics link show device command which has a non-zero overrun counter</td>
-  <td style="vertical-align: top;">report <a href="file:///home/jeffs/nbmdt/nbmdt_requirements.html#DEGRADED_PERFORMANCE">DEGRADED_PERFORMANCE</a></td>
-</tr>
-<tr>
-      <td style="vertical-align: top;">Present a response to the ip 
---statistics link show device command that has a certain number of RX 
-bytes and packets.&nbsp; Then (after simulating a delay) present another
- response which has the same number of RX bytes and packets
-      </td>
-      <td style="vertical-align: top;">report<br>
-<a href="nbmdt_requirements.html#DEPENDENC_FAILURE">DEPENDENCY FAILURE</a>
- (because this test depends on the network.&nbsp; If everything else is 
-working and we're not getting any packets, then something is wrong with 
-the network.&nbsp; For a diagnostic test, ping the router or try arping something)<br>
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;"><br>
-      </td>
-      <td style="vertical-align: top;"><br>
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;"><span style="text-decoration: underline;">insert other tests here</span>
-      </td>
-      <td style="vertical-align: top;"><br>
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align: top;"><br>
-      </td>
-      <td style="vertical-align: top;"><br>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-<p><br>
-</p>
-
-<h4><a name="mozTocId130232" class="mozTocH4"></a>WiFi</h4>
+If the NO-CARRIER string is present, then the NBMDT must report that the cable is not plugged in.<a name="mozTocId130232" class="mozTocH4"></a>WiFi
 
 <p>See <a href="https://help.ubuntu.com/stable/ubuntu-help/net-wireless-troubleshooting.html.en">Ubuntu  Wireless network troubleshooter</a><br>
 </p>
@@ -217,8 +243,11 @@ the network.&nbsp; For a diagnostic test, ping the router or try arping somethin
 
 <h5><a name="mozTocId373501" class="mozTocH5"></a>IPv4 Routing table</h5>
 
-<p>Verify that the IPv4 routing table exists and is sane<br>
+<p>Verify that the IPv4 routing table exists and is sane.</p>
+<h5><a name="mozTocId764231" class="mozTocH5"></a>There is one and only IPv4 default router</h5>
+<p><br>
 </p>
+
 
 <h5><a name="mozTocId288178" class="mozTocH5"></a>Default Router IPv4 pingable<br>
 </h5>
@@ -265,7 +294,11 @@ the network.&nbsp; For a diagnostic test, ping the router or try arping somethin
 
 <h4><a name="mozTocId421343" class="mozTocH4"></a>IPv6</h4>
 
-<p>Verify that the IPv6 routing table exists and is sane</p>
+<p>Verify that the IPv6 routing table exists and is sane.</p>
+<h5><a name="mozTocId931909" class="mozTocH5"></a>There is exactly one default router</h5>
+<p><br>
+</p>
+
 
 <h5><a name="mozTocId912478" class="mozTocH5"></a>Default Router IPv6 pingable</h5>
 
@@ -282,21 +315,109 @@ the network.&nbsp; For a diagnostic test, ping the router or try arping somethin
 
 <p><br>
 </p>
-<h2>Mac OS X<br>
+<h2><a name="mozTocId328895" class="mozTocH2"></a>Mac OS X<br>
 </h2>
 <p><br>
 </p>
+<h1><a name="mozTocId184198" class="mozTocH1"></a>Test procedures</h1>
+<p>This section will be of interest to developers only.<br>
+</p>
+
+<h2><a name="mozTocId985794" class="mozTocH2"></a>Unit testing using pytest</h2>
+<p>Most unit testing is done is done with pytest.<br>
+</p>
+
+<h3><a name="mozTocId811582" class="mozTocH3"></a>Testing interfaces</h3>
+<p>To test the interface test code, use the command <br>
+</p>
+<pre>python3 -m pytest test/test_interface.py</pre>
+<p>There is a table of interfaces and their error syndromes.&nbsp; Refer to the <a href="nbmdt_test_plan.html#mozTocId338377">table of ethernet error syndromes</a>, above.<br>
+</p>
+<p> </p>
+<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
+  <tbody>
+    <tr>
+      <th>Interface<br>
+      </th>
+      <th>Error syndrome<br>
+      </th>
+      <th>How to detect<br>
+      </th>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno1<br>
+      </td>
+      <td style="vertical-align: top;">Works perfectly<br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno2<br>
+      </td>
+      <td style="vertical-align: top;">Cable not plugged in<br>
+      </td>
+      <td style="vertical-align: top;"><acronym>ip link show dev </acronym><acronym><var>device</var></acronym><acronym> </acronym>command that has the NO-CARRIER string</td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno3<br>
+      </td>
+      <td style="vertical-align: top;">Interface is administratively downed</td>
+      <td style="vertical-align: top;"><acronym>ip link show dev </acronym><acronym><var>device</var></acronym><acronym> </acronym>command that does not have the UP string 
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno4<br>
+      </td>
+      <td style="vertical-align: top;">Excessive errors</td>
+      <td style="vertical-align: top;"><acronym>ip --statistics link show <var>device</var> </acronym>command which has a non-zero errors counter</td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno5<br>
+      </td>
+      <td style="vertical-align: top;">Dropping packets</td>
+      <td style="vertical-align: top;"> ip --statistics link show device command which has a non-zero dropped counter</td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno6<br>
+      </td>
+      <td style="vertical-align: top;">Buffer overrun</td>
+      <td style="vertical-align: top;"> ip --statistics link show device command which has a non-zero overrun counter</td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">eno7<br>
+      </td>
+      <td style="vertical-align: top;">Not receiving any packets</td>
+      <td style="vertical-align: top;">ip 
+--statistics link show device command that has a certain number of RX 
+bytes and packets.&nbsp; Then (after simulating a delay) present another
+ response which has the same number of RX bytes and packets
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+  </tbody>
+</table>
 <p><br>
 </p>
 <p><br>
 </p>
 
+<p><br>
+</p>
+
 <hr style="width: 100%; height: 2px;">
-<ol id="mozToc">
-<!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId288716">The NBMDT program test plan</a><ol><li><a href="#mozTocId117905">Linux</a><ol><li><a href="#mozTocId129727">Physical
-</a><ol><li><a href="#mozTocId338377">Ethernet</a></li><li><a href="#mozTocId130232">WiFi</a></li></ol></li><li><a href="#mozTocId704626">Network or IP</a><ol><li><a href="#mozTocId173450" style="">IPv4</a><ol><li><a href="#mozTocId373501">IPv4 Routing table</a></li><li><a href="#mozTocId288178">Default Router IPv4 pingable
-</a></li><li><a href="#mozTocId292116">Next router pingable</a></li></ol></li><li><a href="#mozTocId421343">IPv6</a><ol><li><a href="#mozTocId912478">Default Router IPv6 pingable</a></li><li><a href="#mozTocId612710">Next router pingable</a></li></ol></li></ol></li></ol></li></ol></li>
-</ol>
+<ol id="mozToc"><!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId288716">The NBMDT program test plan</a><ol><li><a href="#mozTocId129727">Physical</a><ol><li><a href="#mozTocId338377">Ethernet</a><ol><li><a href="#mozTocId130232"></a><br>
+</li><li><a href="#mozTocId586224">Linux
+</a></li></ol></li><li><a href="#mozTocId704626">Network or IP</a><ol><li><a href="#mozTocId173450" style="">IPv4</a><ol><li><a href="#mozTocId373501">IPv4 Routing table</a></li><li><a href="#mozTocId764231">There is one and only IPv4 default router</a></li><li><a href="#mozTocId288178">Default Router IPv4 pingable
+</a></li><li><a href="#mozTocId292116">Next router pingable</a></li></ol></li><li><a href="#mozTocId421343">IPv6</a><ol><li><a href="#mozTocId931909">There is exactly one default router</a></li><li><a href="#mozTocId912478">Default Router IPv6 pingable</a></li><li><a href="#mozTocId612710">Next router pingable</a></li></ol></li></ol></li></ol></li><li><a href="#mozTocId328895">Mac OS X
+</a></li></ol></li><li><a href="#mozTocId184198">Test procedures</a><ol><li><a href="#mozTocId985794">Unit testing using pytest</a><ol><li><a href="#mozTocId811582">Testing interfaces</a></li></ol></li></ol></li></ol>
 <p><br>
 </p>
 
