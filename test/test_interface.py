@@ -11,7 +11,30 @@ from typing import List
 import interface
 
 
-# This is all wrong -  I am trying to mock a class constructor.
+def mock_run_command( command : List[str] ) -> None:
+    # Here are some sample commands from Interface.py:
+    """discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
+    get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show"]
+    get_stats_command = [IP_COMMAND, "--stats", "--oneline", "link", "show"]"""
+    # ip command could ip, /sbin/ip /usr/sbin/ip, /bin/ip, /usr/bin/ip   This assertion is really a test of the caller
+    assert "ip" in command[0], f"The string 'ip' is not in the first element of the command from caller {command[0]}"
+    # nbmdt_test_plan.html#mozTocId811582 describes some interfaces and what is wrong with them
+    if command[-1] == "eno1":
+        # eno1 works
+        mocker.return_value = "1: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode " \
+                              "DEFAULT group default qlen 1000" \
+                              "link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none " \
+                              "numtxqueues 1 numrxqueues 1 "
+    elif command[-1] == "":
+        # emp3s0 is unplugged
+        mocker.return_value = "2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
+                                    "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
+                                    "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
+                                    "gso_max_size 65536 gso_max_segs 65535"
+    else:
+        raise NotImplemented(f"can't test an interface named {command[-1]} yet")
+
+
 
 # These derive from ../docs/nbmdt_test_plan.html#mozTocId811582
 @pytest.mark.parametrize("interface,expected", [
@@ -34,28 +57,7 @@ import interface
 # test_interface is a mock of the run_command method, which is what the Interface constructor
 # (The __init__ method) calls to populate an Interface object
 # In a furture version, this might be used to mock other subprocess invocations as well
-def test_interface(mocker, command: List[str]) -> None:
-    # Here are some sample commands from Interface.py:
-    """discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
-    get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show"]
-    get_stats_command = [IP_COMMAND, "--stats", "--oneline", "link", "show"]"""
-    # ip command could ip, /sbin/ip /usr/sbin/ip, /bin/ip, /usr/bin/ip   This assertion is really a test of the caller
-    assert "ip" in command[0], f"The string 'ip' is not in the first element of the command from caller {command[0]}"
-    # nbmdt_test_plan.html#mozTocId811582 describes some interfaces and what is wrong with them
-    if command[-1] == "eno1":
-        # eno1 works
-        mocker.return_value = "1: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode " \
-                              "DEFAULT group default qlen 1000" \
-                              "link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none " \
-                              "numtxqueues 1 numrxqueues 1 "
-    elif command[-1] == "":
-        # emp3s0 is unplugged
-        mocker.return_value = "2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
-                                    "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
-                                    "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
-                                    "gso_max_size 65536 gso_max_segs 65535"
-    else:
-        raise NotImplemented(f"can't test an interface named {command[-1]} yet")
+def test_interface(mocker, side_effect=mock_run_command) -> None:
 
     if_obj = interface.Interface(interface_name)
 
