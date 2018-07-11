@@ -3,65 +3,84 @@
 
 
 import datetime
-from platform import system
-import pytest
-from unittest.mock import patch
+import enum
+import sys
 from pdb import set_trace
+from platform import system
 from typing import List
+from unittest.mock import patch
+
+import colorama  # http://pypi.python.org/pypi/colorama
+import pytest
+
 import interface
 
+colorama.init(autoreset=True)
 
-def mock_run_command( command : List[str] ) -> None:
+
+class Severities(enum.Enum):
+    FATAL = 1
+    SEVERE = 2
+    WARNING = 3
+    CORRECT = 4
+    INFORMATION = 5
+    ANOTATION = 6
+
+
+severity_color_table = {Severities.FATAL: colorama.Fore.RED,
+                        Severities.SEVERE: colorama.Fore.BLUE,
+                        Severities.WARNING: colorama.Fore.YELLOW,
+                        Severities.CORRECT: colorama.Fore.GREEN,
+                        Severities.INFORMATION: colorama.Fore.LIGHTCYAN_EX,
+                        Severities.ANOTATION: colorama.Fore.LIGHTMAGENTA_EX
+                        }
+
+
+# If I want to make logging more sophisticated, then I can do it from here, or I can stick in Utilities
+def log(message: str, severity: Severities) -> None:
+    print(severity_color_table[severity] + message, file=sys.stderr)
+
+
+def mock_run_command(command: List[str]) -> str:
     # Here are some sample commands from Interface.py:
     """discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
     get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show"]
     get_stats_command = [IP_COMMAND, "--stats", "--oneline", "link", "show"]"""
     # ip command could ip, /sbin/ip /usr/sbin/ip, /bin/ip, /usr/bin/ip   This assertion is really a test of the caller
+    log("in mock_run_command, command is " + str(command), severity=Severities.INFORMATION)
     assert "ip" in command[0], f"The string 'ip' is not in the first element of the command from caller {command[0]}"
     # nbmdt_test_plan.html#mozTocId811582 describes some interfaces and what is wrong with them
     if command[-1] == "eno1":
         # eno1 works
-        mocker.return_value = "1: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode " \
-                              "DEFAULT group default qlen 1000" \
-                              "link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none " \
-                              "numtxqueues 1 numrxqueues 1 "
-    elif command[-1] == "":
+        return "1: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode " \
+               "DEFAULT group default qlen 1000" \
+               "link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none " \
+               "numtxqueues 1 numrxqueues 1 "
+    elif command[-1] == "enp3s0":
         # emp3s0 is unplugged
-        mocker.return_value = "2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
-                                    "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
-                                    "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
-                                    "gso_max_size 65536 gso_max_segs 65535"
+        return "2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
+               "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
+               "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
+               "gso_max_size 65536 gso_max_segs 65535"
     else:
         raise NotImplemented(f"can't test an interface named {command[-1]} yet")
 
 
 
-# These derive from ../docs/nbmdt_test_plan.html#mozTocId811582
-@pytest.mark.parametrize("interface,expected", [
-    ("eno1",
-     "1: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen "
-     "1000" \
-     "link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 " \
-     "gso_max_size 65536 gso_max_segs 65535"),
-    ("eno2", "3: eno2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
-             "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
-             "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
-             "gso_max_size 65536 gso_max_segs 65535"),
-    # Test this:
-    ("eno3", "4: eno3: <BROADCAST,MULTICAST> mtu 1500 qdisc mq state DOWN mode " \
-             "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
-             "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
-             "gso_max_size 65536 gso_max_segs 65535")
-])
 @patch("utilities.OsCliInter.run_command")
 # test_interface is a mock of the run_command method, which is what the Interface constructor
 # (The __init__ method) calls to populate an Interface object
 # In a furture version, this might be used to mock other subprocess invocations as well
-def test_interface(mocker, side_effect=mock_run_command) -> None:
-
-    if_obj = interface.Interface(interface_name)
-
-
+def test_interface(mocker : object, side_effect : object = mock_run_command ) -> None:
+    # set_trace()
+    pass
+    # log("In test_interface, interface is " + interface, severity=Severities.ANOTATION )
+    log("In test_interface, side_effect is " + dir(side_effect), severity=Severities.INFORMATION)
+    log("In test_interface, before creating an Interface object.  mocker is \n" + \
+        dir(str.join(mocker)), severity=Severities.INFORMATION)
+    if_obj = interface.Interface("en01")
+    log("In test_interface, after creating an Interface object.  Object on interface named " + if_obj.name)
+    assert if_obj.name == "eno1"
 
 
 @patch("utilities.OsCliInter.run_command")
@@ -138,6 +157,7 @@ def test_init_enp3s0(mock_run_command):
     interface_name = "enp3s0"
     mock_run_command.return_value = "2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode " \
                                     "" \
+                                    "" \
                                     "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
                                     "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
                                     "gso_max_size 65536 gso_max_segs 65535"
@@ -150,11 +170,11 @@ def test_init_enp3s0(mock_run_command):
         assert not enp3s0_obj.carrier, f"enp3s0 No carrier"  # This failed
         assert hasattr(enp3s0_obj, 'lower_up'), "enp3s0 No attribute lower_up"
         assert not enp3s0_obj.lower_up, "enp3s0 lower_up is True and should be False"
-        assert not enp3s0_obj.state_up, f"enp3s0 state_up should be False but state_up is True instead"
-        assert enp3s0_obj.ether == "00:10:18:cc:9c:77", f"enp3s0.ether should be 00:10:18:cc:9c:77 but is {" \
-                                                        f"enp3s0_obj.ether}"
-        assert enp3s0_obj.brd == "ff:ff:ff:ff:ff:ff", f"enp3s0_obj.brd should be ff:ff:ff:ff:ff:ff but is {" \
-                                                      f"enp3s0_obj.brd}"
+        assert enp3s0_obj.state_up, f"enp3s0 state_up should be False but state_up is True instead"
+        assert enp3s0_obj.ether == "00:10:18:cc:9c:77", f"enp3s0.ether should be 00:10:18:cc:9c:77 but is " + \
+                                                        enp3s0_obj.ether
+        assert enp3s0_obj.brd == "ff:ff:ff:ff:ff:ff", f"enp3s0_obj.brd should be ff:ff:ff:ff:ff:ff but is " + \
+                                                      enp3s0_obj.brd
     except AssertionError as a:
         print("test failed.  mock_run_command.return_value is \n" +
               mock_run_command.return_value + "\n"
@@ -192,16 +212,20 @@ True
                                         "mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd " \
                                         "ff:ff:ff:ff:ff:ff\    " \
                                         "RX: bytes  packets  errors  dropped overrun mcast   \    250298130  213503   " \
+                                        "" \
                                         "0       0       0       616     \    " \
                                         "TX: bytes  packets  errors  dropped carrier collsns \    13175231   110321   " \
+                                        "" \
                                         "0       0       0       0"
         yield
         mock_run_command.return_value = "3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP" \
                                         "mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd " \
                                         "ff:ff:ff:ff:ff:ff\    " \
                                         "RX: bytes  packets  errors  dropped overrun mcast   \    250299999  229999   " \
+                                        "" \
                                         "0       0       0       616     \    " \
                                         "TX: bytes  packets  errors  dropped carrier collsns \    13178888   110888   " \
+                                        "" \
                                         "0       0       0       0"
     else:
         mock_run_command.return_value = "3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP" \
@@ -220,10 +244,11 @@ def test_init_en0(mock_run_command, mock_platform_system):
 
 
 if __name__ == "__main__":
-    test_interface("eno1")
-    test_interface("eno2")
+    log("Starting program @ " + str(datetime.datetime.now()), severity=Severities.ANOTATION)
+    test_interface(interface="eno1")
+    test_interface(interface="eno2")
     test_init_eno1()
-    test_init_wifi()
+    # test_init_wifi()
     test_init_eth0()
     test_init_en0()  # Macintosh
 
