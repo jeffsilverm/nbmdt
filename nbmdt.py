@@ -207,7 +207,7 @@ class SystemDescription(object):
         return result
 
 
-def main(args):
+def main(args, test=False):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     (options, args_) = arg_parser()
@@ -264,6 +264,7 @@ def arg_parser() -> Tuple:
     parser.add_option('--diagnose', help=
     "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
         constants.port, action="count", dest="diagnose")
+    parser.add_option('--test', help="Test a particular part of the network", action="count", dest="test")
     parser.add_option('--nominal', help="Use when the system is working properly to capture the current state."
                                          "This state will serve as a reference for future testing", action="count", dest="nominal")
     parser.add_option('-p', '--port', type='int', default=constants.port,
@@ -271,11 +272,11 @@ def arg_parser() -> Tuple:
     (options, args) = parser.parse_args()
 
     # Select one and only one of these options
-    if ( options.boot is None) + ( options.monitor is None)  + ( options.diagnose is None) + ( options.nominal is None ) == 1:
+    if ( options.boot is None) + ( options.monitor is None)  + ( options.diagnose is None) + \
+            (options.test is None) + ( options.nominal is None ) == 1:
         return options, args
     raise ValueError("Must have exactly one of --boot, --monitor, --diagnose")
 
 
 if __name__ == "__main__":
-    args = arg_parser()
-    main(args)
+    main()
