@@ -9,6 +9,7 @@
 from enum import Enum, unique
 import typing
 import datetime
+import utilities
 
 
 @unique                         # a decorator on a class!
@@ -52,8 +53,14 @@ class ErrorLevels(Enum):
 
 
 class Entity(object):
+    """
+    An "entity" is an object in the OSI stack or something network critical that is outside the
+       stack. It has a name, a log, a current status.
+    An entity can
 
-    def __init__ (self, name : str, layer : int) -> None:
+    """
+
+    def __init__ (self, name : str, layer : utilities.OSILevels) -> None:
         self._name = name
         self._layer =  layer         # layer in the OSI model
         self._log = []

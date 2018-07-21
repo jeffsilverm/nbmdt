@@ -15,6 +15,7 @@ from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
 
+
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
 # Text highlights: on_grey, on_red, on_green, on_yellow, on_blue, on_magenta, on_cyan, on_white
@@ -587,6 +588,137 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
 
         return cls.default_ipv6_gateway
 
+
+
+
+############################## Cut and pasted out of interfaces.py   2018-06-24  ****************
+
+# Move this class to network.py
+class LogicalInterface(object):
+    """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
+
+    """
+
+    logical_link_db: dict = dict()
+
+    # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
+    # dictionary.
+    def __init__(self, addr_name, addr_family, addr_addr, addr_descr):
+        """This creates a logical interface object.
+        :param  addr_name   The name of this logical interface
+        :param  addr_family "inet" or "inet6"
+        :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
+        :param  addr_descr  The rest of the description of this logical address.
+        """
+        """
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 
+77480sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
+preferred_lft forever
+3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
+forever
+6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-desktop:/home/jeffs  $ 
+"""
+        self.addr_name = addr_name
+        if addr_family != "inet" and addr_family != "inet6":
+            raise ValueError(
+                "misunderstood value of addr_family: {}".format(addr_family))
+        self.addr_family = addr_family
+        self.addr_addr = addr_addr
+        # For IPv4, scope is either host or global
+        # For IPv6, scope is either host, link, or global.  However, the wikipedia
+        # article on IPv6 doesn't mention host scope.  ULAs are global.
+        self.scope = addr_descr["scope"]
+        for key in addr_descr.keys():
+            setattr(self, key, addr_descr[key])
+        if not hasattr(self, 'broadcast'):
+            self.broadcast = None
+
+    """def __str__(self):
+        s = "name: " + self.addr_name + '\t'
+        s += "family:" + self.addr_family + '\t'
+        s += "address: " + self.addr_addr + '\t'
+        if self.addr_family == "inet6":
+            s += ("scope: " + none_if_None(self.scope) + "\t")
+        else:
+            s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
+        return s"""
+
+    @classmethod
+    def get_all_logical_interfaces(self):
+        """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
+        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
+        show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
+        IP_COMMAND = "/usr/bin/ip"
+        completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
+                                   stdin=None, input=None,
+                                   stdout=subprocess.PIPE, stderr=None,
+                                   shell=False, timeout=None, check=False)
+        completed_str = completed.stdout.decode('ascii')
+        """
+        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 
+63655sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
+preferred_lft forever
+3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
+forever
+6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
+
+        """
+        # addrs_list is really a list of logical interfaces
+        addrs_list = completed_str.split('\n')
+        addr_db = dict()
+        for addr in addrs_list:
+            # addrs_list usually but not always has an empty element at the end
+            if len(addr) == 0:
+                break
+            # https://docs.python.org/3/library/collections.html#collections.OrderedDict
+            # ad is an attribute dictionary.  The string returned by the ip command will look like:
+            # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec
+            #  preferred_lft 85452sec
+            # addr_desc is a further description of an an address
+            addr_desc = collections.OrderedDict()
+            fields = addr.split()
+            addr_name = fields[1]  # Field 0 is a number, skip it
+            addr_family = fields[2]  # Either inet or inet6
+            assert addr_family == "inet" or addr_family == "inet6"
+            addr_addr = fields[3]  # Either IPv4 or IPv6 address
+            # All of the rest of strings in the ip addr list command are in the
+            # of key value pairs, delimited by spaces
+            for idx in range(4, len(fields) - 1, 2):
+                # Because addr_desc is an ordered dictionary, the results will always be output in the same order
+                addr_desc[fields[idx]] = fields[idx + 1]
+            # A single logical interface can have several addresses and several families
+            # so the logical interface name is a key to a value which is a list
+            # of addresses.
+            if addr_name not in addr_db:
+                # addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None
+                """
+                    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
+                """
+                addr_db[addr_name] = [LogicalInterface(addr_name=addr_name,
+                                                       addr_family=addr_family,
+                                                       addr_addr=addr_addr,
+                                                       addr_descr=addr_desc)]
+            else:
+                addr_db[addr_name].append(LogicalInterface(addr_name=addr_name,
+                                                           addr_family=addr_family,
+                                                           addr_addr=addr_addr,
+                                                           addr_descr=addr_desc))
+        return addr_db
+
+    # *********************
 
 if __name__ in "__main__":
 
