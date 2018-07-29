@@ -213,7 +213,7 @@ def main(args, test=False):
     (options, args_) = arg_parser()
     mode = constants.Modes.BOOT  # For debugging
     current_system = SystemDescription(mode=mode)
-    if mode == constants.Modes.BOOT:
+    if mode == cqonstants.Modes.BOOT:
         application_status: constants.ErrorLevels = application.get_status()
         presentation_status: constants.ErrorLevels = presentation.get_status()
         session_status: constants.ErrorLevels = session.get_status()
