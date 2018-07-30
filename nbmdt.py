@@ -9,6 +9,7 @@
 import optparse
 import typing
 from typing import Tuple
+import sys
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
@@ -202,8 +203,11 @@ class SystemDescription(object):
                  interface.__str__(mode=self.mode)
         return result
 
+from typing import List
 
-def main(args, test=False):
+
+def main(args: List[str]):
+    sys.argv = args
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     (options, args_) = arg_parser()
@@ -278,4 +282,4 @@ def arg_parser() -> Tuple:
     # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
 if __name__ == "__main__":
-    main()
+    main(["--boot", "--debug"], )
