@@ -7,25 +7,24 @@
 
 # https://pypi.python.org/pypi/termcolor
 import optparse
-from typing import Dict, Tuple
 import typing
+from typing import Tuple
 
-import constants
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
+import constants
+import interface  # OSI layer 1: ethernet, WiFi
+import mac  # OSI layer 2: # Media Access Control: arp, ndp
+import network  # OSI layer 3: IPv4, IPv6 should be called network
 import presentation  # OSI layer 6:
 import session  # OSI layer 5:
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network  # OSI layer 3: IPv4, IPv6 should be called network
-import mac  # OSI layer 2: # Media Access Control: arp, ndp
-import interface  # OSI layer 1: ethernet, WiFi
-
 
 DEBUG = True
 type_application_dict = typing.Dict[str, application.Application]
 type_presentation_dict = typing.Dict[str, presentation.Presentation]
 type_session_dict = typing.Dict[str, session.Session]
 type_transport_dict = typing.Dict[str, transport.Transports]
-type_network_dict = typing.Dict[str, network.Network]
+type_network_dict: dict = typing.Dict[str, network.Network]
 type_mac_dict = typing.Dict[str, mac.Mac]
 type_interface_dict = typing.Dict[str, interface.Interface]
 
@@ -51,8 +50,7 @@ class SystemDescription(object):
      associated with them"""
 
     # Issue 13
-#    CURRENT = None
-
+    #    CURRENT = None
 
     def __init__(self, applications: type_application_dict = None,
                  presentations: type_presentation_dict = None,
@@ -67,7 +65,8 @@ class SystemDescription(object):
         """
         Populate a description of the system.  This discription can come from a file (MONITOR, DIAGNOSE), from the
         current state of the system (BOOT, TEST, NOMINAL).  The description can be displayed colorized and scrolling
-        (BOOT), displayed using VT100 (ANSI-X3.64) cursor addressing (MONITOR), or recorded to a configuration file (NOMINAL)
+        (BOOT), displayed using VT100 (ANSI-X3.64) cursor addressing (MONITOR), or recorded to a configuration file (
+        NOMINAL)
 
         :param applications:
         :param presentations:
@@ -109,7 +108,6 @@ class SystemDescription(object):
         self.mac = macs
         self.interfaces = interfaces
         self.mode = mode
-
 
     """
         def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
@@ -192,18 +190,16 @@ class SystemDescription(object):
     def write_configuration(self, filename):
         return None
 
-
-
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
         This method is probably most useful in BOOT mode"""
         result = application.__str__(mode=self.mode) + "\n" + \
-            presentation.__str__(mode=self.mode) + "\n" + \
-            session.__str__(mode=self.mode) + "\n" + \
-            transport.__str__(mode=self.mode) + "\n" + \
-            network.__str__(mode=self.mode) + "\n" + \
-            mac.__str__(mode=self.mode) + "\n" + \
-            interface.__str__(mode=self.mode)
+                 presentation.__str__(mode=self.mode) + "\n" + \
+                 session.__str__(mode=self.mode) + "\n" + \
+                 transport.__str__(mode=self.mode) + "\n" + \
+                 network.__str__(mode=self.mode) + "\n" + \
+                 mac.__str__(mode=self.mode) + "\n" + \
+                 interface.__str__(mode=self.mode)
         return result
 
 
@@ -213,7 +209,7 @@ def main(args, test=False):
     (options, args_) = arg_parser()
     mode = constants.Modes.BOOT  # For debugging
     current_system = SystemDescription(mode=mode)
-    if mode == cqonstants.Modes.BOOT:
+    if mode == constants.Modes.BOOT:
         application_status: constants.ErrorLevels = application.get_status()
         presentation_status: constants.ErrorLevels = presentation.get_status()
         session_status: constants.ErrorLevels = session.get_status()
@@ -221,7 +217,6 @@ def main(args, test=False):
         network_status: constants.ErrorLevels = network.get_status()
         mac_status: constants.ErrorLevels = mac.get_status()
         interface_status: constants.ErrorLevels = interface.get_status()
-
 
     """
     current_system_str = str(current_system)
@@ -263,20 +258,24 @@ def arg_parser() -> Tuple:
                                         "monitor the state of the network on a host", action="count", dest="monitor")
     parser.add_option('--diagnose', help=
     "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
-        constants.port, action="count", dest="diagnose")
+    constants.port, action="count", dest="diagnose")
     parser.add_option('--test', help="Test a particular part of the network", action="count", dest="test")
     parser.add_option('--nominal', help="Use when the system is working properly to capture the current state."
-                                         "This state will serve as a reference for future testing", action="count", dest="nominal")
+                                        "This state will serve as a reference for future testing", action="count",
+                      dest="nominal")
     parser.add_option('-p', '--port', type='int', default=constants.port,
                       help='Port where server listens when in monitor mode, default %s' % constants.port)
     (options, args) = parser.parse_args()
 
     # Select one and only one of these options
-    if ( options.boot is None) + ( options.monitor is None)  + ( options.diagnose is None) + \
-            (options.test is None) + ( options.nominal is None ) == 1:
+    #Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
+    # There is a mechanism in there to make sure that one and only option is selected.
+    if (options.boot is None) + (options.monitor is None) + (options.diagnose is None) + \
+            (options.test is None) + (options.nominal is None) == 1:
         return options, args
-    raise ValueError("Must have exactly one of --boot, --monitor, --diagnose")
+    raise ValueError("Must have exactly one of --boot (or -b), --monitor (or -m), --diagnose (or -d), --nominal (or -N)")
 
+    # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
 if __name__ == "__main__":
     main()
