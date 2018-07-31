@@ -6,10 +6,10 @@
 
 
 # https://pypi.python.org/pypi/termcolor
-import optparse
+import argparse
+import sys
 import typing
 from typing import Tuple
-import sys
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
@@ -203,15 +203,20 @@ class SystemDescription(object):
                  interface.__str__(mode=self.mode)
         return result
 
+
 from typing import List
 
 
-def main(args: List[str]):
-    sys.argv = args
+def main(args: List[str] = []):
+    """
+    Figure out what the program has to do and do it
+    :param args: a list of options,perhaps passed by a debugger.
+    :return:
+    """
+    sys.argv.extend(args)
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
-    (options, args_) = arg_parser()
-    mode = constants.Modes.BOOT  # For debugging
+    options, mode = arg_parser()
     current_system = SystemDescription(mode=mode)
     if mode == constants.Modes.BOOT:
         application_status: constants.ErrorLevels = application.get_status()
@@ -252,34 +257,52 @@ def main(args: List[str]):
     if mode == Modes.TEST :
         test ( nominal_system_description, current_system_description )
     """
+    if options.debug:
+        return options
 
 
 def arg_parser() -> Tuple:
-    parser = optparse.OptionParser()
-    parser.add_option('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
-                                     "subsystems, and then exits", action="count", dest="boot")
-    parser.add_option('--monitor', help="Use while system is running.  Presents a RESTful API that a client can use to "
-                                        "monitor the state of the network on a host", action="count", dest="monitor")
-    parser.add_option('--diagnose', help=
-    "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
-    constants.port, action="count", dest="diagnose")
-    parser.add_option('--test', help="Test a particular part of the network", action="count", dest="test")
-    parser.add_option('--nominal', help="Use when the system is working properly to capture the current state."
-                                        "This state will serve as a reference for future testing", action="count",
-                      dest="nominal")
-    parser.add_option('-p', '--port', type='int', default=constants.port,
-                      help='Port where server listens when in monitor mode, default %s' % constants.port)
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
+                                       "subsystems, and then exits", action="store_true", dest="boot")
+    parser.add_argument('--monitor',
+                        help="Use while system is running.  Presents a RESTful API that a client can use to "
+                             "monitor the state of the network on a host", action="store_true", dest="monitor")
+    parser.add_argument('--diagnose', help="Use when a problem is detected.", action="store_true", dest="diagnose")
+    parser.add_argument('--test', help="Test a particular part of the network", action="store_true", dest="test")
+    parser.add_argument('--nominal', help="Use when the system is working properly to capture the current state."
+                                          "This state will serve as a reference for future testing",
+                        action="store_true", dest="nominal")
+    parser.add_argument('-p', '--port', type=int, default=constants.port,
+                        help='Port where server listens when in monitor mode, default %s' % constants.port)
+    parser.add_argument("--debug", default=False, action="store_true")
+    options = parser.parse_args()
 
     # Select one and only one of these options
-    #Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
+    # Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
     # There is a mechanism in there to make sure that one and only option is selected.
-    if (options.boot is None) + (options.monitor is None) + (options.diagnose is None) + \
-            (options.test is None) + (options.nominal is None) == 1:
-        return options, args
-    raise ValueError("Must have exactly one of --boot (or -b), --monitor (or -m), --diagnose (or -d), --nominal (or -N)")
+    if (options.boot + options.monitor + options.diagnose + options.test + options.nominal) != 1:
+        raise ValueError(
+            "Must have exactly one of --boot (or -b), --monitor (or -m), --diagnose (or -d), --nominal (or -N)\n"
+            "sys.argv is " + str(sys.argv))
+    if options.boot:
+        mode = constants.Modes.BOOT
+    elif options.diagnose:
+        mode = constants.Modes.DIAGNOSE
+    elif options.monitor:
+        mode = constants.Modes.MONITOR
+    elif options.test:
+        mode = constants.Modes.TEST
+    elif options.nominal:
+        mode = constants.Modes.NOMINAL
+    else:
+        raise AssertionError("The arg_parser returned all mode options cleared.  options is " + str(options))
+    return (options, mode)
 
     # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
+
 if __name__ == "__main__":
+    # Pass a length 0 list for production
+    # Actually, here you'd never want to pass ANYTHING, because that's a job for pytest.
     main(["--boot", "--debug"], )
