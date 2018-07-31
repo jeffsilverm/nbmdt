@@ -109,6 +109,9 @@ def test_argparse():
     test_monitor_mode("-m")
     test_diagnose_mode("--diagnose")
     test_diagnose_mode("-d")
+    test_nominal_mode("--nominal")
+    test_nominal_mode("-N")
+
 #
     with pytest.raises(NotImplemented):
         test_nominal_mode("--nominal")
