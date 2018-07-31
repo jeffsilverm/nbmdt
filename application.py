@@ -22,6 +22,9 @@ class Application(object):
     def get_status(self)  -> ErrorLevels:
         return self.layer.get_status()
 
+    def __str__(self):
+        return "Application __str__ method"
+
 
 # DNS sits at the application layer in the OSI model, according to
 # https://en.wikipedia.org/wiki/List_of_network_protocols_(OSI_model)
