@@ -263,6 +263,7 @@ def main(args: List[str] = []):
 
 def arg_parser() -> Tuple:
     parser = argparse.ArgumentParser()
+    print("BUG: add single letter options!", file=sys.stderr)
     parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
                                        "subsystems, and then exits", action="store_true", dest="boot")
     parser.add_argument('--monitor',
