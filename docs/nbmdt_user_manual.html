@@ -29,7 +29,7 @@
 
 </style>
 </head><body>
-<h1>The Network Boot Monitor and Diagnostic Tool (nbmdt)</h1>
+<h1><a name="mozTocId540848" class="mozTocH1"></a>The Network Boot Monitor and Diagnostic Tool (nbmdt)</h1>
 
 
 <p>The Network Boot Monitor and Diagnostic Tool (nbmdt) is a program 
@@ -94,7 +94,7 @@ optionally daemonize itself.&nbsp; The daemon provides a RESTful API<br>
 </ul>
 
 
-<h2>nbmdt command line options</h2>
+<h2><a name="mozTocId853930" class="mozTocH2"></a>nbmdt command line options</h2>
 
 
 <p>Start the nbmdt as follows:<br>
@@ -113,17 +113,19 @@ brevity, it just reports on what is working and what is not, it makes no
  attempt to figure out why</dd>
 <dt>-m --monitor</dt>
 <dd>Uses VT-220 (ANSI-X3.64) style graphics and colors.&nbsp; The terminal does not scroll.</dd>
-<dt>-d --diagnose</dt>
-<dd>This is the default: test the entire network.&nbsp; This is also 
-relatively slow, because it takes time to see if counters are 
-incrementing, packet loss rates, <br>
-</dd>
-<dd>and other more subtle tests of the system.<br>
-  </dd>
-<dt><acronym>-t <i>LAYER=name</i> [,<i>LAYER=name..</i>] --test <i>LAYER</i></acronym>=<var>name</var>[,<i>LAYER..</i>]
+<dt>-d --diagnose</dt><dd>This is the default: test the entire network.&nbsp; This is also
+  relatively slow, because it takes time to see if counters are
+  incrementing, packet loss rates, and other more subtle tests of the system.</dd>
+</dl>
+<dl>
+  <dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>] --test<var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]</acronym>
   </dt>
-<dd>Test <i>LAYER</i>.&nbsp; You can test multiple layers by using a comma
-    separated list.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span>.</dd><dt>-D --daemon</dt><dd>Run in daemon mode.&nbsp; The program creates a copy of itself
+</dl>
+
+<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a comma
+  separated list of layers to test.  You may also list which components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span>.</dd>
+<dl>
+<dt>-D --daemon</dt><dd>Run in daemon mode.&nbsp; The program creates a copy of itself
       that runs as a daemon.&nbsp; The daemon presents a RESTful API
       interface.&nbsp; This allows unprivileged users to test the system</dd>
 <dt>-p --port</dt>
@@ -227,21 +229,22 @@ Such addresses are only allowed "locally", they are analogous to RFC
 
 
 
+
 <p>The optional <i>configuration_file&nbsp;</i> names the configuration file to use.&nbsp; If the -N --nominal <br>
 </p>
 
 
-<h2>nbmdt in use</h2>
+<h2><a name="mozTocId173090" class="mozTocH2"></a>nbmdt in use</h2>
 
 
-<h3>Meanings of the colors</h3>
+<h3><a name="mozTocId240448" class="mozTocH3"></a>Meanings of the colors</h3>
 
 
 <p><br>
 </p>
 
 
-<h3>At system startup time</h3>
+<h3><a name="mozTocId906669" class="mozTocH3"></a>At system startup time</h3>
 
 
 <p>Run the nbmdt in a startup script that runs after all of the 
@@ -320,4 +323,10 @@ run:<br>
 
 
 
+<hr style="width: 100%; height: 2px;"><br>
+<ol id="mozToc">
+<!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId540848">The Network Boot Monitor and Diagnostic Tool (nbmdt)</a><ol><li><a href="#mozTocId853930">nbmdt command line options</a></li><li><a href="#mozTocId173090">nbmdt in use</a><ol><li><a href="#mozTocId240448">Meanings of the colors</a></li><li><a href="#mozTocId906669">At system startup time</a></li></ol></li></ol></li>
+</ol>
+<br>
+<br>
 </body></html>
