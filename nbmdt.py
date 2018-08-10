@@ -79,14 +79,11 @@ class SystemDescription(object):
         :param mode:
         :param configuration_filename:
         """
-        # BOOT = 1
-        # MONITOR = 2
-        # DIAGNOSE = 3
-        # TEST = 4
-        # NOMINAL = 5
-        if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT or mode == constants.Modes.TEST:
+
+        if mode == constants.Modes.NOMINAL :
             # We want to find out what the current state of the system is and record it in a file if
             # in NOMINAL mode or else display it if in BOOT mode
+            apps = application.Application()
             applications = application.Application.discover()
             presentations = presentation.Presentation.discover()
             sessions = session.Session.discover()
