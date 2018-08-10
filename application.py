@@ -16,12 +16,11 @@ from typing import List
 
 class Application(object):
 
-    def discover(self):
-        pass
+
 
     def __init__(self) -> None:
-        apps_str: str = utilities.run_command(["ps", "-ax"])
-        apps_list: List[str] = apps_str.split("\n")
+        apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
+        self.apps_list: List[str] = apps_str.split("\n")
         self.layer = Layer()
 
     def get_status(self)  -> ErrorLevels:
