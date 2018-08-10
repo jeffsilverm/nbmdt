@@ -10,13 +10,18 @@ import dns
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
 from constants import ErrorLevels
+import utilities
+from typing import List
+
 
 class Application(object):
 
     def discover(self):
         pass
 
-    def __init__(self):
+    def __init__(self) -> None:
+        apps_str: str = utilities.run_command(["ps", "-ax"])
+        apps_list: List[str] = apps_str.split("\n")
         self.layer = Layer()
 
     def get_status(self)  -> ErrorLevels:

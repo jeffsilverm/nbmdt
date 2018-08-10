@@ -78,14 +78,15 @@ class OsCliInter(object):
         """
         Run the command on the CLI
 
-        :param command:
-        :return:
+        :param command: a list of strings.  Element 0 is the name of the executable. The rest of the list are args to
+        the command
+        :return: A string which is the output of the program in ASCII
         """
 
-        completed = subprocess.run(command,
-                                   stdin=None,
-                                   input=None,
-                                   stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
-                                   check=False)
+        completed: subprocess.CompletedProcess = subprocess.run(command,
+                                              stdin=None,
+                                              input=None,
+                                              stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
+                                              check=False)
         completed_str = completed.stdout.decode('ascii')
         return completed_str
