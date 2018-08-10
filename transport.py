@@ -16,8 +16,6 @@ class Transports(object):
 
     """
 
-    def __init__(self):
-        self.layer = Layer()
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
@@ -28,8 +26,9 @@ class Transports(object):
         pass
 
     class TransportNames(Enum):
-        TCP = 1
-        UDP = 2
+        # Values from /etc/protocols
+        TCP = 6
+        UDP = 17
 
     def __init__(self, configuration_file: str = None) -> None:
         self._connections : list = list()
