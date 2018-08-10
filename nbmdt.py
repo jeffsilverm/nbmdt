@@ -58,7 +58,6 @@ class SystemDescription(object):
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
                  networks: type_network_dict = None,
-                 macs: type_mac_dict = None,
                  interfaces: type_interface_dict = None,
                  mode=constants.Modes.BOOT,
                  configuration_filename: str = None
@@ -74,37 +73,35 @@ class SystemDescription(object):
         :param sessions:
         :param transports:
         :param networks:
-        :param macs:
         :param interfaces:
         :param mode:
         :param configuration_filename:
         """
 
-        if mode == constants.Modes.NOMINAL :
+        if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
             # We want to find out what the current state of the system is and record it in a file if
             # in NOMINAL mode or else display it if in BOOT mode
-            apps = application.Application()
-            applications = application.Application.discover()
-            presentations = presentation.Presentation.discover()
-            sessions = session.Session.discover()
-            transports = transport.Transports.discover()
-            networks = network.Network.discover()
-            macs = mac.Mac.discover()
-            interfaces = interface.Interface.discover()
+            applications: application.Application = application.Application()
+            presentations = presentation.Presentation()
+            sessions = session.Session()
+            transports = transport.Transports()
+            networks = network.Network()
+            # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
+            interfaces_dict = interface.Interface.discover()
+
         elif mode == constants.Modes.MONITOR or mode == constants.Modes.DIAGNOSE:
             # Compare the current configuration against a "nominal" configuration in the file and
             # note any changes
-            (applications, presentations, sessions, transports, networks, macs, interfaces) = \
+            (applications, presentations, sessions, transports, networks, interfaces) = \
                 self.read_configuration(configuration_filename)
         elif mode != constants.Modes.NOMINAL:
             raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
         self.applications = applications
         self.presentations = presentations
         self.sessions = sessions
-        self.transports = transports
-        self.networks = networks
-        self.mac = macs
-        self.interfaces = interfaces
+        self.transports = transports    # TCP, UDP
+        self.networks = networks        # IPv4, IPv6
+        self.interfaces = interfaces_dict    # Interface including the MAC
         self.mode = mode
 
     """
@@ -182,12 +179,13 @@ class SystemDescription(object):
     """
 
     def read_configuration(self, filename):
-        # applications, presentations, sessions, transports, networks, macs, interface
-        return (None, None, None, None, None, None, None)
+        # applications, presentations, sessions, transports, networks, interfaces (Including MACs)
+        return (None, None, None, None, None, None)
 
     def write_configuration(self, filename):
         return None
 
+    @property
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
         This method is probably most useful in BOOT mode"""
@@ -196,7 +194,6 @@ class SystemDescription(object):
                  session.__str__(mode=self.mode) + "\n" + \
                  transport.__str__(mode=self.mode) + "\n" + \
                  network.__str__(mode=self.mode) + "\n" + \
-                 mac.__str__(mode=self.mode) + "\n" + \
                  interface.__str__(mode=self.mode)
         return result
 
