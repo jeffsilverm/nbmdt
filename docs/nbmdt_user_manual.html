@@ -115,21 +115,38 @@ brevity, it just reports on what is working and what is not, it makes no
 <dd>Uses VT-220 (ANSI-X3.64) style graphics and colors.&nbsp; The terminal does not scroll.</dd>
 <dt>-d --diagnose</dt><dd>This is the default: test the entire network.&nbsp; This is also
   relatively slow, because it takes time to see if counters are
-  incrementing, packet loss rates, and other more subtle tests of the system.</dd>
-</dl>
-<dl>
-  <dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>] --test<var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]</acronym>
-  </dt>
-</dl>
+  incrementing, packet loss rates, and other more subtle tests of the system.</dd><dt>-N --nominal</dt>
+<dd>Assumes that the network is working properly at the moment, and
+    records the current state of the network in a configuration file</dd>
+<dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]
 
-<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a comma
-  separated list of layers to test.  You may also list which components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span>.</dd>
-<dl>
-<dt>-D --daemon</dt><dd>Run in daemon mode.&nbsp; The program creates a copy of itself
-      that runs as a daemon.&nbsp; The daemon presents a RESTful API
-      interface.&nbsp; This allows unprivileged users to test the system</dd>
-<dt>-p --port</dt>
-<dd>The port that the daemon listens on.&nbsp; The default is 80</dd>
+      --test <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]</acronym>
+  </dt>
+<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a
+  comma separated list of layers to test. You may also list which
+  components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span></dd>
+<dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]
+      --test <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]</acronym>
+  </dt>
+<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a
+  comma separated list of layers to test. You may also list which
+  components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span>.</dd>
+<dt>-D --daemon</dt>
+<dd>Run in daemon mode.&nbsp; The program creates a copy of itself that
+    runs as a daemon.&nbsp; The daemon presents either a RESTful API
+    interface or a web interface.&nbsp; This allows unprivileged users to
+    test the system because the daemon is privileged and the clients are
+    not.</dd>
+<dt>-w --web</dt>
+<dd>Present an web interface using HTML, CSS, Javascript.&nbsp; Suitable for use with a browser</dd>
+<dt>-r --rest</dt>
+<dd>Present a RESTful interface.&nbsp; Suitable for use with cybernetic clients (the default)<br>
+</dd>
+
+<dt>-p <var>n</var> --port <var>n</var><br>
+</dt>
+<dd>The port that the daemon listens on.&nbsp; The default is 80.&nbsp; If running nbmdt not as root, then the operating system will require that pick a port number greater than 1024.<br>
+</dd>
 <dt>-M --mask <var>bits</var></dt>
 <dd>This "tightens" the range of IPv4 addresses that the daemon will listen to.&nbsp; This will be used most commonly with <a href="https://www.rfc-editor.org/info/rfc1918">RFC 1918 private IP addresses</a>. Common values will be:<br> 
   <table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
@@ -203,26 +220,22 @@ first interface(for most homes in which you want the daemon to listen to
 addresses are only allowed on the link, which would be the ethernet or 
 WiFi domain.
 </dd>
-<dt>-u --ula</dt>
+<dt>-u --ula -ULA<br>
+</dt>
 <dd>Listen only to clients that have unique local IPv6 addresses.&nbsp; 
 Such addresses are only allowed "locally", they are analogous to RFC 
-1918 IPv4 addresses.&nbsp; Specifying this option also implies -l or 
---ll</dd>
-<dt>-g --global</dt>
-<dd>Listen to any IPv6 address anywhere in the world
+1918 IPv4 addresses.<br>
 </dd>
-<dt>-w --web</dt>
-  <dd>Present an HTTP/HTTPS interface</dd>
-<dt>-c --color</dt>
+<dt>-g --global</dt>
+<dd>Listen to any IPv6 address anywhere in the world.&nbsp; This implies -u or --ula
+</dd><dt>-c --color</dt>
   <dd>Use color.&nbsp; This is the default</dd>
 <dt>-n --nocolor</dt>
-  <dd>Do not use color</dd>
-<dt>-N --nominal</dt>
-  <dd>Assumes that the network is working properly at the moment, and records the current state of the network in a configuration file</dd>
-<dt>-v --verbose</dt>
+  <dd>Do not use color</dd><dt>-v --verbose</dt>
   <dd>Verbose, provides more information</dd>
 <dt>--debug</dt>
-  <dd>Run <acronym>nbmdt</acronym> in debug mode</dd>
+  <dd>Run <acronym>nbmdt</acronym> in debug mode.&nbsp; Of use to the nbmdt software developers and probably nobody else.<br>
+</dd>
 <dt>-h --help</dt>
 <dd>Provide help</dd>
 </dl>
@@ -230,7 +243,7 @@ Such addresses are only allowed "locally", they are analogous to RFC
 
 
 
-<p>The optional <i>configuration_file&nbsp;</i> names the configuration file to use.&nbsp; If the -N --nominal <br>
+<p>The optional <i>configuration_file&nbsp;</i> names the configuration file to use.&nbsp; If the -N or --nominal options are included and the configuration file already exists, then a new file is created with a number appended to the end of the filename.<br>
 </p>
 
 

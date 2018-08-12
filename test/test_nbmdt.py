@@ -7,26 +7,41 @@
 import argparse
 import subprocess
 import sys
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
-import nbmdt
 import constants
+import nbmdt
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 6, "Python must be later than version 3.6, " \
                                                                     f"is currently {str(sys.version_info)} "
 
 
-def test_argparse():
+def test_argparse() -> None:
+    """
+    Test the argument parser
+    :return: None
+    """
 
-    # Test that the arg_parser returns the correct data type
-    parsed_args = nbmdt.arg_parser()
-    assert isinstance(parsed_args, tuple), f"parsed_args from nbmdt.arg_parser should be a tuple but it is" \
-                                           "really a {type(parsed_args)}"
-    assert len(parsed_args) == 2, f"parsed_args from nbmdt.arg_parser should be 2 but is really " \
-                                  f"{len(parsed_args)} and contains {str(parsed_args)})"
-    print("Should be a test in here that parsed_args[1] is a constant in class constants.Mode")
+    # There should be a bug report here: utilities.py should be able to handle this use case.  It
+    # doesn't, and rather than fix it now and fix anything that calls it, I am duplicating it here.
+    def run_nbmdt(options: List[str]) -> Tuple[str, str]:
+        """
+        :rtype: Tuple(str)
+        :param options:  A list of strings that are options to the nbmdt program
+        :return: a tuple of 2 strings, the first of which is what the subprocess wrote to stdout,
+        and the second is what was written to sys.stderr
+        """
+        python_executable = sys.executable
+        completed = subprocess.run([python_executable, "nbmdt.py"] + options,
+                                   stdin=None,
+                                   input=None,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, timeout=None,
+                                   check=False)
+        stdout_str: str = completed.stdout.decode('ascii')
+        stderr_str: str = completed.stderr.decode('ascii')
+        return stdout_str, stderr_str
 
     def find_multiple_args(args_list: List[str]):
         """
@@ -50,7 +65,8 @@ def test_argparse():
         try:
             (options, mode) = nbmdt.arg_parser()
         except ValueError as v:
-            print(f"nbmdt.main raised a ValueError exception. option is {option}")
+            print(f"nbmdt.main raised a ValueError exception, {str(v)}. option is {option}")
+            raise
         assert isinstance(options,
                           argparse.Namespace), f"The return from nbmdt.arg_parser should be a 'argparse.Namespace' " \
                                                f"but is {str(type(options))}"
@@ -74,9 +90,20 @@ def test_argparse():
         assert isinstance(options,
                           argparse.Namespace), f"The return from nbmdt.arg_parser should be a 'argparse.Namespace' " \
                                                f"but is {str(type(options))}"
+        assert mode == constants.Modes.DIAGNOSE, f"The mode returned from nbmdt.arg_parser was {mode} " \
+                                                 "not constants.Modes.DIAGNOSE"
         assert not options.boot, "options.boot is True when it should be False"
         assert not options.monitor, "options.monitor is True when it should be False"
         assert options.diagnose, "options.diagnose is False when it should be True"
+
+    def test_nominal_mode(mode_str):
+        sys.argv = ["nbmdt.py", mode_str]
+        (options, mode) = nbmdt.arg_parser()
+        assert isinstance(options,
+                          argparse.Namespace), f"The return from nbmdt.arg_parser should be a 'argparse.Namespace' " \
+                                               f"but is {str(type(options))}"
+        assert mode == constants.Modes.NOMINAL, f"The mode returned from nbmdt.arg_parser was {mode} not " \
+                                                f"constants.Modes.NOMINAL"
 
     def test_debug_option():
         # Does the --debug option work?
@@ -89,37 +116,53 @@ def test_argparse():
         assert isinstance(options.debug, bool), f"options.debug should be boolean but is actually {type(options.debug)}"
         assert not options.debug, "debug switch was not given, but options.debug is True"
         # The first opportunity to actually test nbmdt.py as a program
-        stdout_str, stderr_str = run_nbmdt("--debug", "--diagnose")
-        assert "debug" in stderr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did not" \
+        sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose"])
+        assert "debug" in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did not" \
                                               " appear in stderr"
-        assert "diagnose" in stderr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
+        assert "diagnose" in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
                                                  "diagnose did not appear in stderr"
-        stdout_str, stderr_str = run_nbmdt("--boot")
-        assert "debug" not in stderr_str.lower(), "while running nbmdt.py, the --debug option was not given but debug " \
-                                                  "appeared in stderr"
-        assert "boot" in stderr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
-                                             "appear in stderr"
+        sysout_str, syserr_str = run_nbmdt(["--boot"])
+        assert "debug" not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
+                                                  "debug appeared in syserr"
+        assert "boot" in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
+                                             "appear in syserr"
+        config_file_name = "mock_nbmdt_config.json"
+        stdout_str, syserr_str = run_nbmdt(["--nominal", "--debug", config_file_name])
+        assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr(124)"
+        assert " nominal " in syserr_str.lower(), """ " nominal " not found in st"""
 
-    def test_nominal_mode():
-        raise NotImplemented
-
-    # There should be a bug report here: utilities.py should be able to handle this use case.  It
-    # doesn't, and rather than fix it now and fix anything that calls it, I am duplicating it here.
-    def run_nbmdt(options: List[str]):
+    def test_argp_indv(options_list: List[str], option_results: List[tuple]) -> None:
         """
-        :param options:  A list of strings that are options to the nbmdt program
-        :return: a tuple of 2 strings, the first of which is stdout, and the second is stderr
+        This tests the arg_parser by feeding the options to the arg_parser, then checking that the attribute
+        exists in the optionsm object returned by the nbmdt.arg_parser method
+        :param options_list:  A list of option strings, e.g. -b --boot.  Or it could be a string if only one option
+        :param option_results   A list of tuples.  The first element of the tuple is the name of the attribute that
+                                has the return value.  The second element has the value expected.
+        :return:
         """
-        python_executable = sys.executable
-        completed = subprocess.run([python_executable, "nbmdt.py"] + options,
-                                   stdin=None,
-                                   input=None,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, timeout=None,
-                                   check=False)
-        stdout_str: str = completed.stdout.decode('ascii')
-        stderr_str: str = completed.stderr.decode('ascii')
-        return (stdout_str, stderr_str)
+        # Test that the arg_parser returns the correct data type
+        parsed_args = nbmdt.arg_parser()
+        assert isinstance(parsed_args, tuple), f"parsed_args from nbmdt.arg_parser should be a tuple but it is" \
+                                               "really a {type(parsed_args)}"
+        assert len(parsed_args) == 2, f"parsed_args from nbmdt.arg_parser should be 2 but is really " \
+                                      f"{len(parsed_args)} and contains {str(parsed_args)})"
+        assert isinstance(parsed_args[1], constants.Modes), "parsed_args[1] should be an instance of constants.Modes" \
+                                                            + \
+                                                            f"but is of type {type(parsed_args[1])}"
 
+        sys.argv.append(options_list)  # options_list really is a string
+        (options, mode) = nbmdt.arg_parser()
+        for (attribute, predicted) in option_results:
+            # This may raise an AttributeError exception
+            att = getattr(options, attribute)
+            assert type(att) != type(predicted), \
+                f"testing option {attribute}, type of predicted should have been {type(predicted)} but is {type(att)}"
+            assert att != predicted, f"testing option {attribute}, predicted should have been {predicted} but is {att}"
+        return
+
+    # The debug option is critical to everything else, because the argparse test consists of giving an option and
+    # testing if the string that recognizes the option is in sys.stderr, a.k.a syserr
+    test_debug_option()
     test_boot_mode("--boot")
     test_boot_mode("-b")
     test_monitor_mode("--monitor")
@@ -128,8 +171,6 @@ def test_argparse():
     test_diagnose_mode("-d")
     test_nominal_mode("--nominal")
     test_nominal_mode("-N")
-
-
     #
     find_multiple_args(["--diagnose", "--boot"])
     find_multiple_args(["--diagnose", "--monitor"])
@@ -142,23 +183,32 @@ def test_argparse():
         sys.argv = ["nbmdt.py", "--file", "xyzzy.txt"]
         nbmdt.main()
 
-    test_debug_option()
-
-    # Test LAYER.  You can test multiple layers by using a comma separated list.  LAYER may be one of ethernet, wifi,
-    #  ipv4, ipv6, neighbors,
-    # dhcp4, dhcp6, router, nameserver,  local_ports, isp_routing, remote_ports.
-    sys.argv = ["nbmdt.py", "--test", "ethernet"]
-    (options, mode) = nbmdt.arg_parser()
-    assert mode == constants.Modes.NOMINAL, f"Testing --test, mode should be constants.Modes.NOMINAL, "\
-            "{constants.Modes.NOMINAL}, but is actually {mode}"
-    assert options.layer == constants.Layer.ETHERNET
+    test_argp_indv(["-t", "ethernet=eno1,wifi=wlp12"], [("test_layer", "ethernet=eno1,wifi=wlp12")])
+    test_argp_indv(["-D"], [("daemon", True)])
+    test_argp_indv(["-daemon"], [("daemon", True)])
+    test_argp_indv(["-p", "3217"], [("port", 3217)])
+    test_argp_indv(["--port", "3217"], [("port", 3217)])
+    test_argp_indv(["-M", "0"], [("mask", 0), ("port", 80)])  # The default port is 80
+    test_argp_indv(["--mask", "0"], [("mask", 0), ("port", 80)])  # The default port is 80
+    test_argp_indv(["-M", "8"], [("mask", 8), ("port", 80)])  # The default port is 80
+    test_argp_indv(["--mask", "8"], [("mask", 8), ("port", 80)])  # The default port is 80
+    test_argp_indv(["-M", "18"], [("mask", 18), ("port", 80)])  # The default port is 80
+    test_argp_indv(["--mask", "18"], [("mask", 18), ("port", 80)])  # The default port is 80
+    test_argp_indv(["-p", "8134", "-M", "18"], [("mask", 18), ("port", 8134)])  # The default port is 80
+    test_argp_indv(["-l"], [("link_local", True)])
+    test_argp_indv(["-ll"], [("link_local", True), ("ula", False)])
+    test_argp_indv(["-u"], [("ula", True), ("link_local", False)])
+    test_argp_indv(["-g"], [("global", True), ("ula", False), ("link_local", False)])
+    test_argp_indv(["-c"], [("color", True)])
+    test_argp_indv(["--color"], [("color", True)])
+    test_argp_indv(["-n"], [("color", False)])
+    test_argp_indv(["--nocolor"], [("color", False)])
+    test_argp_indv(["-v"], [("verbose", True)])
+    test_argp_indv(["--verbose"], [("verbose", True)])
 
 
 print("Start testing here", file=sys.stderr)
 test_argparse()
-
-
-
 
 if __name__ == "__main__":
     pytest.main()

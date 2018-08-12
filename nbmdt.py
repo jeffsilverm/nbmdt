@@ -10,6 +10,7 @@ import argparse
 import sys
 import typing
 from typing import Tuple
+import json
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
@@ -63,10 +64,8 @@ class SystemDescription(object):
                  configuration_filename: str = None
                  ) -> None:
         """
-        Populate a description of the system.  This discription can come from a file (MONITOR, DIAGNOSE), from the
-        current state of the system (BOOT, TEST, NOMINAL).  The description can be displayed colorized and scrolling
-        (BOOT), displayed using VT100 (ANSI-X3.64) cursor addressing (MONITOR), or recorded to a configuration file (
-        NOMINAL)
+        Populate a description of the system.  Note that this method is
+        a constructor, and all it does is create a SystemDescription object.
 
         :param applications:
         :param presentations:
@@ -77,32 +76,40 @@ class SystemDescription(object):
         :param mode:
         :param configuration_filename:
         """
-
-        if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
-            # We want to find out what the current state of the system is and record it in a file if
-            # in NOMINAL mode or else display it if in BOOT mode
-            applications: application.Application = application.Application()
-            presentations = presentation.Presentation()
-            sessions = session.Session()
-            transports = transport.Transports()
-            networks = network.Network()
-            # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
-            interfaces_dict = interface.Interface.discover()
-
-        elif mode == constants.Modes.MONITOR or mode == constants.Modes.DIAGNOSE:
-            # Compare the current configuration against a "nominal" configuration in the file and
-            # note any changes
-            (applications, presentations, sessions, transports, networks, interfaces) = \
-                self.read_configuration(configuration_filename)
-        elif mode != constants.Modes.NOMINAL:
-            raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
         self.applications = applications
         self.presentations = presentations
         self.sessions = sessions
-        self.transports = transports    # TCP, UDP
-        self.networks = networks        # IPv4, IPv6
-        self.interfaces = interfaces_dict    # Interface including the MAC
+        self.transports = transports  # TCP, UDP
+        self.networks = networks  # IPv4, IPv6
+        self.interfaces = interfaces  # Interface including the MAC
         self.mode = mode
+        return None
+
+    @classmethod
+    def system_description_from_file (cls, filename: str ) -> object:
+        """
+        Read a system description from a file and create a SystemDescription object.
+        I couldn't figure out how to return a SystemDescription object, so I return an object
+        :param filename:
+        :return:
+        """
+
+
+        raise NotImplemented
+
+
+    def file_from_system_description (self, filename: str ) -> None:
+        """Write a system description to a file
+        :param  filename
+        :return:
+        """
+        # In the future, detect if a configuration file already exists, and if so, create
+        # a new version.
+        with open(filename, w) as f:
+            json.dump(self,f)
+
+
+
 
     """
         def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
@@ -178,18 +185,12 @@ class SystemDescription(object):
         #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
     """
 
-    def read_configuration(self, filename):
-        # applications, presentations, sessions, transports, networks, interfaces (Including MACs)
-        return (None, None, None, None, None, None)
-
-    def write_configuration(self, filename):
-        return None
 
     @property
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
         This method is probably most useful in BOOT mode"""
-        result = application.__str__(mode=self.mode) + "\n" + \
+        result = self.applications.__str__(mode=self.mode) + "\n" + \
                  presentation.__str__(mode=self.mode) + "\n" + \
                  session.__str__(mode=self.mode) + "\n" + \
                  transport.__str__(mode=self.mode) + "\n" + \
@@ -203,7 +204,7 @@ from typing import List
 
 def main(args: List[str] = []):
     """
-    Figure out what the program has to do and do it
+    Parse arguments, decide what mode to work in.
     :param args: a list of options,perhaps passed by a debugger.
     :return:
     """
@@ -211,6 +212,37 @@ def main(args: List[str] = []):
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     options, mode = arg_parser()
+
+    if options.debug:
+        print(f"mode is {mode}")
+    if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
+        current_system = SystemDescription.discover()
+        if mode == constants.Modes.NOMINAL:
+            current_system.file_from_system_description(options.filename)
+        else:
+            print(current_system.str(options.color))
+    elif mode == constants.Modes.MONITOR:
+        monitor()
+    elif mode == constants.Modes.DIAGNOSE:
+        diagnose()
+"""
+        # We want to find out what the current state of the system is and record it in a file if
+        # in NOMINAL mode or else display it if in BOOT mode
+        applications: application.Application = application.Application()
+        presentations = presentation.Presentation()
+        sessions = session.Session()
+        transports = transport.Transports()
+        networks = network.Network()
+        # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
+        interfaces_dict = interface.Interface.discover()
+
+        # Compare the current configuration against a "nominal" configuration in the file and
+        # note any changes
+        (applications, presentations, sessions, transports, networks, interfaces) = \
+            self.read_configuration(configuration_filename)
+    elif mode != constants.Modes.NOMINAL:
+        raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
+
     current_system = SystemDescription(mode=mode)
     if mode == constants.Modes.BOOT:
         application_status: constants.ErrorLevels = application.get_status()
@@ -222,6 +254,8 @@ def main(args: List[str] = []):
         interface_status: constants.ErrorLevels = interface.get_status()
 
     """
+
+"""
     current_system_str = str(current_system)
     print(current_system_str)
     # Issue 9
@@ -250,10 +284,9 @@ def main(args: List[str] = []):
     
     if mode == Modes.TEST :
         test ( nominal_system_description, current_system_description )
-    """
-    if options.debug:
-        return options
-
+    
+    
+"""
 
 def arg_parser() -> Tuple:
     parser = argparse.ArgumentParser()
