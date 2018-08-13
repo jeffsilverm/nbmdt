@@ -1,7 +1,13 @@
 from constants import ErrorLevels
 from layer import Layer
+import enum
 
 class Mac(object):
+
+    class ProtocolName(enum.IntEnum):
+        # From https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml
+        IPv6 = 0x86DD       # RFC 7042
+        IPv4 = 0x0800       # RFC 7042
 
     def discover(self):
         pass

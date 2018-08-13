@@ -16,12 +16,15 @@ from typing import List
 
 class Application(object):
 
-
-
-    def __init__(self) -> None:
+    @classmethod
+    def discover(cls) -> object:
         apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
-        self.apps_list: List[str] = apps_str.split("\n")
+        apps_list: List[str] = apps_str.split("\n")
+        return Application(apps_list=apps_list)
+
+    def __init__(self, apps_list) -> None:
         self.layer = Layer()
+        self.applications = apps_list
 
     def get_status(self)  -> ErrorLevels:
         return self.layer.get_status()

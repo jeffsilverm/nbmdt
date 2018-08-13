@@ -11,21 +11,23 @@ import sys
 import typing
 from typing import Tuple
 import json
+import platform
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
 import interface  # OSI layer 1: ethernet, WiFi
 import mac  # OSI layer 2: # Media Access Control: arp, ndp
 import network  # OSI layer 3: IPv4, IPv6 should be called network
-import presentation  # OSI layer 6:
-import session  # OSI layer 5:
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import session  # OSI layer 5:
+import presentation  # OSI layer 6:
+import utilities
 
 DEBUG = True
 type_application_dict = typing.Dict[str, application.Application]
 type_presentation_dict = typing.Dict[str, presentation.Presentation]
 type_session_dict = typing.Dict[str, session.Session]
-type_transport_dict = typing.Dict[str, transport.Transports]
+type_transport_dict = typing.Dict[str, transport.Transport]
 type_network_dict: dict = typing.Dict[str, network.Network]
 type_mac_dict = typing.Dict[str, mac.Mac]
 type_interface_dict = typing.Dict[str, interface.Interface]
@@ -96,6 +98,31 @@ class SystemDescription(object):
 
 
         raise NotImplemented
+
+    @classmethod
+    def discover(cls) -> object:
+        """
+
+        :return: a SystemDescription object.
+        """
+
+        applications = application.Application.discover(),
+        presentations = presentation.Presentation.discover(),
+        sessions = session.Session.discover(),
+        transports = transport.Transport.discover(),
+        networks = network.Network.discover(),
+        interfaces = interface.Interface.discover(),
+
+        my_system: object = cls.__init__( self=cls,
+                                          applications=applications,
+                                          presentations=presentations,
+                                          sessions=sessions,
+                                          transports=transports,
+                                          networks=networks,
+                                          interfaces=interfaces )
+        my_system.name = platform.node()
+        return my_system
+
 
 
     def file_from_system_description (self, filename: str ) -> None:
@@ -201,6 +228,13 @@ class SystemDescription(object):
 
 from typing import List
 
+def monitor():
+    pass
+
+def diagnose():
+    pass
+
+
 
 def main(args: List[str] = []):
     """
@@ -214,7 +248,7 @@ def main(args: List[str] = []):
     options, mode = arg_parser()
 
     if options.debug:
-        print(f"mode is {mode}")
+        print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
     if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
         current_system = SystemDescription.discover()
         if mode == constants.Modes.NOMINAL:
@@ -231,7 +265,7 @@ def main(args: List[str] = []):
         applications: application.Application = application.Application()
         presentations = presentation.Presentation()
         sessions = session.Session()
-        transports = transport.Transports()
+        transports = transport.Transport()
         networks = network.Network()
         # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
         interfaces_dict = interface.Interface.discover()
@@ -303,7 +337,7 @@ def arg_parser() -> Tuple:
                         action="store_true", dest="nominal")
     parser.add_argument('-p', '--port', type=int, default=constants.port,
                         help='Port where server listens when in monitor mode, default %s' % constants.port)
-    parser.add_argument("--debug", default=False, action="store_true")
+    parser.add_argument("--debug", default=False, action="store_true", dest="debug")
     options = parser.parse_args()
 
     # Select one and only one of these options

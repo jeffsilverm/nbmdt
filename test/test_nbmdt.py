@@ -117,15 +117,16 @@ def test_argparse() -> None:
         assert not options.debug, "debug switch was not given, but options.debug is True"
         # The first opportunity to actually test nbmdt.py as a program
         sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose"])
-        assert "debug" in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did not" \
+        assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did not" \
                                               " appear in stderr"
-        assert "diagnose" in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
+        assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
                                                  "diagnose did not appear in stderr"
         sysout_str, syserr_str = run_nbmdt(["--boot"])
-        assert "debug" not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
-                                                  "debug appeared in syserr"
-        assert "boot" in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
+        assert "boot " in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
                                              "appear in syserr"
+        assert "debug " not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
+                                                  "debug appeared in syserr"
+        #
         config_file_name = "mock_nbmdt_config.json"
         stdout_str, syserr_str = run_nbmdt(["--nominal", "--debug", config_file_name])
         assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr(124)"

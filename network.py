@@ -35,7 +35,8 @@ class NotPingable(Exception):
 
 class Network(Layer):
 
-    def discover(self):
+    @classmethod
+    def discover(cls):
         pass
 
     def __init__(self):

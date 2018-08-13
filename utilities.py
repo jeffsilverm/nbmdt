@@ -90,3 +90,5 @@ class OsCliInter(object):
                                               check=False)
         completed_str = completed.stdout.decode('ascii')
         return completed_str
+
+
