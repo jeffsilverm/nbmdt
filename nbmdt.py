@@ -85,7 +85,7 @@ class SystemDescription(object):
         self.networks = networks  # IPv4, IPv6
         self.interfaces = interfaces  # Interface including the MAC
         self.mode = mode
-        return None
+
 
     @classmethod
     def system_description_from_file (cls, filename: str ) -> object:
