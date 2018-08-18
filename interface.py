@@ -10,6 +10,7 @@ from platform import system
 from typing import Union
 import datetime
 import os
+import sys
 
 
 # There is an ip command cheat sheet at
@@ -20,36 +21,41 @@ def none_if_none(s):
 
 
 class Interface(Layer):
-    my_os = system()
-    if my_os == 'Linux':
-        # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
-        # symlink it so that both /bin/ip and
-        # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
-        # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
-        if os.path.isfile("/bin/ip"):
-            IP_COMMAND = "/bin/ip"
-        elif os.path.isfile("/usr/bin/ip"):
-            IP_COMMAND = "/usr/bin/ip"
+    cls.my_os
+    @classmethod()
+    def __init__(cls):
+        cls.my_os = system()
+        if cls.my_os == 'Linux':
+            # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
+            # symlink it so that both /bin/ip and
+            # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
+            # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
+            if os.path.isfile("/bin/ip"):
+                cls.IP_COMMAND = "/bin/ip"
+            elif os.path.isfile("/usr/bin/ip"):
+                cls.IP_COMMAND = "/usr/bin/ip"
+            else:
+                raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
+        elif cls.my_os == 'Windows':
+            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
+        elif cls.my_os == 'Mac OS':
+            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
         else:
-            raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
-        discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
-        get_details_command = [IP_COMMAND, "--details", "--oneline", "link", "show"]
-    elif my_os == 'Windows':
-        raise NotImplementedError(f"System is {my_os} and I haven't written it yet")
-    elif my_os == 'Mac OS':
-        raise NotImplementedError(f"System is {my_os} and I haven't written it yet")
-    else:
-        raise ValueError(f"System is {my_os} and I don't recognize it")
+            raise ValueError(f"System is {cls.my_os} and I don't recognize it")
 
     def __init__(self, name: str, lnk_str: str =None) -> None:
+
+        super()
         layer_t = Layer()
         self.layer = layer_t
         # Did the caller specify a string with the description of the interface?  That might be if the caller called
         # the ip link list command instead of the ip link show DEV command
         # For a complete list of flags and parameters, see
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
+        discover_command = [self.IP_COMMAND, "--details", "--oneline", "link", "list"]
+        get_details_command = [self.IP_COMMAND, "--details", "--oneline", "link", "show"]
 
-        if lnk_str is None:
+        if lnk_str is None and self.my_os == 'Linux':
             command: list = self.get_details_command.append(name)
             lnk_str: str = OsCliInter.run_command(command)
         fields = lnk_str.split()
@@ -94,7 +100,7 @@ class Interface(Layer):
 
 
 # Rename this class to Interface
-class PhysicalInterface(object):
+class PhysicalInterface(Interface):
     def __init__(self, intf_name, intf_description: Union[str, list]):
         self.intf_name = intf_name
         if isinstance(intf_description, list):
@@ -113,6 +119,7 @@ class PhysicalInterface(object):
         """
 
         completed = subprocess.run(
+            print("get_all_physical_interfaces works for linux, nothing else", file=sys.stderr )
             [self.IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
             input=None,
             stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
@@ -152,7 +159,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
 # There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
 
 # Move this class to network.py
-class LogicalInterface(object):
+class LogicalInterface(Interface):
     """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
 
     """
@@ -168,6 +175,7 @@ class LogicalInterface(object):
         :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
         :param  addr_descr  The rest of the description of this logical address.
         """
+        # Some sample returns - use these to figure out how to decode things
         """
 1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
 1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
@@ -179,6 +187,7 @@ class LogicalInterface(object):
 6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
 jeffs@jeffs-desktop:/home/jeffs  $ 
 """
+        super()
         self.addr_name = addr_name
         if addr_family != "inet" and addr_family != "inet6":
             raise ValueError(
