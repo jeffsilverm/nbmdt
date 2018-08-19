@@ -184,9 +184,12 @@ def test_argparse() -> None:
         sys.argv = ["nbmdt.py", "--file", "xyzzy.txt"]
         nbmdt.main()
 
-    test_argp_indv(["-t", "ethernet=eno1,wifi=wlp12"], [("test_layer", "ethernet=eno1,wifi=wlp12")])
+    test_argp_indv(["-t", "ethernet=eno1,wifi=wlp12"],['test', constants.exists])
+    test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"])
+    test_argp_indv(["--test", 'enp3s0'])
     test_argp_indv(["-D"], [("daemon", True)])
     test_argp_indv(["-daemon"], [("daemon", True)])
+    test_argp_indv(["-w"])
     test_argp_indv(["-p", "3217"], [("port", 3217)])
     test_argp_indv(["--port", "3217"], [("port", 3217)])
     test_argp_indv(["-M", "0"], [("mask", 0), ("port", 80)])  # The default port is 80
@@ -206,6 +209,9 @@ def test_argparse() -> None:
     test_argp_indv(["--nocolor"], [("color", False)])
     test_argp_indv(["-v"], [("verbose", True)])
     test_argp_indv(["--verbose"], [("verbose", True)])
+    test_argp_indv([--help])
+    test_argp_indv([-h])
+
 
 
 print("Start testing here", file=sys.stderr)
