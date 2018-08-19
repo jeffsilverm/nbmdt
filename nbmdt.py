@@ -63,7 +63,8 @@ class SystemDescription(object):
                  networks: type_network_dict = None,
                  interfaces: type_interface_dict = None,
                  mode=constants.Modes.BOOT,
-                 configuration_filename: str = None
+                 configuration_filename: str = None,
+                 system_name: str = platform.node()
                  ) -> None:
         """
         Populate a description of the system.  Note that this method is
@@ -77,6 +78,7 @@ class SystemDescription(object):
         :param interfaces:
         :param mode:
         :param configuration_filename:
+        :param system_name: str The name of this computer
         """
         self.applications = applications
         self.presentations = presentations
@@ -96,6 +98,10 @@ class SystemDescription(object):
         :return:
         """
 
+        with open(filename, "r") as f:
+            system_object = json.load(self, f)
+
+
 
         raise NotImplemented
 
@@ -112,6 +118,7 @@ class SystemDescription(object):
         transports = transport.Transport.discover(),
         networks = network.Network.discover(),
         interfaces = interface.Interface.discover(),
+        name: str = platform.node()
 
         my_system: object = cls.__init__( self=cls,
                                           applications=applications,
@@ -119,8 +126,9 @@ class SystemDescription(object):
                                           sessions=sessions,
                                           transports=transports,
                                           networks=networks,
-                                          interfaces=interfaces )
-        my_system.name = platform.node()
+                                          interfaces=interfaces,
+                                          system_name=name
+                                           )
         return my_system
 
 
@@ -132,7 +140,7 @@ class SystemDescription(object):
         """
         # In the future, detect if a configuration file already exists, and if so, create
         # a new version.
-        with open(filename, w) as f:
+        with open(filename, "w") as f:
             json.dump(self,f)
 
 

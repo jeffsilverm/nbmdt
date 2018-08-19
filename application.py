@@ -5,26 +5,58 @@
 
 from termcolor import cprint as cprint
 import sys
-# dnspython DNS toolkit
-import dns
+# dnspython DNS toolkit see http://www.dnspython.org/
+import dnspython
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
 from constants import ErrorLevels
 import utilities
-from typing import List
+from typing import List, Dict
+import typing
+
 
 
 class Application(object):
 
     @classmethod
-    def discover(cls) -> object:
-        apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
-        apps_list: List[str] = apps_str.split("\n")
-        return Application(apps_list=apps_list)
+    def discover(cls) -> typing.Dict[str, 'Application']:
+        """
+        Use an operating system command to build a dictionary of applications.  The operating system is key'd by
+        PID (which wouldn't work if there was an OS that didn't have PIDs).  The value of the the dictionary is an
+        Application object.  The interior of an application is OS dependent
+        :return:
+        """
+        d: Dict[str, cls] = {}
+        if 'Linux' == utilities.OsCliInter.system:
+            apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
+            # Output from ps -ax command looks like (under linux)
+            '''
+              PID TTY      STAT   TIME COMMAND
+        1 ?        Ss     0:00 /init ro
+        3 tty1     Ss     0:00 /init ro
+        4 tty1     S      0:00 -bash
+      866 tty1     R      0:00 ps -ax
+            '''
+            apps_list: str = apps_str.split("\n")
+            for app in apps_list:
+                if "PID" in app:
+                    continue
+                pid, term, stat, time, command = app.split()
+                d[pid] = cls.__init__(pid=pid, term=term, stat=stat, time=time, command=command)
+        elif 'Windows' == utilities.OsCliInter.system():
+            raise NotImplemented('in Applications.discover and system windows is not implemented yet')
+        else:
+            raise ValueError(f'in Applications.discover and system {utilities.OsCliInter.system()} is strange')
+        return d
 
-    def __init__(self, apps_list) -> None:
+    def __init__(self, pid, term, stat, time, command) -> None:
         self.layer = Layer()
-        self.applications = apps_list
+        self.pid = pid
+        self.term = term
+        self.stat = stat
+        self.time = time
+        self.command = command
+
 
     def get_status(self)  -> ErrorLevels:
         return self.layer.get_status()
@@ -51,7 +83,6 @@ class DNSFailure(Exception):
 
         cprint(f"DNSFailure was raised querying {name} using query type {query_type}", 'red', file=sys.stderr)
         Exception.__init__(self, *args)
-
 
 class DNS(object):
 

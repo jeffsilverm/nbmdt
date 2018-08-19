@@ -6,6 +6,7 @@
 import json
 import subprocess
 from enum import Enum
+import platform
 from typing import List
 
 """
@@ -73,6 +74,13 @@ class OsCliInter(object):
     A collection of methods for running CLI commands.
     """
 
+    # Since the system is going to be the same across the entire program, populate it when the OsCliInter object is
+    # imported for the first time and then make it available to any object in class OsCliInter (which should not need
+    # to be instantiated
+    system = platform.system()
+
+
+
     @classmethod
     def run_command(cls, command: List[str]) -> str:
         """
@@ -90,5 +98,7 @@ class OsCliInter(object):
                                               check=False)
         completed_str = completed.stdout.decode('ascii')
         return completed_str
+
+
 
 
