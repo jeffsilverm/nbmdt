@@ -10,17 +10,27 @@ import dns
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
 from constants import ErrorLevels
+import utilities
+from typing import List
+
 
 class Application(object):
 
-    def discover(self):
-        pass
+    @classmethod
+    def discover(cls) -> object:
+        apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
+        apps_list: List[str] = apps_str.split("\n")
+        return Application(apps_list=apps_list)
 
-    def __init__(self):
+    def __init__(self, apps_list) -> None:
         self.layer = Layer()
+        self.applications = apps_list
 
     def get_status(self)  -> ErrorLevels:
         return self.layer.get_status()
+
+    def __str__(self):
+        return "Application __str__ method"
 
 
 # DNS sits at the application layer in the OSI model, according to

@@ -9,17 +9,33 @@ port = 8722  # Default port that the server listens on.  Provides a RESTful inte
 
 class Modes(IntEnum):
     BOOT = 1
-    MONITOR =  2
-    DIAGNOSE =  3
-    TEST =  4
-    NOMINAL =  5
+    MONITOR = 2
+    DIAGNOSE = 3
+    TEST = 4
+    NOMINAL = 5
+
+
+class Layers(IntEnum):
+    # This is from the nbmdt_user_manual
+    #  ethernet, wifi, ipv4, ipv6, neighbors, dhcp4, dhcp6, router, nameserver,  local_ports, isp_routing, remote_ports.
+    ETHERNET = 1
+    WIFI = 2
+    IPV4 = 3
+    IPV6 = 4
+    NEIGHBORS = 5
+    DHCP4 = 6
+    DHCP6 = 7
+    ROUTER = 8
+    NAMESERVER = 9
+    LOCAL_PORTS = 10
+    ISP_ROUTING = 11
+    REMOTE_PORTS = 12
 
 
 class Descriptions(Enum):
     CURRENT = auto()
     NOMINAL = auto()
     NAMED = auto()
-
 
     def is_current(self) -> bool:
         return self.description == self.CURRENT
@@ -76,9 +92,9 @@ class ErrorLevels(IntEnum):
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
 # https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
 # termcolor.colored
-colors = {ErrorLevels.NORMAL:          ['black', 'on_green'], ErrorLevels.SLOW: ['black', 'on_yellow'],
-          ErrorLevels.DEGRADED:        ['black', 'on_magenta'], ErrorLevels.DOWN: ['black', 'on_red'],
+colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black', 'on_yellow'],
+          ErrorLevels.DEGRADED: ['black', 'on_magenta'], ErrorLevels.DOWN: ['black', 'on_red'],
           ErrorLevels.DOWN_DEPENDENCY: ['black', 'on_cyan'], ErrorLevels.DOWN_ACKNOWLEDGED: ['black', 'on_magenta'],
-          ErrorLevels.CHANGED:         ['white', 'on_black'], ErrorLevels.OTHER: ['black', 'on_grey']}
+          ErrorLevels.CHANGED: ['white', 'on_black'], ErrorLevels.OTHER: ['black', 'on_grey']}
 # on is down
 # it as

@@ -6,26 +6,29 @@
 
 
 # https://pypi.python.org/pypi/termcolor
-import optparse
-from typing import Dict, Tuple
+import argparse
+import sys
 import typing
+from typing import Tuple
+import json
+import platform
 
-import constants
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
-import presentation  # OSI layer 6:
-import session  # OSI layer 5:
-import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import network  # OSI layer 3: IPv4, IPv6 should be called network
-import mac  # OSI layer 2: # Media Access Control: arp, ndp
+import constants
 import interface  # OSI layer 1: ethernet, WiFi
-
+import mac  # OSI layer 2: # Media Access Control: arp, ndp
+import network  # OSI layer 3: IPv4, IPv6 should be called network
+import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import session  # OSI layer 5:
+import presentation  # OSI layer 6:
+import utilities
 
 DEBUG = True
 type_application_dict = typing.Dict[str, application.Application]
 type_presentation_dict = typing.Dict[str, presentation.Presentation]
 type_session_dict = typing.Dict[str, session.Session]
-type_transport_dict = typing.Dict[str, transport.Transports]
-type_network_dict = typing.Dict[str, network.Network]
+type_transport_dict = typing.Dict[str, transport.Transport]
+type_network_dict: dict = typing.Dict[str, network.Network]
 type_mac_dict = typing.Dict[str, mac.Mac]
 type_interface_dict = typing.Dict[str, interface.Interface]
 
@@ -51,64 +54,88 @@ class SystemDescription(object):
      associated with them"""
 
     # Issue 13
-#    CURRENT = None
-
+    #    CURRENT = None
 
     def __init__(self, applications: type_application_dict = None,
                  presentations: type_presentation_dict = None,
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
                  networks: type_network_dict = None,
-                 macs: type_mac_dict = None,
                  interfaces: type_interface_dict = None,
                  mode=constants.Modes.BOOT,
                  configuration_filename: str = None
                  ) -> None:
         """
-        Populate a description of the system.  This discription can come from a file (MONITOR, DIAGNOSE), from the
-        current state of the system (BOOT, TEST, NOMINAL).  The description can be displayed colorized and scrolling
-        (BOOT), displayed using VT100 (ANSI-X3.64) cursor addressing (MONITOR), or recorded to a configuration file (NOMINAL)
+        Populate a description of the system.  Note that this method is
+        a constructor, and all it does is create a SystemDescription object.
 
         :param applications:
         :param presentations:
         :param sessions:
         :param transports:
         :param networks:
-        :param macs:
         :param interfaces:
         :param mode:
         :param configuration_filename:
         """
-        # BOOT = 1
-        # MONITOR = 2
-        # DIAGNOSE = 3
-        # TEST = 4
-        # NOMINAL = 5
-        if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT or mode == constants.Modes.TEST:
-            # We want to find out what the current state of the system is and record it in a file if
-            # in NOMINAL mode or else display it if in BOOT mode
-            applications = application.Application.discover()
-            presentations = presentation.Presentation.discover()
-            sessions = session.Session.discover()
-            transports = transport.Transports.discover()
-            networks = network.Network.discover()
-            macs = mac.Mac.discover()
-            interfaces = interface.Interface.discover()
-        elif mode == constants.Modes.MONITOR or mode == constants.Modes.DIAGNOSE:
-            # Compare the current configuration against a "nominal" configuration in the file and
-            # note any changes
-            (applications, presentations, sessions, transports, networks, macs, interfaces) = \
-                self.read_configuration(configuration_filename)
-        elif mode != constants.Modes.NOMINAL:
-            raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
         self.applications = applications
         self.presentations = presentations
         self.sessions = sessions
-        self.transports = transports
-        self.networks = networks
-        self.mac = macs
-        self.interfaces = interfaces
+        self.transports = transports  # TCP, UDP
+        self.networks = networks  # IPv4, IPv6
+        self.interfaces = interfaces  # Interface including the MAC
         self.mode = mode
+
+
+    @classmethod
+    def system_description_from_file (cls, filename: str ) -> object:
+        """
+        Read a system description from a file and create a SystemDescription object.
+        I couldn't figure out how to return a SystemDescription object, so I return an object
+        :param filename:
+        :return:
+        """
+
+
+        raise NotImplemented
+
+    @classmethod
+    def discover(cls) -> object:
+        """
+
+        :return: a SystemDescription object.
+        """
+
+        applications = application.Application.discover(),
+        presentations = presentation.Presentation.discover(),
+        sessions = session.Session.discover(),
+        transports = transport.Transport.discover(),
+        networks = network.Network.discover(),
+        interfaces = interface.Interface.discover(),
+
+        my_system: object = cls.__init__( self=cls,
+                                          applications=applications,
+                                          presentations=presentations,
+                                          sessions=sessions,
+                                          transports=transports,
+                                          networks=networks,
+                                          interfaces=interfaces )
+        my_system.name = platform.node()
+        return my_system
+
+
+
+    def file_from_system_description (self, filename: str ) -> None:
+        """Write a system description to a file
+        :param  filename
+        :return:
+        """
+        # In the future, detect if a configuration file already exists, and if so, create
+        # a new version.
+        with open(filename, w) as f:
+            json.dump(self,f)
+
+
 
 
     """
@@ -185,33 +212,71 @@ class SystemDescription(object):
         #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
     """
 
-    def read_configuration(self, filename):
-        # applications, presentations, sessions, transports, networks, macs, interface
-        return (None, None, None, None, None, None, None)
 
-    def write_configuration(self, filename):
-        return None
-
-
-
+    @property
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
         This method is probably most useful in BOOT mode"""
-        result = application.__str__(mode=self.mode) + "\n" + \
-            presentation.__str__(mode=self.mode) + "\n" + \
-            session.__str__(mode=self.mode) + "\n" + \
-            transport.__str__(mode=self.mode) + "\n" + \
-            network.__str__(mode=self.mode) + "\n" + \
-            mac.__str__(mode=self.mode) + "\n" + \
-            interface.__str__(mode=self.mode)
+        result = self.applications.__str__(mode=self.mode) + "\n" + \
+                 presentation.__str__(mode=self.mode) + "\n" + \
+                 session.__str__(mode=self.mode) + "\n" + \
+                 transport.__str__(mode=self.mode) + "\n" + \
+                 network.__str__(mode=self.mode) + "\n" + \
+                 interface.__str__(mode=self.mode)
         return result
 
 
-def main(args):
+from typing import List
+
+def monitor():
+    pass
+
+def diagnose():
+    pass
+
+
+
+def main(args: List[str] = []):
+    """
+    Parse arguments, decide what mode to work in.
+    :param args: a list of options,perhaps passed by a debugger.
+    :return:
+    """
+    sys.argv.extend(args)
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
-    (options, args_) = arg_parser()
-    mode = constants.Modes.BOOT  # For debugging
+    options, mode = arg_parser()
+
+    if options.debug:
+        print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
+    if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
+        current_system = SystemDescription.discover()
+        if mode == constants.Modes.NOMINAL:
+            current_system.file_from_system_description(options.filename)
+        else:
+            print(current_system.str(options.color))
+    elif mode == constants.Modes.MONITOR:
+        monitor()
+    elif mode == constants.Modes.DIAGNOSE:
+        diagnose()
+"""
+        # We want to find out what the current state of the system is and record it in a file if
+        # in NOMINAL mode or else display it if in BOOT mode
+        applications: application.Application = application.Application()
+        presentations = presentation.Presentation()
+        sessions = session.Session()
+        transports = transport.Transport()
+        networks = network.Network()
+        # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
+        interfaces_dict = interface.Interface.discover()
+
+        # Compare the current configuration against a "nominal" configuration in the file and
+        # note any changes
+        (applications, presentations, sessions, transports, networks, interfaces) = \
+            self.read_configuration(configuration_filename)
+    elif mode != constants.Modes.NOMINAL:
+        raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
+
     current_system = SystemDescription(mode=mode)
     if mode == constants.Modes.BOOT:
         application_status: constants.ErrorLevels = application.get_status()
@@ -222,8 +287,9 @@ def main(args):
         mac_status: constants.ErrorLevels = mac.get_status()
         interface_status: constants.ErrorLevels = interface.get_status()
 
-
     """
+
+"""
     current_system_str = str(current_system)
     print(current_system_str)
     # Issue 9
@@ -252,30 +318,53 @@ def main(args):
     
     if mode == Modes.TEST :
         test ( nominal_system_description, current_system_description )
-    """
-
+    
+    
+"""
 
 def arg_parser() -> Tuple:
-    parser = optparse.OptionParser()
-    parser.add_option('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
-                                     "subsystems, and then exits", action="count", dest="boot")
-    parser.add_option('--monitor', help="Use while system is running.  Presents a RESTful API that a client can use to "
-                                        "monitor the state of the network on a host", action="count", dest="monitor")
-    parser.add_option('--diagnose', help=
-    "Use when a problem is detected. Use TCP port %s by default unless changed by the -p or --port switch" %
-        constants.port, action="count", dest="diagnose")
-    parser.add_option('--nominal', help="Use when the system is working properly to capture the current state."
-                                         "This state will serve as a reference for future testing", action="count", dest="nominal")
-    parser.add_option('-p', '--port', type='int', default=constants.port,
-                      help='Port where server listens when in monitor mode, default %s' % constants.port)
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    print("BUG: add single letter options!", file=sys.stderr)
+    parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
+                                       "subsystems, and then exits", action="store_true", dest="boot")
+    parser.add_argument('--monitor',
+                        help="Use while system is running.  Presents a RESTful API that a client can use to "
+                             "monitor the state of the network on a host", action="store_true", dest="monitor")
+    parser.add_argument('--diagnose', help="Use when a problem is detected.", action="store_true", dest="diagnose")
+    parser.add_argument('--test', help="Test a particular part of the network", action="store_true", dest="test")
+    parser.add_argument('--nominal', help="Use when the system is working properly to capture the current state."
+                                          "This state will serve as a reference for future testing",
+                        action="store_true", dest="nominal")
+    parser.add_argument('-p', '--port', type=int, default=constants.port,
+                        help='Port where server listens when in monitor mode, default %s' % constants.port)
+    parser.add_argument("--debug", default=False, action="store_true", dest="debug")
+    options = parser.parse_args()
 
     # Select one and only one of these options
-    if ( options.boot is None) + ( options.monitor is None)  + ( options.diagnose is None) + ( options.nominal is None ) == 1:
-        return options, args
-    raise ValueError("Must have exactly one of --boot, --monitor, --diagnose")
+    # Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
+    # There is a mechanism in there to make sure that one and only option is selected.
+    if (options.boot + options.monitor + options.diagnose + options.test + options.nominal) != 1:
+        raise ValueError(
+            "Must have exactly one of --boot (or -b), --monitor (or -m), --diagnose (or -d), --nominal (or -N)\n"
+            "sys.argv is " + str(sys.argv))
+    if options.boot:
+        mode = constants.Modes.BOOT
+    elif options.diagnose:
+        mode = constants.Modes.DIAGNOSE
+    elif options.monitor:
+        mode = constants.Modes.MONITOR
+    elif options.test:
+        mode = constants.Modes.TEST
+    elif options.nominal:
+        mode = constants.Modes.NOMINAL
+    else:
+        raise AssertionError("The arg_parser returned all mode options cleared.  options is " + str(options))
+    return (options, mode)
+
+    # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
 
 if __name__ == "__main__":
-    args = arg_parser()
-    main(args)
+    # Pass a length 0 list for production
+    # Actually, here you'd never want to pass ANYTHING, because that's a job for pytest.
+    main(["--boot", "--debug"], )

@@ -66,7 +66,7 @@ class Interface(Layer):
         self.broadcast = "BROADCAST" in flags
         self.lower_up = "LOWER_UP" in flags
         self.carrier = "NO-CARRIER" not in flags
-        self.multicase = "MULTICAST" in flags
+        self.multicast = "MULTICAST" in flags
 
         for idx in range(3, len(fields) - 1, 2):
             # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
@@ -94,7 +94,7 @@ class Interface(Layer):
             fields = completed_str.split()
             # fields[0] is the line number, skip that.  fields[1] is the device name
             intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-        link_dict[intf_name] = Interface(intf_name, lnk)
+            link_dict[intf_name] = Interface(intf_name, lnk)
 
         return link_dict
 

@@ -36,7 +36,11 @@
 
       <li>A system administrator can run it to capture the current state
         of the system, which is "nominal"</li></ol>
-<p>The program is an out growth of a talk I gave at <a href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX-C9qi-sng/edit#slide=id.p">LinuxFestNorthwest in Bellingham, Washington, April 2017</a>.&nbsp; In this talk, I discussed how you could use linux software to diagnose network problems.&nbsp; One of the comments I got from my audience is "Is there a program that contains all of the tribal knowledge you have?".<br>
+<p>The program is an out growth of a talk I gave at <a href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX-C9qi-sng/edit#slide=id.p">LinuxFestNorthwest in Bellingham, Washington, April 2017</a>.&nbsp;
+ In this talk, I discussed how you could use linux software to diagnose 
+network problems.&nbsp; One of the comments I got from my audience is 
+"Is there a program that contains all of the tribal knowledge you 
+have?".<br>
 </p>
 <ol>
 
@@ -77,7 +81,10 @@ it&nbsp; be difficult to do so.&nbsp; The reason why is that NBMDT
     </ul>
     
 <h2>Documentation</h2>
-<p>This file has introductory documentation.&nbsp; In this file, I lay out what the NBMDT actually does.&nbsp; There is also a <a href="How_to_install_use_and_test_monitor.sh.html">user document</a> that has the instructions that a user needs in order to actually the program.&nbsp; There is a <a href="../../../nbmdt/docs/nbmdt_requirements.html">requirements document</a>, which is derived from this document.&nbsp; There is also a <a href="nbmdt_test_plan.html">test plan</a>, which is derived from the <a href="file:///home/jeffs/nbmdt/docs/nbmdt_requirements.html">requirements document</a>.&nbsp;&nbsp; The decision to write these documents in HTML was deliberate because I wanted to cross reference every requirement to a test in the test plan, and backwards.<br>
+<p>This file has introductory documentation.&nbsp; In this file, I lay out what the NBMDT actually does.&nbsp; There is also a <a href="How_to_install_use_and_test_monitor.sh.html">user document</a> that has the instructions that a user needs in order to actually the program.&nbsp; There is a <a href="../../../nbmdt/docs/nbmdt_requirements.html">requirements document</a>, which is derived from this document.&nbsp; There is also a <a href="nbmdt_test_plan.html">test plan</a>, which is derived from the <a href="file:///home/jeffs/nbmdt/docs/nbmdt_requirements.html">requirements document</a>.&nbsp;&nbsp;
+ The decision to write these documents in HTML was deliberate because I 
+wanted to cross reference every requirement to a test in the test plan, 
+and backwards.<br>
 </p>
 
     <p><br>
@@ -279,7 +286,141 @@ jeffs@jeff-desktop:~$ cat /sys/class/net/*/address<br>00:22:4d:7c:4d:d9<br>00:10
     </tr>
     </tbody>
 </table>
-<h3><a name="mozTocId181640" class="mozTocH3"></a>The relationship between the OSI model and the NBMDT python source files</h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>Layer<br></th><th>Typical tools to monitor and control<br></th><th>files<br></th></tr><tr><td style="vertical-align: top;">Application<br></td><td style="vertical-align: top;">nc, curl, wget<br></td><td style="vertical-align: top;">applications.py<br></td></tr><tr><td style="vertical-align: top;">Presentation<br></td><td style="vertical-align: top;"><br></td><td style="vertical-align: top;">presentation.py<br></td></tr><tr><td style="vertical-align: top;">Session<br></td><td style="vertical-align: top;">ss<br></td><td style="vertical-align: top;">session.py<br></td></tr><tr><td style="vertical-align: top;">Transport<br></td><td style="vertical-align: top;"><acronym>ip route</acronym>, route, netstat -r,<br></td><td style="vertical-align: top;">transports.py<br></td></tr><tr><td style="vertical-align: top;">Network<br></td><td style="vertical-align: top;">ip address, ping, ping6, ifconfig <br></td><td style="vertical-align: top;">routes.py, routing.py<br></td></tr><tr><td style="vertical-align: top;">Data-link<br></td><td style="vertical-align: top;">ip link, ip neigh, arp </td><td style="vertical-align: top;"><span style="text-decoration: line-through;">interfaces.py</span> <code>class </code><meta http-equiv="content-type" content="text/html; charset=UTF-8"><code>LogicalInterface</code>&nbsp; (<span style="color: rgb(153, 153, 153);">data-link.py</span>)<br></td></tr><tr><td style="vertical-align: top;">Physical<br></td><td style="vertical-align: top;">iwlist, ethtool <br></td><td style="vertical-align: top;">interfaces.py <code>class PhysicalInterface</code>&nbsp;&nbsp; <br></td></tr></tbody></table><p>See <a href="https://www.tecmint.com/ip-command-examples/">ip command examples from tecmint</a>, <a href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf">the ip command cheat sheet</a>&nbsp; , <br></p><h3><a name="mozTocId962741" class="mozTocH3"></a>Critical Networks and NBMDT python source files<br></h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>Service<br></th><th>typical tools to monitor and control<br></th><th>files<br></th></tr><tr><td style="vertical-align: top;">Distributed Name Service (DNS)<br></td><td style="vertical-align: top;">dig, host<br></td><td style="vertical-align: top;">dns.py<br></td></tr><tr><td style="vertical-align: top;">Network Time Service (NTP)<br></td><td style="vertical-align: top;">ntpq<br></td><td style="vertical-align: top;">ntp.py<br></td></tr><tr><td style="vertical-align: top;">Dynamic Host Configuration Protocol (DHCP)<br></td><td style="vertical-align: top;">dhclient<br></td><td style="vertical-align: top;">dhclient.py<br></td></tr></tbody></table><h3><a name="mozTocId89729" class="mozTocH3"></a>Other important files</h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>file<br></th><th>role<br></th></tr><tr><td style="vertical-align: top;">nbmdt.py<br></td><td style="vertical-align: top;">imports all of the files listed above, is the main program<br></td></tr><tr><td style="vertical-align: top;">status.py<br></td><td style="vertical-align: top;">All files should import this file, provides status results, logging<br></td></tr><tr><td style="vertical-align: top;">configuration.py<br></td><td style="vertical-align: top;">Imports and exports configurations<br></td></tr></tbody></table><p><br></p><p><br></p>
+<h3><a name="mozTocId181640" class="mozTocH3"></a>The relationship between the OSI model and the NBMDT python source files</h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>Layer<br></th><th>Typical tools to monitor and control<br></th><th>files<br></th></tr><tr><td style="vertical-align: top;">Application<br></td><td style="vertical-align: top;">nc, curl, wget<br></td><td style="vertical-align: top;">applications.py<br></td></tr><tr><td style="vertical-align: top;">Presentation<br></td><td style="vertical-align: top;"><br></td><td style="vertical-align: top;">presentation.py<br></td></tr><tr><td style="vertical-align: top;">Session<br></td><td style="vertical-align: top;">ss<br></td><td style="vertical-align: top;">session.py<br></td></tr><tr><td style="vertical-align: top;">Transport<br></td><td style="vertical-align: top;"><acronym>ip route</acronym>, route, netstat -r,<br></td><td style="vertical-align: top;">transports.py<br></td></tr><tr><td style="vertical-align: top;">Network<br></td><td style="vertical-align: top;">ip address, ping, ping6, ifconfig <br></td><td style="vertical-align: top;">routes.py, routing.py<br></td></tr><tr><td style="vertical-align: top;">Data-link<br></td><td style="vertical-align: top;">ip link, ip neigh, arp </td><td style="vertical-align: top;"><span style="text-decoration: line-through;">interfaces.py</span> <code>class </code><meta http-equiv="content-type" content="text/html; charset=UTF-8"><code>LogicalInterface</code>&nbsp; (<span style="color: rgb(153, 153, 153);">data-link.py</span>)<br></td></tr><tr><td style="vertical-align: top;">Physical<br></td><td style="vertical-align: top;">iwlist, ethtool <br></td><td style="vertical-align: top;">interfaces.py <code>class PhysicalInterface</code>&nbsp;&nbsp; <br></td></tr></tbody></table><p>See <a href="https://www.tecmint.com/ip-command-examples/">ip command examples from tecmint</a>, <a href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf">the ip command cheat sheet</a>&nbsp; , <br></p><h3><a name="mozTocId962741" class="mozTocH3"></a>Critical Networks and NBMDT python source files<br></h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>Service<br></th><th>typical tools to monitor and control<br></th><th>files<br></th></tr><tr><td style="vertical-align: top;">Distributed Name Service (DNS)<br></td><td style="vertical-align: top;">dig, host<br></td><td style="vertical-align: top;">dns.py<br></td></tr><tr><td style="vertical-align: top;">Network Time Service (NTP)<br></td><td style="vertical-align: top;">ntpq<br></td><td style="vertical-align: top;">ntp.py<br></td></tr><tr><td style="vertical-align: top;">Dynamic Host Configuration Protocol (DHCP)<br></td><td style="vertical-align: top;">dhclient<br></td><td style="vertical-align: top;">dhclient.py<br></td></tr></tbody></table><h3><a name="mozTocId89729" class="mozTocH3"></a>Other important files</h3><table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2"><tbody><tr><th>file<br></th><th>role<br></th></tr><tr><td style="vertical-align: top;">nbmdt.py<br></td><td style="vertical-align: top;">imports all of the files listed above, is the main program<br></td></tr><tr><td style="vertical-align: top;">status.py<br></td><td style="vertical-align: top;">All files should import this file, provides status results, logging<br></td></tr><tr><td style="vertical-align: top;">configuration.py<br></td><td style="vertical-align: top;">Imports and exports configurations<br></td></tr></tbody></table>
+<h1>Progress</h1>
+<table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
+  <tbody>
+    <tr>
+      <td style="vertical-align: top;">OSI layer<br>
+      </td>
+      <td style="vertical-align: top;">Classes<br>
+      </td>
+      <td style="vertical-align: top;">File<br>
+      </td>
+      <td style="vertical-align: top;">Requirements<br>
+      </td>
+      <td style="vertical-align: top;">Test plan<br>
+      </td>
+      <td style="vertical-align: top;">Code<br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;">physical<br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+      <td style="vertical-align: top;"><br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<p><br>
+</p>
+<p><br></p>
 <hr style="width: 100%; height: 2px;">
 <ol id="mozToc" class="readonly"><!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId308862">The Network Boot Monitor Diagnostic Tool (NBMDT)</a><ol><li><a href="#mozTocId235879">Purpose</a><ol><li><a href="#mozTocId341106">What are the advantages of the NBMDT over other network
       monitors?</a></li><li><a href="#mozTocId319879">
@@ -293,8 +434,7 @@ jeffs@jeff-desktop:~$ cat /sys/class/net/*/address<br>00:22:4d:7c:4d:d9<br>00:10
 </li><li><a href="#mozTocId867742">Nominal configuration file</a></li></ol></li><li><a href="#mozTocId821733">Internals</a><ol><li><a href="#mozTocId76477">Network cards</a><ol><li><a href="#mozTocId290478">MAC addresses:</a></li><li><a href="#mozTocId218814">Additional information</a></li></ol></li><li><a href="#mozTocId181640">The relationship between the OSI model and the NBMDT python source files</a></li><li><a href="#mozTocId962741">Critical Networks and NBMDT python source files</a></li><li><a href="#mozTocId89729">Other important files</a></li></ol></li></ol></li></ol>
 <br>
 <p>The output from the <kbd>pip search dns</kbd> command:
-</p><pre>
-3xsd (0.0.26)                                  - 3xsd is a native epoll server serving TCP/UDP connections, a high performance static web server, a failover dns server, a http-based distributed file server, a load-balance proxy-cache server, and a warp-drive server. Written in python, take the full power of multi-cores.
+</p><pre>3xsd (0.0.26)                                  - 3xsd is a native epoll server serving TCP/UDP connections, a high performance static web server, a failover dns server, a http-based distributed file server, a load-balance proxy-cache server, and a warp-drive server. Written in python, take the full power of multi-cores.
 odoo8-addon-connector-dns (8.0.1.0.0.99.dev3)  - DNS connector
 adns (1.4-py1)                                 - An interface to GNU adns - python3 port
 adns-python (1.2.1)                            - An interface to GNU adns
