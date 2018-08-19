@@ -6,7 +6,6 @@
 from termcolor import cprint as cprint
 import sys
 # dnspython DNS toolkit see http://www.dnspython.org/
-import dnspython
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
 from constants import ErrorLevels

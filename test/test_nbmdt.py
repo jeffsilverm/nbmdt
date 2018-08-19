@@ -117,22 +117,23 @@ def test_argparse() -> None:
         assert not options.debug, "debug switch was not given, but options.debug is True"
         # The first opportunity to actually test nbmdt.py as a program
         sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose"])
-        assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did not" \
-                                              " appear in stderr"
+        assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did " \
+                                               "not" \
+                                               " appear in stderr"
         assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
-                                                 "diagnose did not appear in stderr"
+                                                  "diagnose did not appear in stderr"
         sysout_str, syserr_str = run_nbmdt(["--boot"])
         assert "boot " in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
-                                             "appear in syserr"
+                                              "appear in syserr"
         assert "debug " not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
-                                                  "debug appeared in syserr"
+                                                   "debug appeared in syserr"
         #
         config_file_name = "mock_nbmdt_config.json"
         stdout_str, syserr_str = run_nbmdt(["--nominal", "--debug", config_file_name])
         assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr(124)"
         assert " nominal " in syserr_str.lower(), """ " nominal " not found in st"""
 
-    def test_argp_indv(options_list: List[str], option_results: List[tuple]) -> None:
+    def test_argp_indv(options_list: List[str], option_results: List[tuple]) -> object:
         """
         This tests the arg_parser by feeding the options to the arg_parser, then checking that the attribute
         exists in the optionsm object returned by the nbmdt.arg_parser method
@@ -141,6 +142,13 @@ def test_argparse() -> None:
                                 has the return value.  The second element has the value expected.
         :return:
         """
+        # Test that In didn't mess up the calling sequence, which I did several times
+        assert isinstance(options_list, list), \
+            f"first arg to test_argp_indv should be a list, but is actually {type(options_list)}."
+        assert 2 == len(options_list), f"option_list should be length 2 but is actually {len(options_list)}."
+        for i in range(len(option_results)):
+            assert isinstance(option_results[i], tuple), \
+                f"arg {i} to test_argp_indv should be an int but is actually a {type(option_results[i])}.)"
         # Test that the arg_parser returns the correct data type
         parsed_args = nbmdt.arg_parser()
         assert isinstance(parsed_args, tuple), f"parsed_args from nbmdt.arg_parser should be a tuple but it is" \
@@ -184,12 +192,17 @@ def test_argparse() -> None:
         sys.argv = ["nbmdt.py", "--file", "xyzzy.txt"]
         nbmdt.main()
 
-    test_argp_indv(["-t", "ethernet=eno1,wifi=wlp12"],['test', constants.exists])
-    test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"])
-    test_argp_indv(["--test", 'enp3s0'])
+    if_test = "ethernet=eno1,wifi=wlp12"
+    test_argp_indv(["-t", if_test], [('test', True)])  # Does attribute test exist?  True if so
+
+    # @pytest.mark.xfail(raises=ValueError)
+    test_argp_indv(["-t", if_test], [('test', if_test)])
+    test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"], [("ethernet", "eno", "wifi", "wlp12", "router")])
+    test_argp_indv(["--test", 'ethernet=enp3s0'], [("ethernet", "enp3s0")])
     test_argp_indv(["-D"], [("daemon", True)])
     test_argp_indv(["-daemon"], [("daemon", True)])
-    test_argp_indv(["-w"])
+    test_argp_indv(["-w"], [("port", 80)])
+    test_argp_indv(["-r"], [("rest", True)])
     test_argp_indv(["-p", "3217"], [("port", 3217)])
     test_argp_indv(["--port", "3217"], [("port", 3217)])
     test_argp_indv(["-M", "0"], [("mask", 0), ("port", 80)])  # The default port is 80
@@ -209,9 +222,8 @@ def test_argparse() -> None:
     test_argp_indv(["--nocolor"], [("color", False)])
     test_argp_indv(["-v"], [("verbose", True)])
     test_argp_indv(["--verbose"], [("verbose", True)])
-    test_argp_indv([--help])
-    test_argp_indv([-h])
-
+    test_argp_indv(["--help"], [("help", True)])
+    test_argp_indv(["-h"], [("help", True)])
 
 
 print("Start testing here", file=sys.stderr)
