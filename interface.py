@@ -2,28 +2,100 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import os
 import subprocess
-from layer import Layer
-from constants import ErrorLevels
-from utilities import OsCliInter
+import sys
 from platform import system
 from typing import Union
-import datetime
-import os
-import sys
+
+from constants import ErrorLevels
+from layer import Layer
+from utilities import OsCliInter
 
 
 # There is an ip command cheat sheet at
 # https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
+# There is, IMHO, a conceptual flaw in the ip command.  The ip link list command does what I think is too much
+# Yes, the MAC address and interface state and interface settings are there, but the stats are, IMHO, part of
+#n the physical layer.
+"""
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats link list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes  packets  errors  dropped overrun mcast   
+    343743     3658     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    343743     3658     0       0       0       0       
+2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    158231835  172086   0       0       0       332     
+    TX: bytes  packets  errors  dropped carrier collsns 
+    16106697   98831    0       0       0       0       
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats link list
+
+"""
+# However, the ip addr list command gives more information than it ought to - the stats show the interface stats and the MAC addresses
+# It also shows the IP address.
+# I suspect that the rationale is that the ip command is actually using the TCP/IP model instead of the OSI model, which is what I
+# wanted to use.
+# Perhaps this means that I ought to re-think the design of the nbmdt.
+"""
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats addr list
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+    RX: bytes  packets  errors  dropped overrun mcast   
+    345559     3678     0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    345559     3678     0       0       0       0       
+2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0       
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0       
+3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.3/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1
+       valid_lft 76453sec preferred_lft 76453sec
+    inet6 2602:4b:ac60:9b00:ae37:ff43:3d79:3daf/64 scope global noprefixroute 
+       valid_lft forever preferred_lft forever
+    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute 
+       valid_lft forever prefefrred_lft forever
+    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+    RX: bytes  packets  errors  dropped overrun mcast   
+    158288204  172470   0       0       0       337     
+    TX: bytes  packets  errors  dropped carrier collsns 
+    16159189   99195    0       0       0       0       
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
+"""
+
+#
 
 def none_if_none(s):
     return s if s is not None else "None"
 
 
 class Interface(Layer):
-    cls.my_os
-    @classmethod()
-    def __init__(cls):
+    """
+    Methods for dealing with interfaces
+    """
+
+    #
+
+    def __init__(self, if_name):
+        cls.layer = super()
         cls.my_os = system()
         if cls.my_os == 'Linux':
             # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
@@ -43,7 +115,7 @@ class Interface(Layer):
         else:
             raise ValueError(f"System is {cls.my_os} and I don't recognize it")
 
-    def __init__(self, name: str, lnk_str: str =None) -> None:
+    def __init__(self, name: str, lnk_str: str = None) -> None:
 
         super()
         layer_t = Layer()
@@ -72,7 +144,6 @@ class Interface(Layer):
             # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
             # Discipline" and it's vital.
             self.__setattr__(fields[idx], fields[idx + 1])
-
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
@@ -119,7 +190,7 @@ class PhysicalInterface(Interface):
         """
 
         completed = subprocess.run(
-            print("get_all_physical_interfaces works for linux, nothing else", file=sys.stderr )
+            print("get_all_physical_interfaces works for linux, nothing else", file=sys.stderr)
             [self.IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
             input=None,
             stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
@@ -127,12 +198,44 @@ class PhysicalInterface(Interface):
         completed_str = completed.stdout.decode('ascii')
         """
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 gso_max_size 65536 gso_max_segs 65535 
-3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 200 hello_time 200 max_age 2000 ageing_time 30000 stp_state 1 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    1.73 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.73 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 1 \    tun \    bridge_slave state disabled priority 32 cost 100 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8001 port_no 0x1 designated_port 32769 designated_cost 0 designated_bridge 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-6: lxcbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:16:3e:00:00:00 brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 1500 hello_time 200 max_age 2000 ageing_time 30000 stp_state 0 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.0:16:3e:0:0:0 designated_root 8000.0:16:3e:0:0:0 root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    0.00 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.72 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    
+link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 
+gso_max_size 65536 gso_max_segs 65535 
+2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000\    
+link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 
+gso_max_size 65536 gso_max_segs 65535 
+3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\   
+ link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 
+ gso_max_size 65536 gso_max_segs 65535 
+4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 
+1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 200 hello_time 
+200 max_age 2000 ageing_time 30000 stp_state 1 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 
+8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed root_port 0 root_path_cost 0 topology_change 0 
+topology_change_detected 0 hello_timer    1.73 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.73 
+vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 
+mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 
+mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 
+25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 
+nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 
+65536 gso_max_segs 65535 
+5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default 
+qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 1 \    tun \    bridge_slave state 
+disabled priority 32 cost 100 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8001 
+port_no 0x1 designated_port 32769 designated_cost 0 designated_bridge 8000.52:54:0:ef:47:ed designated_root 
+8000.52:54:0:ef:47:ed hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 
+config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode none 
+numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
+6: lxcbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 
+1000\    link/ether 00:16:3e:00:00:00 brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 1500 hello_time 
+200 max_age 2000 ageing_time 30000 stp_state 0 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 
+8000.0:16:3e:0:0:0 designated_root 8000.0:16:3e:0:0:0 root_port 0 root_path_cost 0 topology_change 0 
+topology_change_detected 0 hello_timer    0.00 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.72 
+vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 
+mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 
+mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 
+25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 
+nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 
+65536 gso_max_segs 65535 
         """
         links_list = completed_str.split('\n')
         link_db = dict()
@@ -179,11 +282,14 @@ class LogicalInterface(Interface):
         """
 1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
 1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 77480sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 
+77480sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
+preferred_lft forever
 3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
 3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
+forever
 6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
 jeffs@jeffs-desktop:/home/jeffs  $ 
 """
@@ -228,11 +334,14 @@ jeffs@jeffs-desktop:/home/jeffs  $
         jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
 1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
 1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 63655sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
+3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 
+63655sec
+3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
+preferred_lft forever
 3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
 3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
+4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
+forever
 6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
 
@@ -246,7 +355,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $
                 break
             # https://docs.python.org/3/library/collections.html#collections.OrderedDict
             # ad is an attribute dictionary.  The string returned by the ip command will look like:
-            # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec preferred_lft 85452sec
+            # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec
+            #  preferred_lft 85452sec
             # addr_desc is a further description of an an address
             addr_desc = collections.OrderedDict()
             fields = addr.split()
