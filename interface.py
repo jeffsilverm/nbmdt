@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
 
 import collections
 import os
@@ -13,73 +14,7 @@ from layer import Layer
 from utilities import OsCliInter
 
 
-# There is an ip command cheat sheet at
-# https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
-# There is, IMHO, a conceptual flaw in the ip command.  The ip link list command does what I think is too much
-# Yes, the MAC address and interface state and interface settings are there, but the stats are, IMHO, part of
-#n the physical layer.
-"""
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats link list
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    RX: bytes  packets  errors  dropped overrun mcast   
-    343743     3658     0       0       0       0       
-    TX: bytes  packets  errors  dropped carrier collsns 
-    343743     3658     0       0       0       0       
-2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
-    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
-    RX: bytes  packets  errors  dropped overrun mcast   
-    0          0        0       0       0       0       
-    TX: bytes  packets  errors  dropped carrier collsns 
-    0          0        0       0       0       0       
-3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
-    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff
-    RX: bytes  packets  errors  dropped overrun mcast   
-    158231835  172086   0       0       0       332     
-    TX: bytes  packets  errors  dropped carrier collsns 
-    16106697   98831    0       0       0       0       
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats link list
 
-"""
-# However, the ip addr list command gives more information than it ought to - the stats show the interface stats and the MAC addresses
-# It also shows the IP address.
-# I suspect that the rationale is that the ip command is actually using the TCP/IP model instead of the OSI model, which is what I
-# wanted to use.
-# Perhaps this means that I ought to re-think the design of the nbmdt.
-"""
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --stats addr list
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host 
-       valid_lft forever preferred_lft forever
-    RX: bytes  packets  errors  dropped overrun mcast   
-    345559     3678     0       0       0       0       
-    TX: bytes  packets  errors  dropped carrier collsns 
-    345559     3678     0       0       0       0       
-2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
-    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff
-    RX: bytes  packets  errors  dropped overrun mcast   
-    0          0        0       0       0       0       
-    TX: bytes  packets  errors  dropped carrier collsns 
-    0          0        0       0       0       0       
-3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
-    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.0.3/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1
-       valid_lft 76453sec preferred_lft 76453sec
-    inet6 2602:4b:ac60:9b00:ae37:ff43:3d79:3daf/64 scope global noprefixroute 
-       valid_lft forever preferred_lft forever
-    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute 
-       valid_lft forever prefefrred_lft forever
-    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute 
-       valid_lft forever preferred_lft forever
-    RX: bytes  packets  errors  dropped overrun mcast   
-    158288204  172470   0       0       0       337     
-    TX: bytes  packets  errors  dropped carrier collsns 
-    16159189   99195    0       0       0       0       
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
-"""
 
 #
 
@@ -89,42 +24,66 @@ def none_if_none(s):
 
 class Interface(Layer):
     """
-    Methods for dealing with interfaces
+    Methods for dealing with interfaces.  An "interface" for the purposes of this program
+    is a combination of the physical and data link layers in the OSI model, and the
+    network access layer in the TCP/IP model
     """
 
-    #
-
-    def __init__(self, if_name):
-        cls.layer = super()
-        cls.my_os = system()
-        if cls.my_os == 'Linux':
-            # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
-            # symlink it so that both /bin/ip and
-            # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
-            # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
-            if os.path.isfile("/bin/ip"):
-                cls.IP_COMMAND = "/bin/ip"
-            elif os.path.isfile("/usr/bin/ip"):
-                cls.IP_COMMAND = "/usr/bin/ip"
-            else:
-                raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
-        elif cls.my_os == 'Windows':
-            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
-        elif cls.my_os == 'Mac OS':
-            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
+    # The location of the command to get the interface information is OS specific and common
+    # across all interfaces, so it is a class variable
+    if 'Linux' == OsCliInter.system:
+        # The command to get network access information from the OS.  I suppose it could be in /sbin or /usr/sbin
+        if os.path.isfile("/bin/ip"):
+            IP_COMMAND = "/bin/ip"
+        elif os.path.isfile("/usr/bin/ip"):
+            IP_COMMAND = "/usr/bin/ip"
         else:
-            raise ValueError(f"System is {cls.my_os} and I don't recognize it")
-
-    def __init__(self, name: str, lnk_str: str = None) -> None:
-
-        super()
-        layer_t = Layer()
-        self.layer = layer_t
-        # Did the caller specify a string with the description of the interface?  That might be if the caller called
+            raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
         # the ip link list command instead of the ip link show DEV command
         # For a complete list of flags and parameters, see
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
-        discover_command = [self.IP_COMMAND, "--details", "--oneline", "link", "list"]
+        discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
+    elif 'Windows' == OsCliInter.system:
+        discover_command = None
+        raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
+    elif 'Mac OS' == OsCliInter.system:
+        discover_command = None
+        raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
+    else:
+        discover_command = None
+        raise ValueError(f"System is {OsCliInter.system} and I don't recognize it")
+
+    def __init__(self, if_name, state_up, broadcast, lower_up, carrier, multicast,
+                 mtu, qdisc, qlen, state, link_addr, broadcast_addr, mode = "DEFAULT", **kwargs ):
+        self.layer = super()
+        self.if_name = if_name
+        assert type(state_up) == bool, f"state_up is {type(state_up)}"
+        self.state_up = state_up
+        self.broadcast = broadcast
+        self.lower_up = lower_up
+        self.carrier = carrier
+        self.multicast = multicast
+        self.mtu = mtu
+        self.qdisc = qdisc
+        self.state = state
+        self.mode = mode
+        self.qlen = qlen
+        self.link_addr = link_addr
+        self.broadcast_addr = broadcast_addr
+        for k in kwargs:
+            self.__setattr__(k, kwargs[k])
+
+
+    def discover(self):
+        """
+        Call this method to discover all of the interfaces in the system.  This command
+        will call the command line command to list all of the interfaces
+        :return: a dictionary of Interface objects, keyed by interface name
+        """
+
+
+        # Did the caller specify a string with the description of the interface?  That might be if the caller called
+
         get_details_command = [self.IP_COMMAND, "--details", "--oneline", "link", "show"]
 
         if lnk_str is None and self.my_os == 'Linux':
@@ -139,6 +98,7 @@ class Interface(Layer):
         self.lower_up = "LOWER_UP" in flags
         self.carrier = "NO-CARRIER" not in flags
         self.multicast = "MULTICAST" in flags
+
 
         for idx in range(3, len(fields) - 1, 2):
             # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
