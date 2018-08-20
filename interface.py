@@ -42,7 +42,9 @@ class Interface(Layer):
         # the ip link list command instead of the ip link show DEV command
         # For a complete list of flags and parameters, see
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
-        discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
+        link_discover_command = [IP_COMMAND, "--details", "--oneline", "link", "list"]
+        addr_discover_command = [IP_COMMAND, "--details", "--oneline", "addr", "list"]
+        link_get_stats_command = [IP_COMMAND, "addr", "show", ]
     elif 'Windows' == OsCliInter.system:
         discover_command = None
         raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
