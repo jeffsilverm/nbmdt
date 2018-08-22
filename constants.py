@@ -98,3 +98,4 @@ colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black',
           ErrorLevels.CHANGED: ['white', 'on_black'], ErrorLevels.OTHER: ['black', 'on_grey']}
 # on is down
 # it as
+MAXINT=4294967296
