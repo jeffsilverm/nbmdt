@@ -4,12 +4,30 @@
 # Dealing with interfaces
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import constants
 from layer import Layer
 from utilities import OsCliInter
 
+
+
+def get_value_from_list(self: list, keyword: str) -> str:
+    """
+    The output of the ip command commonly has a keyword which is either 
+    present or not, and if it is present, might be followed by a value,
+    depending on what the keyword is.  The output is in a list of strings.
+    This method returns an empty string if the keyword does not appear in the
+    list of strings, and returns the value if the keyword does appear in the
+    list of string
+    """
+
+    if keyword in self:
+        idx = self.index(keyword)
+        value = self[idx+1]
+        return value
+    else:
+        return ""
 
 class Interface(Layer):
     """
@@ -76,9 +94,9 @@ class Interface(Layer):
             raise ValueError(f"System is {OsCliInter.system} and I don't recognize it")
         return discover_command
 
-
+        
 # end of class Interface **********
-Interface.IP_COMMAND: str = Interface.set_discover_ip_command()
+Interface.IP_COMMAND = Interface.set_discover_ip_command()
 
 
 class PhysicalLink(Interface):
@@ -149,7 +167,7 @@ class PhysicalLink(Interface):
 
 # END OF CLASS PhysicalLink
 # Make DISCOVER_LINK_COMMAND a class (not an object) attribute
-PhysicalLink.DISCOVER_LINK_COMMAND: List = Interface.set_discover_layer_command("link")
+PhysicalLink.DISCOVER_LINK_COMMAND = Interface.set_discover_layer_command("link")
 
 
 def physical_link_from_if_str(if_str, **kwargs):
@@ -254,7 +272,7 @@ class DataLink(Interface):
 
 # end of class DataLink  ##########
 
-DataLink.DISCOVER_ADDR_COMMAND: List = DataLink.set_discover_layer_command("addr")
+DataLink.DISCOVER_ADDR_COMMAND = DataLink.set_discover_layer_command("addr")
 
 
 def data_link_from_if_str(fields: List[str]) -> 'DataLink':
@@ -296,12 +314,10 @@ jeffs@jeffs-desktop:/home/jeffs  $
 
     """
 
-    assert fields[fc] == "scope", f"There is an error in field_ctr. field[{fc}] \ " \
-                                  f"should be 'scope' but is really {fields[fc]}. "
-    fc += 1
-    scope = fields[fc]
-    # Scope is checked in DataLink.__init__
-    fc += 1
+    scope = get_value_from_list(fields, "scope")
+    assert scope=="global" or scope=="link" or scope=="host" or scope=="site", \
+              f"scope should be 'global', 'link', 'host' or 'site' but is really {scope}"
+  
     # Next are a bunch of keywords that are either present or absent
     # See https://www.systutorials.com/docs/linux/man/8-ip-address/ for details
     dynamic = "dynamic" in fields[fc:]
@@ -314,17 +330,26 @@ jeffs@jeffs-desktop:/home/jeffs  $
     # longer used for new outgoing connections. Defaults to forever.
     #
     # I have seen the value 60292sec on several interfaces.  That's a little more than 16 hours, 45 minutes.
-    """
-    if fields[fc] == "forever":
-        valid_lft = constants.MAXINT    # 2^32 seconds = ~ 136 years
-    else:
-        assert fields[fc][-3:] == "sec", f"fields[{fc}][:-3]n shouldn be 'sec' but is actually {fields[fc][:-3]} "
-        valid_lft = int(fields[fc][-3:])
-    """
+    valid_lft:str = get_value_from_list(fields, "valid_lft")
+    if valid_lft:
+        if valid_lft == "forever":
+            valid_lft:int = constants.MAXINT    # 2^32 seconds = ~ 136 years
+        else:
+            assert valid_lft[-3:] == "sec", f"valid_lft should be 'sec' but is actually {valid_lft[:-3]} "
+            valid_lft:int = int(valid_lft[-3:])
+
+    preferred_lft = get_value_from_list(fields, "preferred_lft")
+    if preferred_lft:
+        if preferred_lft == "forever":
+            preferred_lft:int = constants.MAXINT    # 2^32 seconds = ~ 136 years
+        else:
+            assert preferred_lft[-3:] == "sec", f"preferred_lft[:-3]n shouldn be 'sec' but is actually {preferred_lft[:-3]} "
+            preferred_lft:int = int(preferred_lft[-3:])
+
     data_link_obj: DataLink = DataLink(if_name=if_name, addr=address_,
                                        brd=brd, mask=mask, scope=scope, dynamic=dynamic,
                                        noprefixroute=noprefixroute,
-                                       valid_lft=constants.MAXINT, preferred_lft=constants.MAXINT)
+                                       valid_lft=valid_lft, preferred_lft=preferred_lft)
     return data_link_obj
 
 
