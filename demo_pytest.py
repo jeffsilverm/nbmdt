@@ -20,6 +20,6 @@ def run_command_mock(mocker):
 
 def test_interface_run_command(ifname : str) -> boolean :
 
-    en01_obj = interface.Interface(ifname)
+    eno1_obj = interface.Interface(ifname)
     assert isinstance(eno1_obj.mtu, "str"), f"mtu should be a string"
-    assert en01_obj.mtu == "1500", f"The MTU should be 1500 but is really {eno1_obj}"
+    assert eno1_obj.mtu == "1500", f"The MTU should be 1500 but is really {eno1_obj}"
