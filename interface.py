@@ -4,12 +4,12 @@
 # Dealing with interfaces
 
 import os
-from typing import Dict, List, Union
+import sys
+from typing import Dict, List
 
 import constants
 from layer import Layer
 from utilities import OsCliInter
-
 
 
 def get_value_from_list(self: list, keyword: str) -> str:
@@ -19,15 +19,17 @@ def get_value_from_list(self: list, keyword: str) -> str:
     depending on what the keyword is.  The output is in a list of strings.
     This method returns an empty string if the keyword does not appear in the
     list of strings, and returns the value if the keyword does appear in the
-    list of string
+    list of strings
+    :rtype: str
     """
 
     if keyword in self:
         idx = self.index(keyword)
-        value = self[idx+1]
+        value = self[idx + 1]
         return value
     else:
         return ""
+
 
 class Interface(Layer):
     """
@@ -94,7 +96,7 @@ class Interface(Layer):
             raise ValueError(f"System is {OsCliInter.system} and I don't recognize it")
         return discover_command
 
-        
+
 # end of class Interface **********
 Interface.IP_COMMAND = Interface.set_discover_ip_command()
 
@@ -157,7 +159,7 @@ class PhysicalLink(Interface):
             if len(fields) <= 1:  # skip blank lines
                 continue
             # fields[0] is the line number, skip that.  fields[1] is the device name.  trailing colon
-            if_name = fields[1]
+            if_name: str = fields[1]
             assert ":" in if_name, f": not found in data physical name {if_name} and it should be there"
             assert if_name not in PhysicalLink.physical_link_dict, \
                 f"{if_name} is *already* in PhysicalLink.physical_link_dict and should not be"
@@ -186,14 +188,26 @@ def physical_link_from_if_str(if_str, **kwargs):
         lower_up = "LOWER_UP" in flags
         carrier = "NO-CARRIER" not in flags
 
-        mtu = fields[4]
-        qdisc = fields[6]
-        state = fields[8]
-        mode = fields[10],
-        group = fields[12],
-        qlen = fields[14],
-        link_addr = fields[16]
-        broadcast_addr = fields[18]
+        mtu: int = int(get_value_from_list(fields, "mtu"))
+        qdisc: str = get_value_from_list(fields, "qdisc")
+        state: str = get_value_from_list(fields, "state")
+        mode: str = get_value_from_list(fields, "mode")
+        group: str = get_value_from_list(fields, "group")
+        qlen_str: str = get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
+        if qlen_str[-1:] == """\\""":
+            qlen_str = qlen_str[:-1]
+        try:
+            qlen: int = int(qlen_str)
+        except ValueError:
+            print("qlen_str is not a valid int.  It's " + qlen_str, file=sys.stderr)
+            qlen = 0  # moving on
+        if if_name == "lo:":
+            link_addr: str = get_value_from_list(fields, "link/loopback")
+        else:
+            link_addr: str = get_value_from_list(fields, "link/ether")
+        assert len(link_addr) > 0, "link_addr has length 0.  " \
+                                   f"get_value_from_list failed. fields is {fields}"
+        broadcast_addr: str = get_value_from_list(fields, "brd")
     else:
         raise NotImplementedError(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
     link_obj = PhysicalLink(if_name=if_name,
@@ -244,7 +258,7 @@ class DataLink(Interface):
     # discover all of the data links on the current system
     # The correspondence of data links and phyicals links will NOT be one to one, because some physical links will
     # not have any IP addresses, and some IP addresses will be bound across multiple interfaces
-    @staticmethod    # Do not convert to a static function because there are 2 other discover functions
+    @staticmethod  # Do not convert to a static function because there are 2 other discover functions
     def discover():  # DataLink
         """
         Call this method to discover all of the data links in the system.
@@ -281,7 +295,24 @@ def data_link_from_if_str(fields: List[str]) -> 'DataLink':
     :param fields: List of strs which is the output of ip command (linux)
     :return: DataLink   an object which corresponds
     """
-    assert "mtu" not in fields,\
+
+    def lft_to_int(lft: str) -> int:
+        """Convert a lifetime string to an integer.  A lifetime
+        string will either be 'forever' or else it will be an integer
+        with "sec" appended, with no space.  There might be other
+        strings, so handle errors carefully"""
+        if "forever" == lft:
+            r: int = constants.MAXINT  # 2^32 seconds = ~ 136 years
+        else:
+            assert lft[-3:] == "sec", f"valid_lft should be 'sec' but is actually {lft[:-3]} "
+            try:
+                r: int = int(lft[:-3])
+            except ValueError:
+                print(f"lft has value {lft} which isn't an int", file=sys.stderr)
+                r = constants.MAXINT  # 2^32 seconds = ~ 136 years
+        return r
+
+    assert "mtu" not in fields, \
         "Passed the results of the ip link command instead of ip addr command"
     assert "Linux" == OsCliInter.system
     #
@@ -290,16 +321,12 @@ def data_link_from_if_str(fields: List[str]) -> 'DataLink':
     address_, mask = fields[3].split("/")
     if fields[2] == "inet":
         #            ipv6_address = None
-        assert fields[4] == "brd", "fields[4] should be 'brd' (Because this "\
-                                 f"is an IPv4 address) but is actually " + fields[4]
-        brd = fields[5]
-        fc = 6  # Field counter
+        brd = get_value_from_list(fields, "brd")
     elif fields[2] == "inet6":
         #           ipv4_address = None
         brd = None
-        fc = 4  # Field counter
     else:
-        raise AssertionError("fields[2] is neither 'inet' nor 'inet6' ")
+        raise AssertionError(f"fields[2] is neither 'inet' nor 'inet6', it's {fields[2]} ")
     """
     jeffs@jeffs-desktop:/home/jeffs  $ ip --oneline addr show dev eno1
 3: eno1    inet 192.168.0.3/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1\       valid_lft 60292sec 
@@ -315,13 +342,13 @@ jeffs@jeffs-desktop:/home/jeffs  $
     """
 
     scope = get_value_from_list(fields, "scope")
-    assert scope=="global" or scope=="link" or scope=="host" or scope=="site", \
-              f"scope should be 'global', 'link', 'host' or 'site' but is really {scope}"
-  
+    assert scope == "global" or scope == "link" or scope == "host" or scope == "site", \
+        f"scope should be 'global', 'link', 'host' or 'site' but is really {scope}"
+
     # Next are a bunch of keywords that are either present or absent
     # See https://www.systutorials.com/docs/linux/man/8-ip-address/ for details
-    dynamic = "dynamic" in fields[fc:]
-    noprefixroute = "noprefixroute" in fields[fc:]
+    dynamic: bool = "dynamic" in fields
+    noprefixroute = "noprefixroute" in fields
     # valid_lft LFT
     # the valid lifetime of this address; see section 5.5.4 of RFC 4862. When it expires, the address is removed by
     # the kernel. Defaults to forever.
@@ -330,22 +357,10 @@ jeffs@jeffs-desktop:/home/jeffs  $
     # longer used for new outgoing connections. Defaults to forever.
     #
     # I have seen the value 60292sec on several interfaces.  That's a little more than 16 hours, 45 minutes.
-    valid_lft:str = get_value_from_list(fields, "valid_lft")
-    if valid_lft:
-        if valid_lft == "forever":
-            valid_lft:int = constants.MAXINT    # 2^32 seconds = ~ 136 years
-        else:
-            assert valid_lft[-3:] == "sec", f"valid_lft should be 'sec' but is actually {valid_lft[:-3]} "
-            valid_lft:int = int(valid_lft[-3:])
-
-    preferred_lft = get_value_from_list(fields, "preferred_lft")
-    if preferred_lft:
-        if preferred_lft == "forever":
-            preferred_lft:int = constants.MAXINT    # 2^32 seconds = ~ 136 years
-        else:
-            assert preferred_lft[-3:] == "sec", f"preferred_lft[:-3]n shouldn be 'sec' but is actually {preferred_lft[:-3]} "
-            preferred_lft:int = int(preferred_lft[-3:])
-
+    valid_lft: str = get_value_from_list(fields, "valid_lft")
+    valid_lft: int = lft_to_int(valid_lft)
+    preferred_lft: str = get_value_from_list(fields, "preferred_lft")
+    preferred_lft: int = lft_to_int(preferred_lft)
     data_link_obj: DataLink = DataLink(if_name=if_name, addr=address_,
                                        brd=brd, mask=mask, scope=scope, dynamic=dynamic,
                                        noprefixroute=noprefixroute,
@@ -359,15 +374,20 @@ if __name__ == "__main__":
     DataLink.discover()
 
     print("Physical links ", '*' * 40)
-    for physical_link in PhysicalLink.physical_link_dict:
-        assert isinstance(physical_link, PhysicalLink)
+    for physical_link in PhysicalLink.physical_link_dict.values():
+        assert isinstance(physical_link,
+                          PhysicalLink), f"physical_link should be an instance of PhysicalLink, but it's actually " \
+                                         f"{type(physical_link)}."
         mac_addr = physical_link.link_addr
         if_name3 = physical_link.if_name
         print(if_name3, mac_addr, physical_link.state)
 
     print("Data links ", '*' * 40)
-    for data_link in DataLink.data_link_dict:
-        assert isinstance(data_link, DataLink)
-        address = data_link.address
-        if_name3 = data_link.if_name
-        print(if_name3, address, data_link.mask)
+    for data_link_list in DataLink.data_link_dict.values():
+        assert isinstance(data_link_list,
+                          list), f"data_link should be an instance of list, but it's actually " \
+                                     f"{type(data_link_list)}."
+        if_name3 = data_link_list[0].if_name
+        for data_link in data_link_list:
+            address = data_link.address
+            print(if_name3, address, data_link.mask)
