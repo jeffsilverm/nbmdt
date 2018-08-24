@@ -16,7 +16,7 @@ import nbmdt
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 6, "Python must be later than version 3.6, " \
                                                                     f"is currently {str(sys.version_info)} "
-
+NBMDT_PY = "../nbmdt.py"      # Gotta be a better way to do this, see "brittle", below
 
 def test_argparse() -> None:
     """
@@ -34,11 +34,23 @@ def test_argparse() -> None:
         and the second is what was written to sys.stderr
         """
         python_executable = sys.executable
-        completed = subprocess.run([python_executable, "nbmdt.py"] + options,
+        # Hardcoding ../nbmdt.py is brittle and if I figure out a better way, I'll do it.
+        # My thinking was that this code is executing in the test/ subdirectory, but nbmdt.py
+        # is in the parent directory.
+        try:
+            completed = subprocess.run([python_executable, NBMDT_PY ] + options,
                                    stdin=None,
                                    input=None,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, timeout=None,
-                                   check=False)
+                                   check=True)
+        except subprocess.CalledProcessError as s:
+            # https://docs.python.org/3/library/subprocess.html  # subprocess.CalledProcessError
+            print(f"Running  {NBMDT_PY} failed!  Options were:\n{options}\n Status return code was {s.returncode} "\
+                  f"stderr:\n {s.stderr}\nstdout:\n{s.stdout}\n", file=sys.stderr)
+            raise
+        # If check is true, and the process exits with a non-zero exit code, a CalledProcessError exception will be
+        # raised. Attributes of that exception hold the arguments, the exit code, and stdout and stderr if they were
+        #  captured.
         stdout_str: str = completed.stdout.decode('ascii')
         stderr_str: str = completed.stderr.decode('ascii')
         return stdout_str, stderr_str
@@ -118,8 +130,7 @@ def test_argparse() -> None:
         # The first opportunity to actually test nbmdt.py as a program
         sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose"])
         assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did " \
-                                               "not" \
-                                               " appear in stderr"
+                                               "not appear in stderr"
         assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
                                                   "diagnose did not appear in stderr"
         sysout_str, syserr_str = run_nbmdt(["--boot"])
@@ -172,6 +183,8 @@ def test_argparse() -> None:
     # The debug option is critical to everything else, because the argparse test consists of giving an option and
     # testing if the string that recognizes the option is in sys.stderr, a.k.a syserr
     test_debug_option()
+    #
+    # Test the mode flags.
     test_boot_mode("--boot")
     test_boot_mode("-b")
     test_monitor_mode("--monitor")
@@ -181,6 +194,7 @@ def test_argparse() -> None:
     test_nominal_mode("--nominal")
     test_nominal_mode("-N")
     #
+    # These tests look for errors where a user has given flags in a forbidden combination
     find_multiple_args(["--diagnose", "--boot"])
     find_multiple_args(["--diagnose", "--monitor"])
     find_multiple_args(["--boot", "--monitor"])

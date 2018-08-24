@@ -267,6 +267,7 @@ def main(args: List[str] = []):
         monitor()
     elif mode == constants.Modes.DIAGNOSE:
         diagnose()
+
 """
         # We want to find out what the current state of the system is and record it in a file if
         # in NOMINAL mode or else display it if in BOOT mode
@@ -348,6 +349,10 @@ def arg_parser() -> Tuple:
     parser.add_argument("--debug", default=False, action="store_true", dest="debug")
     options = parser.parse_args()
 
+    # One of the test frameworks is looking for the string "debug " if the --debug option is present"
+    if options.debug:
+        print("In nbmdt.py: the debug option is SET",  file=sys.stderr)
+
     # Select one and only one of these options
     # Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
     # There is a mechanism in there to make sure that one and only option is selected.
@@ -375,4 +380,4 @@ def arg_parser() -> Tuple:
 if __name__ == "__main__":
     # Pass a length 0 list for production
     # Actually, here you'd never want to pass ANYTHING, because that's a job for pytest.
-    main(["--boot", "--debug"], )
+    main([])
