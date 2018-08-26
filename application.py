@@ -44,6 +44,9 @@ class Application(object):
             for app in apps_list:
                 if "PID" in app:
                     continue
+                ps_output = app.split()
+                # When you get this right, DRY
+                assert len(ps_output) == 5, "The length of ps_output is not 5.  ps_output is " + str(ps_output)
                 pid, term, stat, time, command = app.split()
                 d[pid] = cls.__init__(pid=pid, term=term, stat=stat, time=time, command=command)
         elif 'Windows' == utilities.OsCliInter.system():
