@@ -13,6 +13,10 @@ import utilities
 from typing import List, Dict
 import typing
 
+try:
+    print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
+except Exception as e:      # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 
 
 class Application(object):

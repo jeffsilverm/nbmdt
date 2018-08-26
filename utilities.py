@@ -8,6 +8,7 @@ import subprocess
 from enum import Enum
 import platform
 from typing import List
+from sys import stderr
 
 """
 >>> platform.system()
@@ -31,6 +32,10 @@ from typing import List
 
 
 """
+try:
+    print("Testing the __file__ special variable: " + __file__, file=stderr)        # sys.stderr
+except Exception as e:      # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=stderr)      # sys.stderr
 
 
 class OSILevels(Enum):
