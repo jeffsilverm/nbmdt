@@ -1,302 +1,393 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# Dealing with interfaces
 
-import collections
-import subprocess
-from layer import Layer
-from constants import ErrorLevels
-from utilities import OsCliInter
-from platform import system
-from typing import Union
-import datetime
 import os
 import sys
+from typing import Dict, List
+
+import constants
+from layer import Layer
+from utilities import OsCliInter
 
 
-# There is an ip command cheat sheet at
-# https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf
+def get_value_from_list(self: list, keyword: str) -> str:
+    """
+    The output of the ip command commonly has a keyword which is either 
+    present or not, and if it is present, might be followed by a value,
+    depending on what the keyword is.  The output is in a list of strings.
+    This method returns an empty string if the keyword does not appear in the
+    list of strings, and returns the value if the keyword does appear in the
+    list of strings
+    :rtype: str
+    """
 
-def none_if_none(s):
-    return s if s is not None else "None"
+    if keyword in self:
+        idx = self.index(keyword)
+        value = self[idx + 1]
+        return value
+    else:
+        return ""
 
 
 class Interface(Layer):
-    cls.my_os
-    @classmethod()
-    def __init__(cls):
-        cls.my_os = system()
-        if cls.my_os == 'Linux':
-            # This should be a configuration file item - on ubuntu, the IP_COMMAND is /bin/ip .  So what I did was
-            # symlink it so that both /bin/ip and
-            # /usr/sbin/ip work.  But I can do that because I am a sysadmin.
-            # Issue 2 https://github.com/jeffsilverm/nbmdt/issues/2
+    """
+    Methods for dealing with interfaces.  An "interface" for the purposes of this program
+    is a combination of the physical and data link layers in the OSI model, and the
+    network access layer in the TCP/IP model
+    """
+
+    def __init__(self, if_name: str) -> None:
+        """
+        Both DataLink and PhysicalLinks have interface names
+
+        """
+        super().__init__()
+        assert hasattr(self, 'time'), "During the instantiation of an " \
+                                      "Interface object, the time attribute " \
+                                      "was not added by the Layer superclass"
+        # Be consistent in the convention of naming interfaces
+        self.if_name = if_name if ":" in if_name else if_name + ":"
+
+    @staticmethod  # Leave as a static method as there are discover
+    # methods in subclasses
+    def discover() -> Dict[str, "Interface"]:  # Interface
+        """
+        Find all of the interfaces in a system
+        :return: A dictionary of interfaces in a system.
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def set_discover_ip_command() -> str:
+        # The location of the command to get the interface information is OS specific and common
+        # across all interfaces, so it is a class variable
+        if 'Linux' == OsCliInter.system:
+            # The command to get network access information from the OS.  I suppose it could be in /sbin or /usr/sbin
             if os.path.isfile("/bin/ip"):
-                cls.IP_COMMAND = "/bin/ip"
+                ip_command: str = "/bin/ip"
             elif os.path.isfile("/usr/bin/ip"):
-                cls.IP_COMMAND = "/usr/bin/ip"
+                ip_command: str = "/usr/bin/ip"
             else:
                 raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
-        elif cls.my_os == 'Windows':
-            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
-        elif cls.my_os == 'Mac OS':
-            raise NotImplementedError(f"System is {cls.my_os} and I haven't written it yet")
         else:
-            raise ValueError(f"System is {cls.my_os} and I don't recognize it")
+            raise NotImplementedError(f"System {OsCliInter.system} not implemented yet")
+        return ip_command
 
-    def __init__(self, name: str, lnk_str: str =None) -> None:
+    @staticmethod
+    def set_discover_layer_command(layer) -> List[str]:
+        """
 
-        super()
-        layer_t = Layer()
-        self.layer = layer_t
-        # Did the caller specify a string with the description of the interface?  That might be if the caller called
-        # the ip link list command instead of the ip link show DEV command
+        :rtype: List    A list of strings that is the command to pass to subprocess.run_command
+        """
+        # the ip link list or ip addr list commands instead of the ip link show DEV command
         # For a complete list of flags and parameters, see
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
-        discover_command = [self.IP_COMMAND, "--details", "--oneline", "link", "list"]
-        get_details_command = [self.IP_COMMAND, "--details", "--oneline", "link", "show"]
+        if "link" != layer and "addr" != layer:
+            raise ValueError(f"layer is '{layer}' and should be either 'link' or 'addr' ")
+        if 'Linux' == OsCliInter.system:
+            discover_command = [Interface.IP_COMMAND, "--oneline", layer, "list"]
+        elif 'Windows' == OsCliInter.system:
+            raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
+        elif 'Mac OS' == OsCliInter.system:
+            raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
+        else:
+            raise ValueError(f"System is {OsCliInter.system} and I don't recognize it")
+        return discover_command
 
-        if lnk_str is None and self.my_os == 'Linux':
-            command: list = self.get_details_command.append(name)
-            lnk_str: str = OsCliInter.run_command(command)
-        fields = lnk_str.split()
-        # fields[0] is the line number, skip that.  fields[1] is the device name
-        self.name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
+
+# end of class Interface **********
+Interface.IP_COMMAND = Interface.set_discover_ip_command()
+
+
+class PhysicalLink(Interface):
+    """
+    Methods for dealing with links.  A link is, for example, a wifi transceiver, an ethernet network interface
+    card (NIC)
+    For purposes of this program, a link is the information returned by the "ip --online link show" command
+    """
+
+    # A dictionary of Physical Links, key'd by interface name.  The values are PhysicalLink objects
+    physical_link_dict: Dict[str, "PhysicalLink"] = dict()
+
+    def __init__(self, if_name, state_up, broadcast, multicast, lower_up, carrier,
+                 mtu, qdisc, state, mode, group, qlen, link_addr, broadcast_addr, **kwargs) -> None:
+        super().__init__(if_name)
+        assert type(state_up) == bool, f"state_up is {type(state_up)}"
+        self.broadcast = broadcast
+        self.multicast = multicast
+        self.state_up = state_up
+        self.lower_up = lower_up
+        self.carrier = carrier
+        self.mtu = mtu
+        self.qdisc = qdisc
+        self.state = state
+        self.mode = mode
+        self.group = group
+        self.qlen = qlen
+        self.link_addr = link_addr
+        self.broadcast_addr = broadcast_addr
+        for k in kwargs:
+            self.__setattr__(k, kwargs[k])
+
+    # Get a dictionary of all PhysicalLinks.  Note that there is a many-to-many
+    # relationshp between DataLinks and PhysicalLinks because a PhysicalLink
+    # might have several IPv4 or IPv6 addresses, and a DataLink might span
+    # several PhysicalLinks (in the case of bonded interfaces using
+    # LACP (Link Aggration Control Protocol)
+    @staticmethod  # keep discover as a static method inside
+    # class PhysicalLink because there is a method
+    # discover in class DataLink
+    def discover() -> None:  # PhysicalLink
+        """
+        Discover all of the physical links on this system
+        :rtype: A dictionary of physical keyed by interface name
+        :return:
+        """
+        global physical_link_dict
+        if "Linux" != OsCliInter.system:
+            raise NotImplementedError(f"In PhysicalLink.discover, {OsCliInter.system} is not implemented")
+        else:
+            assert "link" in PhysicalLink.DISCOVER_LINK_COMMAND, \
+                "In PhysicalLink.discover, the word 'link' is not in the " \
+                "DISCOVER_COMMAND"
+        lnk_str: str = OsCliInter.run_command(PhysicalLink.DISCOVER_LINK_COMMAND)
+        interface_list_strs: List[str] = lnk_str.split("\n")
+        for if_str in interface_list_strs:
+            fields = if_str.split()
+            if len(fields) <= 1:  # skip blank lines
+                continue
+            # fields[0] is the line number, skip that.  fields[1] is the device name.  trailing colon
+            if_name: str = fields[1]
+            assert ":" in if_name, f": not found in data physical name {if_name} and it should be there"
+            assert if_name not in PhysicalLink.physical_link_dict, \
+                f"{if_name} is *already* in PhysicalLink.physical_link_dict and should not be"
+            physical_link_obj = physical_link_from_if_str(if_str=if_str)
+            PhysicalLink.physical_link_dict[if_name] = physical_link_obj
+
+
+# END OF CLASS PhysicalLink
+# Make DISCOVER_LINK_COMMAND a class (not an object) attribute
+PhysicalLink.DISCOVER_LINK_COMMAND = Interface.set_discover_layer_command("link")
+
+
+def physical_link_from_if_str(if_str, **kwargs):
+    """
+    :param  if_str  a string (which is OS dependent), which describes the physical link
+    """
+
+    if "Linux" == OsCliInter.system:
+        # Assumes if_str is the result of the ip --oneline link show DEV command
+        fields = if_str.split()
+        if_name = fields[1]
         flags = fields[2]
-        self.state_up = "UP" in flags
-        self.broadcast = "BROADCAST" in flags
-        self.lower_up = "LOWER_UP" in flags
-        self.carrier = "NO-CARRIER" not in flags
-        self.multicast = "MULTICAST" in flags
+        broadcast = "BROADCAST" in flags
+        multicast = "MULTICAST" in flags
+        state_up = "UP" in flags
+        lower_up = "LOWER_UP" in flags
+        carrier = "NO-CARRIER" not in flags
 
-        for idx in range(3, len(fields) - 1, 2):
-            # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-            # Discipline" and it's vital.
-            self.__setattr__(fields[idx], fields[idx + 1])
+        mtu: int = int(get_value_from_list(fields, "mtu"))
+        qdisc: str = get_value_from_list(fields, "qdisc")
+        state: str = get_value_from_list(fields, "state")
+        mode: str = get_value_from_list(fields, "mode")
+        group: str = get_value_from_list(fields, "group")
+        qlen_str: str = get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
+        if qlen_str[-1:] == """\\""":
+            qlen_str = qlen_str[:-1]
+        try:
+            qlen: int = int(qlen_str)
+        except ValueError:
+            print("qlen_str is not a valid int.  It's " + qlen_str, file=sys.stderr)
+            qlen = 0  # moving on
+        if if_name == "lo:":
+            link_addr: str = get_value_from_list(fields, "link/loopback")
+        else:
+            link_addr: str = get_value_from_list(fields, "link/ether")
+        assert len(link_addr) > 0, "link_addr has length 0.  " \
+                                   f"get_value_from_list failed. fields is {fields}"
+        broadcast_addr: str = get_value_from_list(fields, "brd")
+    else:
+        raise NotImplementedError(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
+    link_obj = PhysicalLink(if_name=if_name,
+                            state_up=state_up,
+                            broadcast=broadcast,
+                            multicast=multicast,
+                            lower_up=lower_up,
+                            carrier=carrier,
+                            mtu=mtu,
+                            qdisc=qdisc,
+                            state=state,
+                            mode=mode,
+                            group=group,
+                            qlen=qlen,
+                            link_addr=link_addr,
+                            broadcast_addr=broadcast_addr,
+                            kwargs=kwargs)
+    return link_obj
 
 
-    def get_status(self) -> ErrorLevels:
-        return self.layer.get_status()
+class DataLink(Interface):
+    """
+    Methods for the data link layer in the OSI model: IP addresses
+    """
 
-    @classmethod
-    def discover(cls):
+    # a dictionary of Interface objects, keyed by interface name.   The values are DataLink objects
+    data_link_dict: Dict[str, List["DataLink"]] = dict()
+
+    # DataLink constructor
+    def __init__(self, if_name: str, addr, mask, brd, scope, dynamic, noprefixroute, valid_lft, preferred_lft) -> None:
         """
-        Discover all of the interfaces on this machine
 
-        :return:    a dictionary of interfaces, key'd by name.  The value is an Interface object
+        :rtype: None
         """
+        super().__init__(if_name=if_name)
+        # In a future version, I will do a better job of separating IPv4 and IPv6 addresses
+        self.address = addr
+        self.brd = brd  # May be None if address is an IPv6 address
+        self.mask = mask
+        assert scope == "global" or scope == "link" or scope == "host", f"scope should be either 'global' or " \
+                                                                        f"'link' or 'host', not {scope}"
+        self.scope = scope
+        self.dynamic = dynamic
+        self.noprefixroute = noprefixroute
+        self.valid_lft = valid_lft
+        self.preferred_lft = preferred_lft
 
-        completed_str = OsCliInter.run_command(cls.discover_command)
-        links_list = completed_str.split('\n')
-        link_dict = dict()
-        for lnk in links_list:
-            if len(lnk) == 0:  # there may be an empty trailing line in the output
-                break
-            fields = completed_str.split()
-            # fields[0] is the line number, skip that.  fields[1] is the device name
-            intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-            link_dict[intf_name] = Interface(intf_name, lnk)
-
-        return link_dict
-
-
-# Rename this class to Interface
-class PhysicalInterface(Interface):
-    def __init__(self, intf_name, intf_description: Union[str, list]):
-        self.intf_name = intf_name
-        if isinstance(intf_description, list):
-            self.intf_description = intf_description.copy()
-
-    def __str__(self):
-        s = "name: " + self.intf_name
-        for key in self.intf_description.keys():
-            s += "\t" + key + ": " + self.intf_description[key]
-
-        return s
-
-    @classmethod
-    def get_all_physical_interfaces(self):
-        """This method returns a dictionary of interfaces as known by the ip link list command
+    # discover all of the data links on the current system
+    # The correspondence of data links and phyicals links will NOT be one to one, because some physical links will
+    # not have any IP addresses, and some IP addresses will be bound across multiple interfaces
+    @staticmethod  # Do not convert to a static function because there are 2 other discover functions
+    def discover():  # DataLink
         """
+        Call this method to discover all of the data links in the system.
+        :return:   A class dictionary of lists of data links.  A single physical link may have several data links
 
-        completed = subprocess.run(
-            print("get_all_physical_interfaces works for linux, nothing else", file=sys.stderr )
-            [self.IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
-            input=None,
-            stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
-            check=False)
-        completed_str = completed.stdout.decode('ascii')
         """
-jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-2: enp3s0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 gso_max_size 65536 gso_max_segs 65535 
-3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\    link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 200 hello_time 200 max_age 2000 ageing_time 30000 stp_state 1 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    1.73 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.73 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-5: virbr0-nic: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN mode DEFAULT group default qlen 1000\    link/ether 52:54:00:ef:47:ed brd ff:ff:ff:ff:ff:ff promiscuity 1 \    tun \    bridge_slave state disabled priority 32 cost 100 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8001 port_no 0x1 designated_port 32769 designated_cost 0 designated_bridge 8000.52:54:0:ef:47:ed designated_root 8000.52:54:0:ef:47:ed hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode none numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-6: lxcbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default qlen 1000\    link/ether 00:16:3e:00:00:00 brd ff:ff:ff:ff:ff:ff promiscuity 0 \    bridge forward_delay 1500 hello_time 200 max_age 2000 ageing_time 30000 stp_state 0 priority 32768 vlan_filtering 0 vlan_protocol 802.1Q bridge_id 8000.0:16:3e:0:0:0 designated_root 8000.0:16:3e:0:0:0 root_port 0 root_path_cost 0 topology_change 0 topology_change_detected 0 hello_timer    0.00 tcn_timer    0.00 topology_change_timer    0.00 gc_timer  138.72 vlan_default_pvid 1 group_fwd_mask 0 group_address 01:80:c2:00:00:00 mcast_snooping 1 mcast_router 1 mcast_query_use_ifaddr 0 mcast_querier 0 mcast_hash_elasticity 4 mcast_hash_max 512 mcast_last_member_count 2 mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_interval 26000 mcast_querier_interval 25500 mcast_query_interval 12500 mcast_query_response_interval 1000 mcast_startup_query_interval 3124 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535 
-        """
-        links_list = completed_str.split('\n')
-        link_db = dict()
-        for link in links_list:
-            if len(
-                    link) == 0:  # there may be an empty trailing line in the output
-                break
-            fields = link.split()
-            intf_description = collections.OrderedDict()
-            # fields[0] is the line number, skip that.  fields[1] is the device name
-            intf_name = fields[1][:-1]  # strip off the trailing colon, so for example, eno1: becomes eno1
-            # fields[2] is the flags, see https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h
-            intf_description['flags'] = fields[2]
-            # Issue 1 https://github.com/jeffsilverm/nbmdt/issues/1
-            for idx in range(3, len(fields) - 1, 2):
-                # Accortding to http://lartc.org/howto/lartc.iproute2.explore.html , qdisc stands for "Queueing
-                # Discipline" and it's vital.
-                intf_description[fields[idx]] = fields[idx + 1]
-            link_db[intf_name] = PhysicalInterface(intf_name, intf_description)
-
-        return link_db
+        global data_link_dict
+        if "Linux" != OsCliInter.system:
+            raise NotImplementedError(f"In DataLink.discover, {OsCliInter.system} is not implemented")
+        lnk_str: str = OsCliInter.run_command(DataLink.DISCOVER_ADDR_COMMAND)
+        interface_list_strs: List[str] = lnk_str.split("\n")
+        for if_str in interface_list_strs:
+            fields = if_str.split()
+            if len(fields) <= 1:  # skip blank lines
+                continue
+            # fields[0] is the line number, skip that.  fields[1] is the
+            # device name.  No trailing colonm from the command, so add one
+            if_name = fields[1] + ":"
+            data_link_obj: DataLink = data_link_from_if_str(fields=fields)
+            if if_name in DataLink.data_link_dict:
+                DataLink.data_link_dict[if_name].append(data_link_obj)
+            else:
+                DataLink.data_link_dict[if_name] = [data_link_obj]
 
 
-# There should be a class method here that contains a dictionary of all of the PhysicalInterfaces
+# end of class DataLink  ##########
 
-# Move this class to network.py
-class LogicalInterface(Interface):
-    """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
+DataLink.DISCOVER_ADDR_COMMAND = DataLink.set_discover_layer_command("addr")
+
+
+def data_link_from_if_str(fields: List[str]) -> 'DataLink':
+    """
+    :rtype: Datalink
+    :param fields: List of strs which is the output of ip command (linux)
+    :return: DataLink   an object which corresponds
+    """
+
+    def lft_to_int(lft: str) -> int:
+        """Convert a lifetime string to an integer.  A lifetime
+        string will either be 'forever' or else it will be an integer
+        with "sec" appended, with no space.  There might be other
+        strings, so handle errors carefully"""
+        if "forever" == lft:
+            r: int = constants.MAXINT  # 2^32 seconds = ~ 136 years
+        else:
+            assert lft[-3:] == "sec", f"valid_lft should be 'sec' but is actually {lft[:-3]} "
+            try:
+                r: int = int(lft[:-3])
+            except ValueError:
+                print(f"lft has value {lft} which isn't an int", file=sys.stderr)
+                r = constants.MAXINT  # 2^32 seconds = ~ 136 years
+        return r
+
+    assert "mtu" not in fields, \
+        "Passed the results of the ip link command instead of ip addr command"
+    assert "Linux" == OsCliInter.system
+    #
+    if_name = fields[1]
+    assert "/" in fields[3], f"'/' not in fields[3], which is {fields[3]} ."
+    address_, mask = fields[3].split("/")
+    if fields[2] == "inet":
+        #            ipv6_address = None
+        brd = get_value_from_list(fields, "brd")
+    elif fields[2] == "inet6":
+        #           ipv4_address = None
+        brd = None
+    else:
+        raise AssertionError(f"fields[2] is neither 'inet' nor 'inet6', it's {fields[2]} ")
+    """
+    jeffs@jeffs-desktop:/home/jeffs  $ ip --oneline addr show dev eno1
+3: eno1    inet 192.168.0.3/24 brd 192.168.0.255 scope global dynamic noprefixroute eno1\       valid_lft 60292sec 
+preferred_lft 60292sec
+3: eno1    inet6 2602:4b:ac60:9b00:ae37:ff43:3d79:3daf/64 scope global noprefixroute \       valid_lft forever 
+preferred_lft forever
+3: eno1    inet6 fd00::ae7f:4068:cb55:3152/64 scope global noprefixroute \       valid_lft forever preferred_lft 
+forever
+3: eno1    inet6 fe80::59d:1419:ef30:64de/64 scope link noprefixroute \       valid_lft forever preferred_lft 
+forever
+jeffs@jeffs-desktop:/home/jeffs  $ 
 
     """
 
-    logical_link_db: dict = dict()
+    scope = get_value_from_list(fields, "scope")
+    assert scope == "global" or scope == "link" or scope == "host" or scope == "site", \
+        f"scope should be 'global', 'link', 'host' or 'site' but is really {scope}"
 
-    # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
-    # dictionary.
-    def __init__(self, addr_name, addr_family, addr_addr, addr_descr):
-        """This creates a logical interface object.
-        :param  addr_name   The name of this logical interface
-        :param  addr_family "inet" or "inet6"
-        :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
-        :param  addr_descr  The rest of the description of this logical address.
-        """
-        # Some sample returns - use these to figure out how to decode things
-        """
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 77480sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
-6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-desktop:/home/jeffs  $ 
-"""
-        super()
-        self.addr_name = addr_name
-        if addr_family != "inet" and addr_family != "inet6":
-            raise ValueError(
-                "misunderstood value of addr_family: {}".format(addr_family))
-        self.addr_family = addr_family
-        self.addr_addr = addr_addr
-        # For IPv4, scope is either host or global
-        # For IPv6, scope is either host, link, or global.  However, the wikipedia
-        # article on IPv6 doesn't mention host scope.  ULAs are global.
-        self.scope = addr_descr["scope"]
-        for key in addr_descr.keys():
-            setattr(self, key, addr_descr[key])
-        if not hasattr(self, 'broadcast'):
-            self.broadcast = None
-
-    """def __str__(self):
-        s = "name: " + self.addr_name + '\t'
-        s += "family:" + self.addr_family + '\t'
-        s += "address: " + self.addr_addr + '\t'
-        if self.addr_family == "inet6":
-            s += ("scope: " + none_if_None(self.scope) + "\t")
-        else:
-            s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
-        return s"""
-
-    @classmethod
-    def get_all_logical_interfaces(self):
-        """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
-        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
-        show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
-        IP_COMMAND = "/usr/bin/ip"
-        completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
-                                   stdin=None, input=None,
-                                   stdout=subprocess.PIPE, stderr=None,
-                                   shell=False, timeout=None, check=False)
-        completed_str = completed.stdout.decode('ascii')
-        """
-        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 63655sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft forever
-6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
-
-        """
-        # addrs_list is really a list of logical interfaces
-        addrs_list = completed_str.split('\n')
-        addr_db = dict()
-        for addr in addrs_list:
-            # addrs_list usually but not always has an empty element at the end
-            if len(addr) == 0:
-                break
-            # https://docs.python.org/3/library/collections.html#collections.OrderedDict
-            # ad is an attribute dictionary.  The string returned by the ip command will look like:
-            # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec preferred_lft 85452sec
-            # addr_desc is a further description of an an address
-            addr_desc = collections.OrderedDict()
-            fields = addr.split()
-            addr_name = fields[1]  # Field 0 is a number, skip it
-            addr_family = fields[2]  # Either inet or inet6
-            assert addr_family == "inet" or addr_family == "inet6"
-            addr_addr = fields[3]  # Either IPv4 or IPv6 address
-            # All of the rest of strings in the ip addr list command are in the
-            # of key value pairs, delimited by spaces
-            for idx in range(4, len(fields) - 1, 2):
-                # Because addr_desc is an ordered dictionary, the results will always be output in the same order
-                addr_desc[fields[idx]] = fields[idx + 1]
-            # A single logical interface can have several addresses and several families
-            # so the logical interface name is a key to a value which is a list
-            # of addresses.
-            if addr_name not in addr_db:
-                # addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None
-                """
-                    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
-                """
-                addr_db[addr_name] = [LogicalInterface(addr_name=addr_name,
-                                                       addr_family=addr_family,
-                                                       addr_addr=addr_addr,
-                                                       addr_descr=addr_desc)]
-            else:
-                addr_db[addr_name].append(LogicalInterface(addr_name=addr_name,
-                                                           addr_family=addr_family,
-                                                           addr_addr=addr_addr,
-                                                           addr_descr=addr_desc))
-        return addr_db
+    # Next are a bunch of keywords that are either present or absent
+    # See https://www.systutorials.com/docs/linux/man/8-ip-address/ for details
+    dynamic: bool = "dynamic" in fields
+    noprefixroute = "noprefixroute" in fields
+    # valid_lft LFT
+    # the valid lifetime of this address; see section 5.5.4 of RFC 4862. When it expires, the address is removed by
+    # the kernel. Defaults to forever.
+    # preferred_lft LFT
+    # the preferred lifetime of this address; see section 5.5.4 of RFC 4862. When it expires, the address is no
+    # longer used for new outgoing connections. Defaults to forever.
+    #
+    # I have seen the value 60292sec on several interfaces.  That's a little more than 16 hours, 45 minutes.
+    valid_lft: str = get_value_from_list(fields, "valid_lft")
+    valid_lft: int = lft_to_int(valid_lft)
+    preferred_lft: str = get_value_from_list(fields, "preferred_lft")
+    preferred_lft: int = lft_to_int(preferred_lft)
+    data_link_obj: DataLink = DataLink(if_name=if_name, addr=address_,
+                                       brd=brd, mask=mask, scope=scope, dynamic=dynamic,
+                                       noprefixroute=noprefixroute,
+                                       valid_lft=valid_lft, preferred_lft=preferred_lft)
+    return data_link_obj
 
 
 if __name__ == "__main__":
-    # nominal = SystemDescription.describe_current_state()
 
-    # Create a dictionary, keyed by link name, of the physical interfaces
-    link_db = PhysicalInterface.get_all_physical_interfaces()
-    # Create a dictionary, keyed by link name, of the logical interfaces, that is, interfaces with addresses
-    addr_db = LogicalInterface.get_all_logical_interfaces()
+    PhysicalLink.discover()
+    DataLink.discover()
 
-    print("links ", '*' * 40)
-    for link in link_db.keys():
-        link_int_descr = link_db[link].intf_description
-        mac_addr = link_int_descr['link/ether'] if 'link/ether' in \
-                                                   link_int_descr else "00:00:00:00:00:00"
-        print(link, mac_addr, link_int_descr['state'])
+    print("Physical links ", '*' * 40)
+    for physical_link in PhysicalLink.physical_link_dict.values():
+        assert isinstance(physical_link,
+                          PhysicalLink), f"physical_link should be an instance of PhysicalLink, but it's actually " \
+                                         f"{type(physical_link)}."
+        mac_addr = physical_link.link_addr
+        if_name3 = physical_link.if_name
+        print(if_name3, mac_addr, physical_link.state)
 
-    print("Addresses ", '*' * 40)
-    for addr_name in addr_db:
-        print("\n{}\n".format(addr_name))
-        for addr in addr_db[addr_name]:  # The values of the addr_db are descriptions of addresses
-            assert isinstance(addr, LogicalInterface)
-            print("   " + str(addr))
+    print("Data links ", '*' * 40)
+    for data_link_list in DataLink.data_link_dict.values():
+        assert isinstance(data_link_list,
+                          list), f"data_link should be an instance of list, but it's actually " \
+                                     f"{type(data_link_list)}."
+        if_name3 = data_link_list[0].if_name
+        for data_link in data_link_list:
+            address = data_link.address
+            print(if_name3, address, data_link.mask)

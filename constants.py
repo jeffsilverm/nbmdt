@@ -37,14 +37,14 @@ class Descriptions(Enum):
     NOMINAL = auto()
     NAMED = auto()
 
-    def is_current(self) -> bool:
-        return self.description == self.CURRENT
+    def is_current(self, description) -> bool:
+        return description == self.CURRENT
 
-    def is_nominal(self) -> bool:
-        return self.description == self.NOMINAL
+    def is_nominal(self, description) -> bool:
+        return description == self.NOMINAL
 
-    def is_named(self) -> bool:
-        return self.description == self.NAMED
+    def is_named(self, description) -> bool:
+        return description == self.NAMED
 
 
 class ErrorLevels(IntEnum):
@@ -98,3 +98,4 @@ colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black',
           ErrorLevels.CHANGED: ['white', 'on_black'], ErrorLevels.OTHER: ['black', 'on_grey']}
 # on is down
 # it as
+MAXINT=4294967296

@@ -24,6 +24,10 @@ import presentation  # OSI layer 6:
 import utilities
 
 DEBUG = True
+try:
+    print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
+except Exception as e:      # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 type_application_dict = typing.Dict[str, application.Application]
 type_presentation_dict = typing.Dict[str, presentation.Presentation]
 type_session_dict = typing.Dict[str, session.Session]

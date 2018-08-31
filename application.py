@@ -6,7 +6,6 @@
 from termcolor import cprint as cprint
 import sys
 # dnspython DNS toolkit see http://www.dnspython.org/
-import dnspython
 from dns import resolver, rdatatype  # rdataclass,
 from layer import Layer
 from constants import ErrorLevels
@@ -14,6 +13,10 @@ import utilities
 from typing import List, Dict
 import typing
 
+try:
+    print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
+except Exception as e:      # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 
 
 class Application(object):
@@ -41,6 +44,9 @@ class Application(object):
             for app in apps_list:
                 if "PID" in app:
                     continue
+                ps_output = app.split()
+                # When you get this right, DRY
+                assert len(ps_output) == 5, "The length of ps_output is not 5.  ps_output is " + str(ps_output)
                 pid, term, stat, time, command = app.split()
                 d[pid] = cls.__init__(pid=pid, term=term, stat=stat, time=time, command=command)
         elif 'Windows' == utilities.OsCliInter.system():

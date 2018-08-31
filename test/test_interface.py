@@ -6,6 +6,7 @@ from platform import system
 # from unittest import mock
 from unittest.mock import patch
 import datetime
+import sys
 
 import interface
 
@@ -88,7 +89,7 @@ def test_init_enp3s0(mock_run_command):
                                     "DEFAULT group default qlen 1000\    link/ether 00:10:18:cc:9c:77 brd " \
                                     "ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 5 numrxqueues 5 " \
                                     "gso_max_size 65536 gso_max_segs 65535"
-
+    print("Test that IPv4 can distingush between dynamic and non-dynamic interfaces", file=sys.stderr)
     enp3s0_obj = interface.Interface(interface_name)
     # Assert that the test passed
     assert enp3s0_obj.name == interface_name
