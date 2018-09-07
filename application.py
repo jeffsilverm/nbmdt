@@ -5,8 +5,14 @@
 
 from termcolor import cprint as cprint
 import sys
-# dnspython DNS toolkit see http://www.dnspython.org/
-from dns import resolver, rdatatype  # rdataclass,
+
+try:
+    import dns
+    from dns import resolver, rdatatype  # rdataclass,
+except ImportError as i:
+    print("Get package dns from nomium, install package 'dnspython'.  "
+          "See dnspython DNS toolkit see http://www.dnspython.org/", file=sys.stderr)
+    raise
 from layer import Layer
 from constants import ErrorLevels
 import utilities
@@ -15,7 +21,7 @@ import typing
 
 try:
     print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
-except Exception as e:      # if anything goes wrong
+except Exception as e:  # if anything goes wrong
     print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 
 
@@ -48,7 +54,7 @@ class Application(object):
                 # When you get this right, DRY
                 assert len(ps_output) == 5, "The length of ps_output is not 5.  ps_output is " + str(ps_output)
                 pid, term, stat, time, command = app.split()
-                d[pid] = cls.__init__(pid=pid, term=term, stat=stat, time=time, command=command)
+                d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command)
         elif 'Windows' == utilities.OsCliInter.system():
             raise NotImplemented('in Applications.discover and system windows is not implemented yet')
         else:
@@ -56,6 +62,10 @@ class Application(object):
         return d
 
     def __init__(self, pid, term, stat, time, command) -> None:
+        """
+
+        :rtype: None
+        """
         self.layer = Layer()
         self.pid = pid
         self.term = term
@@ -63,8 +73,7 @@ class Application(object):
         self.time = time
         self.command = command
 
-
-    def get_status(self)  -> ErrorLevels:
+    def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
     def __str__(self):
@@ -90,17 +99,23 @@ class DNSFailure(Exception):
         cprint(f"DNSFailure was raised querying {name} using query type {query_type}", 'red', file=sys.stderr)
         Exception.__init__(self, *args)
 
+
 class DNS(object):
 
     def __init__(self):
-        self.get_resolvers()
+        # self.resolvers = self.get_resolvers()
         self.resolver = dns.resolver.Resolver(configure=False)
 
     # Got this from https://github.com/donjajo/py-world/blob/master/resolvconfReader.py
-    @staticmethod
-    def get_resolvers(self):
+    @classmethod
+    def get_resolvers(cls: object) -> List[str]:
+        """
+
+        :rtype: List of strings.  Each string is the IP address (IPv4 or IPv6) of a resolver
+        """
         resolvers = []
         try:
+            # Known problem: /etc/resolv.conf is Linux or UNIX specific.  Apparently
             with open('/etc/resolv.conf', 'r') as resolvconf:
                 for line in resolvconf.readlines():
                     line = line.split('#', 1)[0]
@@ -109,20 +124,24 @@ class DNS(object):
                         resolvers.append(line.split()[1])
         except IOError as error:
             cprint(f"Raised an IOError exception {error.strerror}", 'white', 'on_red', file=sys.stderr)
-            self.resolvers = []
-        self.resolvers = resolvers
+        return resolvers
 
-    def query_specific_nameserver(self, server_list: list, qname: str, rdatatype: str):
+    def query_specific_nameserver(self, server_list: list, qname: str, rdatatype_enm: dns.rdatatype):
         """
-
+        Query a specific nameserver for a translation.  If this nameserver fails, then this call fails.  By way of
+        contrast, gethostbyname and socket will automatically retry a different nameservers
+        :type rdatatype_enm: a dns.rdatatype constant that describes the type of query.  Examples of values include
+                dns.rdatatype.A, dns.rdatatype.AAAA, dns.rdatatype.PTR, dns.rdatatype.MX, ...
         :param server_list: A list of servers (possibly length 1) to query
         :param qname:   The thing to query for
-        :param rdatatype:   The kind of queries to make
+        :param rdatatype_enm:   The kind of queries to make
         :return: A list of answers
         """
 
         self.resolver.nameservers = server_list
-        answer: list = dns.resolver.query(qname, rdatatype)
+        assert isinstance(rdatatype_enm, dns.rdatatype), f"The type of rdatatype is {type(rdatatype_enm)} should be " +\
+                                                         str(type(dns.rdatatype))
+        answer: list = dns.resolver.query(qname, rdatatype_enm)
         answer.sort()
         return answer
 
@@ -135,42 +154,43 @@ class web(object):
 
 
 if __name__ == "__main__":
-
-    def resolver_tst():
-        answer = dns.query_specific_nameserver(resolver, rdatatype)
+    # This should be moved to a file in test, test_application.py
+    def resolver_test(resolver, rdatatype: dns.rdatatype = dns.rdatatype.A):
+        # server_list: list, qname: str, rdatatype: dns.
+        QNAME = "google.com"
+        answer = dns.query_specific_nameserver(server_list=resolver, qname=QNAME, rdatatype=rdatatype)
         for rr in answer:
             print(f"  {rr}")
-            if rr not in ['172.217.3.46']:
-                pass
 
         okay = True
         answer = dns.query_specific_nameserver(server_list=[resolver],
-                                               qname="google.com",
-                                               rdatatype=rdatatype.AAAA)
+                                               qname=QNAME,
+                                               rdatatype=dns.rdatatype.AAAA)
         for rr in answer:
             print(f"  {rr}")
             if rr not in ["2607:f8b0:4008:80d::200e",
                           '2607:f8b0:4004:811::200e']:
                 cprint(
-                        f"server {resolver} returned unanticipated IPv6 answer rr",
-                        'yellow')
+                    f"server {resolver} returned unanticipated IPv6 answer rr",
+                    'yellow')
                 okay = False
         return okay
 
 
-    dns = DNS()
-    cprint(f"Testing local DNS resolvers from /etc/resolv.conf", "blue", file=sys.stderr)
-    local_resolvers = dns.get_resolvers()
+    my_dns = DNS()
+    cprint("Get list of DNS resolvers, perhaps from /etc/resolv.conf", "blue", file=sys.stderr)
+    local_resolvers = my_dns.get_resolvers()
     print(local_resolvers)
     failed_resolver_list = []
-    for resolver in local_resolvers + ['8.8.8.8']:
-        print(40 * '=' + '\n' + f"Working on resolver {resolver}")
-        okay = resolver_tst(resolver=resolver, qname="google.com", rdatatype=rdatatype.A)
+    all_okay = True
+    for resolver in local_resolvers + ['8.8.8.8', '8.8.4.4', '2001:4860:4860::8888', '2001:4860:4860::8844']:
+        cprint(40 * '=' + '\n' + f"Working on resolver {resolver}", 'blue')
+        okay = resolver_test(resolver=resolver, qname="google.com", rdatatype=rdatatype.A)
         if not okay:
             failed_resolver_list.append(resolver)
             cprint(f"Resolver {resolver} failed the IPv4 test.", 'red')
         all_okay = all_okay and okay
-        okay = resolver_tst(resolver=resolver, qname="google.com", rdatatype=rdatatype.AAAA)
+        okay = resolver_test(resolver=resolver, qname="google.com", rdatatype=rdatatype.AAAA)
         if not okay:
             failed_resolver_list.append(resolver)
             cprint(f"Resolver {resolver} failed the IPv6 test.", 'red')
@@ -181,4 +201,4 @@ if __name__ == "__main__":
         cprint(f"Some resolvers failed.  They are:{failed_resolver_list}", 'red')
 
     cprint(f"Testing a non-existant resolver", 'blue', file=sys.stderr)
-    okay = resolver_tst(resolver=['192.168.0.143'], qname="google.com", rdatatype=rdatatype.A)
+    okay = resolver_test(resolver=['192.168.0.143'], qname="google.com", rdatatype=rdatatype.A)
