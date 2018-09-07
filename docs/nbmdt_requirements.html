@@ -37,7 +37,7 @@
       "OPTIONAL" in this document are to be interpreted as described in
       <a href="https://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.</p>
 
-<p>The NBMDT shall test the following components:</p>
+<p>The NBMDT <span style="text-decoration: underline;">shall</span> test the following components:</p>
 
 <ul>
 
@@ -54,13 +54,19 @@
   <li>A list of services that run on this machine that resources across the network may use</li>
 </ul>
 
-<p>The NBMDT may test additional components.</p>
+<p>The NBMDT <span style="text-decoration: underline;">may</span> test additional components.</p>
+<ul>
+  <li>Hardware tests using the linux commands <acronym>sudo lshw -C network</acronym> Or <acronym>lspci -nnk | grep -iA2 net</acronym> .<br>
+    <br>
+  </li>
+</ul>
 
-<p>The implementer shall document which of these requirements are met in each release.</p>
+
+<p>The implementer <span style="text-decoration: underline;">shall</span> document which of these requirements are met in each release.</p>
 
 <p>The NBMDT is "test" software, in that it tests a network.&nbsp; 
 However, the NBMDT itself must also be tested, just as any other 
-software is tested.&nbsp; The t<a href="mozTocId192195">est procedures section below</a> describes how the NBMDT tests networks.<br>
+software is tested.&nbsp; The t<a href="mozTocId192195">est procedures section below</a> describes how to test that the NBMDT tests networks effectively.<br>
 </p>
 
 
@@ -163,7 +169,7 @@ the configuration file.</li>
 
 <h4><a name="mozTocId951070" class="mozTocH4"></a>Platforms</h4>
 
-<p>The nbmdt shall be tested on the following platforms:</p>
+<p>The nbmdt <span style="text-decoration: underline;">shoud</span> be tested on the following platforms:</p>
 
 <ul>
 
@@ -171,6 +177,9 @@ the configuration file.</li>
   <ul>
     <li>Debian based</li>
     <li>redhat based</li>
+<li>SUSE<br>
+</li>
+
   </ul>
   <li>Mac OS X</li>
   <li>MS-Windows</li>
@@ -178,13 +187,20 @@ the configuration file.</li>
     <li>Windows/10</li>
     <li>Windows Server</li>
   </ul>
-  <li>Rasperry PI</li>
+  <li>Rasperry PI</li></ul>
+<p>Implementations <span style="text-decoration: underline;">may</span> be tested on additional platforms.<br>
+</p>
+<p>The implementer <span style="text-decoration: underline;">shall</span> describe what environments the current release of the software supports.<br>
+</p>
+<ul>
+
 </ul>
+
 
 <h4><a name="mozTocId508795" class="mozTocH4"></a>Terminal software<br>
 </h4>
 
-<p>The nbmdt shall run on the following terminal software:</p>
+<p>The nbmdt <span style="text-decoration: underline;">should</span> run on the following terminal software:</p>
 
 <ul>
 
@@ -217,7 +233,8 @@ the configuration file.</li>
 <h4><a name="mozTocId730933" class="mozTocH4"></a>python software<br>
 </h4>
 
-<p>The nbmdt shall run under Python 3.6.&nbsp; It should run under Python 3.7.</p>
+<p>The nbmdt <span style="text-decoration: underline;">shall</span> run under Python 3.6.&nbsp; It <span style="text-decoration: underline;">should</span> run under Python 3.7 with no changes.<br>
+</p>
 
 <h3><a name="mozTocId156608" class="mozTocH3"></a>User Interfaces</h3>
 
@@ -236,9 +253,9 @@ the configuration file.</li>
 
 <h1><a name="mozTocId192195" class="mozTocH1"></a>Testing procedures</h1>
 
-<p>The NBMDT shall test the network starting at the lowest levels of the OSI model and work upwards.</p>
+<p>The NBMDT <span style="text-decoration: underline;">shall</span> test the network starting at the lowest levels of the OSI model and work upwards.</p>
 
-<p>The nbmdt shall itself be tested using these tests in simulation, as described in the <a href="nbmdt_test_plan.html">test plan</a>.<br>
+<p>The nbmdt <span style="text-decoration: underline;">shall</span> itself be tested using these tests in simulation, as described in the <a href="nbmdt_test_plan.html">test plan</a>.<br>
 </p>
 
 
@@ -255,7 +272,7 @@ the configuration file.</li>
 
 
 <h4>ethernet</h4>
-<p>The nbmdt SHALL detect the following ethernet failures:</p>
+<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect the following ethernet failures:</p>
 <ul>
   <li>no carrier (unplugged)<br>
   </li>
@@ -272,7 +289,7 @@ the configuration file.</li>
 <p>See the <a href="nbmdt_test_plan.html#mozTocId338377">test plan linux ethernet section</a>.<br>
 </p><br>
 <h4>wifi</h4>
-<p>The nbmdt SHALL detect the following wifi failures:</p>
+<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect the following wifi failures:</p>
 <ul>
   <li>no carrier</li>
   <li>interface down by command</li>
@@ -284,7 +301,7 @@ the configuration file.</li>
 
 
 <h3>Network</h3>
-<p>The nbmdt SHALL detect failures on computers that are multi-home (have more than one address).<br>
+<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect failures on computers that are multi-home (have more than one address).<br>
 </p>
 <h4>IPv4</h4>
 <p><br>

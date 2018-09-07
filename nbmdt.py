@@ -15,7 +15,8 @@ import platform
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-import interface  # OSI layer 1: ethernet, WiFi
+import physical.Physical
+import interface  # OSI layer 2: ethernet, WiFi
 import mac  # OSI layer 2: # Media Access Control: arp, ndp
 import network  # OSI layer 3: IPv4, IPv6 should be called network
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
@@ -35,6 +36,7 @@ type_transport_dict = typing.Dict[str, transport.Transport]
 type_network_dict: dict = typing.Dict[str, network.Network]
 type_mac_dict = typing.Dict[str, mac.Mac]
 type_interface_dict = typing.Dict[str, interface.Interface]
+type_physical_dict = typing.Dict[str, physical.Physical]
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module

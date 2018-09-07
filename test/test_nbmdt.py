@@ -33,8 +33,11 @@ def test_argparse() -> None:
         :return: a tuple of 2 strings, the first of which is what the subprocess wrote to stdout,
         and the second is what was written to sys.stderr
         """
+        import nbmdt
+        nbmdt_filename = nbmdt.__file__
         python_executable = sys.executable
-        completed = subprocess.run([python_executable, "nbmdt.py"] + options,
+        print(f"The nbmdt filename is {nbmdt_filename} and the python executable is {python_executable}", file=sys.stderr)
+        completed = subprocess.run([python_executable, nbmdt_filename] + options,
                                    stdin=None,
                                    input=None,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, timeout=None,

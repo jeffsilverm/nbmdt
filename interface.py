@@ -10,6 +10,7 @@ from typing import Dict, List
 import constants
 from layer import Layer
 from utilities import OsCliInter
+from physical import physical_attributes
 
 
 def get_value_from_list(self: list, keyword: str) -> str:
@@ -165,6 +166,17 @@ class PhysicalLink(Interface):
                 f"{if_name} is *already* in PhysicalLink.physical_link_dict and should not be"
             physical_link_obj = physical_link_from_if_str(if_str=if_str)
             PhysicalLink.physical_link_dict[if_name] = physical_link_obj
+
+    @property
+    def actual_logical_name(self, physical_attributes: ):
+        """
+        This is the germ of a setter that can be used to add information to an interface
+        It isn't clear to me if a method in Physical should a method in Interface or vice-versa
+        :param actual_logical_name:
+        :return:
+        """
+        self.physical_attributes = physical_attributes
+
 
 
 # END OF CLASS PhysicalLink

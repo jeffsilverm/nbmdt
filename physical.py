@@ -96,11 +96,12 @@ def physical_linux( ) -> constants.ErrorLevels :
         if "*-network" in r:
             continue
         key, value = r.split()
+        key = re.sub(r"/\s+/_/")
 
 
 
         interface.PhysicalLink.physical_link_dict[if_name].physical_attributes.if_name = if_name
-    return constants.ErrorLeve.UNKNOWN
+    return constants.ErrorLevels.UNKNOWN
     """
     If you want to diagnose just the network (in linux) try something like this:
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ sudo lshw -C network
