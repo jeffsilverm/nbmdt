@@ -81,8 +81,11 @@ class OsCliInter(object):
 
     # Since the system is going to be the same across the entire program, populate it when the OsCliInter object is
     # imported for the first time and then make it available to any object in class OsCliInter (which should not need
-    # to be instantiated
-    system = platform.system()
+    # to be instantiated.  See https://docs.python.org/3/library/platform.html
+    # possible values are: 'Linux', 'Windows', or 'Java'  (what about Mac?)
+    system:str = platform.system().lower()
+    assert "linux" == system or "windows" == system or "java" == system, \
+        f"platform.system returned an unknown (not unimplemented, that's different) value: {system}"
 
 
 
