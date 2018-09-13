@@ -127,12 +127,12 @@ class SystemDescription(object):
         :return: a SystemDescription object.
         """
 
-        applications: typing.Dict = application.Application.discover(),
-        presentations = presentation.Presentation.discover(),
-        sessions = session.Session.discover(),
-        transports = transport.Transport.discover(),
-        networks = network.Network.discover(),
-        interfaces = interface.Interface.discover(),
+        applications: typing.Dict = application.Application.discover()
+        presentations = presentation.Presentation.discover()
+        sessions = session.Session.discover()
+        transports = transport.Transport.discover()
+        networks = network.Network.discover()
+        interfaces = interface.Interface.discover()
         name: str = platform.node()
 
         my_system: object = cls.__init__(self=cls,
