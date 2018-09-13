@@ -9,6 +9,7 @@ from enum import Enum
 import platform
 from typing import List
 from sys import stderr
+from constants import OperatingSystems
 
 """
 >>> platform.system()
@@ -38,6 +39,7 @@ except Exception as e:      # if anything goes wrong
     print("Testing the __file__ special variable FAILED, exception is " + str(e), file=stderr)      # sys.stderr
 
 
+# This belongs in constants.py - figure out where they are used and rename them.
 class OSILevels(Enum):
     PHYSICAL = 1
     MEDIAACCESSCONTROL = 2
@@ -108,5 +110,14 @@ class OsCliInter(object):
         return completed_str
 
 
-
-
+# Globally note the operating system name
+os_name: str = OsCliInter.system.lower()
+os = OperatingSystems.UNKNOWN
+if 'linux' == os_name:
+    os = OperatingSystems.LINUX
+elif 'windows' == os_name:
+    os = OperatingSystems.WINDOWS
+elif 'mac os' == os_name:
+    os = OperatingSystems.MAC_OS_X
+else:
+    raise ValueError(f"System is {os_name} and I don't recognize it")
