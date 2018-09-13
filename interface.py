@@ -9,7 +9,7 @@ from typing import Dict, List
 
 import constants
 from layer import Layer
-from utilities import OsCliInter
+from utilities import OsCliInter, os, os_name
 
 
 def get_value_from_list(self: list, keyword: str) -> str:
@@ -63,7 +63,7 @@ class Interface(Layer):
     def set_discover_ip_command() -> str:
         # The location of the command to get the interface information is OS specific and common
         # across all interfaces, so it is a class variable
-        if 'linux' == OsCliInter.system.lower():
+        if os == constants.OperatingSystems.LINUX:
             # The command to get network access information from the OS.  I suppose it could be in /sbin or /usr/sbin
             if os.path.isfile("/bin/ip"):
                 ip_command: str = "/bin/ip"
@@ -75,6 +75,9 @@ class Interface(Layer):
             raise NotImplementedError(f"System {OsCliInter.system} not implemented yet")
         return ip_command
 
+    # This is poorly named
+    # Issue 22
+    # https: // github.com / jeffsilverm / nbmdt / issues / 22
     @staticmethod
     def set_discover_layer_command(layer) -> List[str]:
         """
@@ -86,15 +89,19 @@ class Interface(Layer):
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
         if "link" != layer and "addr" != layer:
             raise ValueError(f"layer is '{layer}' and should be either 'link' or 'addr' ")
-        os_name = OsCliInter.system.lower()
-        if 'linux' == os_name:
+        if os == constants.OperatingSystems.LINUX:
             discover_command = [Interface.IP_COMMAND, "--oneline", layer, "list"]
-        elif 'windows' == os_name:
-            raise NotImplementedError(f"System is {os_name} and I haven't written it yet")
-        elif 'cac OS' == os_name:
-            raise NotImplementedError(f"System is {os_name} and I haven't written it yet")
-        else:
+        elif os == constants.OperatingSystems.WINDOWS:
+            raise NotImplementedError("System is windows and I haven't written it yet")
+        elif os == constants.OperatingSystems.MAC_OS_X:
+            raise NotImplementedError("System is Mac OS X and I haven't written it yet")
+        elif os == constants.OperatingSystems.BSD:
+            raise NotImplementedError("System is BSD and I haven't written it yet")
+        elif os == constants.OperatingSystems.UNKNOWN:
             raise ValueError(f"System is {os_name} and I don't recognize it")
+        else:
+            raise AssertionError(f"System is {os_name} but os is {os} which is a bad value")
+
         return discover_command
 
 
