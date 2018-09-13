@@ -10,7 +10,6 @@ from typing import Dict, List
 import constants
 from layer import Layer
 from utilities import OsCliInter
-from physical import physical_attributes
 
 
 def get_value_from_list(self: list, keyword: str) -> str:
@@ -64,7 +63,7 @@ class Interface(Layer):
     def set_discover_ip_command() -> str:
         # The location of the command to get the interface information is OS specific and common
         # across all interfaces, so it is a class variable
-        if 'Linux' == OsCliInter.system:
+        if 'linux' == OsCliInter.system.lower():
             # The command to get network access information from the OS.  I suppose it could be in /sbin or /usr/sbin
             if os.path.isfile("/bin/ip"):
                 ip_command: str = "/bin/ip"
@@ -87,14 +86,15 @@ class Interface(Layer):
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
         if "link" != layer and "addr" != layer:
             raise ValueError(f"layer is '{layer}' and should be either 'link' or 'addr' ")
-        if 'Linux' == OsCliInter.system:
+        os_name = OsCliInter.system.lower()
+        if 'linux' == os_name:
             discover_command = [Interface.IP_COMMAND, "--oneline", layer, "list"]
-        elif 'Windows' == OsCliInter.system:
-            raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
-        elif 'Mac OS' == OsCliInter.system:
-            raise NotImplementedError(f"System is {OsCliInter.system} and I haven't written it yet")
+        elif 'windows' == os_name:
+            raise NotImplementedError(f"System is {os_name} and I haven't written it yet")
+        elif 'cac OS' == os_name:
+            raise NotImplementedError(f"System is {os_name} and I haven't written it yet")
         else:
-            raise ValueError(f"System is {OsCliInter.system} and I don't recognize it")
+            raise ValueError(f"System is {os_name} and I don't recognize it")
         return discover_command
 
 
@@ -167,20 +167,32 @@ class PhysicalLink(Interface):
             physical_link_obj = physical_link_from_if_str(if_str=if_str)
             PhysicalLink.physical_link_dict[if_name] = physical_link_obj
 
-    @property
-    def actual_logical_name(self, physical_attributes: ):
+    def set_if_name(self, if_name: str) -> None:
         """
         This is the germ of a setter that can be used to add information to an interface
         It isn't clear to me if a method in Physical should a method in Interface or vice-versa
-        :param actual_logical_name:
+        Also, consider the use case of a virtual interface, such as eno1:1
+        Test this with
+        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ sudo ifconfig eno1:1
+        eno1:1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.47  netmask 255.255.255.0  broadcast 192.168.3.255
+        ether 00:22:4d:7c:4d:d9  txqueuelen 1000  (Ethernet)
+        device interrupt 20  memory 0xf7900000-f7920000
+        # Issue 21
+        # https://github.com/jeffsilverm/nbmdt/issues/21
+
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
+
+        :param if_name:   The name of the interface
         :return:
         """
-        self.physical_attributes = physical_attributes
+        assert isinstance(if_name, str), f"if_name is of type {type(if_name)}, should be str"
+        self.if_name = if_name
+    # END OF CLASS PhysicalLink
 
 
-
-# END OF CLASS PhysicalLink
 # Make DISCOVER_LINK_COMMAND a class (not an object) attribute
+
 PhysicalLink.DISCOVER_LINK_COMMAND = Interface.set_discover_layer_command("link")
 
 
