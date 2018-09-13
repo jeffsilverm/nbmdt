@@ -10,24 +10,25 @@ import argparse
 import sys
 import typing
 from typing import Tuple
+from typing import List
 import json
 import platform
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-import physical.Physical
+import physical  # OSI layer 1: Hardware
 import interface  # OSI layer 2: ethernet, WiFi
 import mac  # OSI layer 2: # Media Access Control: arp, ndp
 import network  # OSI layer 3: IPv4, IPv6 should be called network
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import session  # OSI layer 5:
 import presentation  # OSI layer 6:
-import utilities
+# import utilities
 
 DEBUG = True
 try:
     print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
-except Exception as e:      # if anything goes wrong
+except Exception as e:  # if anything goes wrong
     print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 type_application_dict = typing.Dict[str, application.Application]
 type_presentation_dict = typing.Dict[str, presentation.Presentation]
@@ -91,12 +92,13 @@ class SystemDescription(object):
         self.sessions = sessions
         self.transports = transports  # TCP, UDP
         self.networks = networks  # IPv4, IPv6
-        self.interfaces = interfaces  # Interface including the MAC
+        self.interfaces = interfaces  # Interface including the MAC`
         self.mode = mode
-
+        self.configuration_filename: str = configuration_filename
+        self.system_name = system_name
 
     @classmethod
-    def system_description_from_file (cls, filename: str ) -> object:
+    def system_description_from_file(self, filename: str) -> 'SystemDescription':
         """
         Read a system description from a file and create a SystemDescription object.
         I couldn't figure out how to return a SystemDescription object, so I return an object
@@ -105,11 +107,18 @@ class SystemDescription(object):
         """
 
         with open(filename, "r") as f:
-            system_object = json.load(self, f)
+            so = json.load(f)
 
-
-
-        raise NotImplemented
+        return SystemDescription(applications=so.application,
+                                 presentations=so.presentations,
+                                 sessions=so.presentations,
+                                 transports=so.transports,
+                                 networks=so.networks,
+                                 interfaces=so.interfaces,
+                                 mode=so.mode,
+                                 configuration_filename=filename,
+                                 system_name=so.system_name
+                                 )
 
     @classmethod
     def discover(cls) -> object:
@@ -118,7 +127,7 @@ class SystemDescription(object):
         :return: a SystemDescription object.
         """
 
-        applications = application.Application.discover(),
+        applications: typing.Dict = application.Application.discover(),
         presentations = presentation.Presentation.discover(),
         sessions = session.Session.discover(),
         transports = transport.Transport.discover(),
@@ -126,20 +135,18 @@ class SystemDescription(object):
         interfaces = interface.Interface.discover(),
         name: str = platform.node()
 
-        my_system: object = cls.__init__( self=cls,
-                                          applications=applications,
-                                          presentations=presentations,
-                                          sessions=sessions,
-                                          transports=transports,
-                                          networks=networks,
-                                          interfaces=interfaces,
-                                          system_name=name
-                                           )
+        my_system: object = cls.__init__(self=cls,
+                                         applications=applications,
+                                         presentations=presentations,
+                                         sessions=sessions,
+                                         transports=transports,
+                                         networks=networks,
+                                         interfaces=interfaces,
+                                         system_name=name
+                                         )
         return my_system
 
-
-
-    def file_from_system_description (self, filename: str ) -> None:
+    def file_from_system_description(self, filename: str) -> None:
         """Write a system description to a file
         :param  filename
         :return:
@@ -147,10 +154,7 @@ class SystemDescription(object):
         # In the future, detect if a configuration file already exists, and if so, create
         # a new version.
         with open(filename, "w") as f:
-            json.dump(self,f)
-
-
-
+            json.dump(self, f)
 
     """
         def __init__(self, configuration_file: str = None, description: Descriptions = None) -> None:
@@ -226,53 +230,60 @@ class SystemDescription(object):
         #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
     """
 
-
     @property
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
         This method is probably most useful in BOOT mode"""
-        result = self.applications.__str__(mode=self.mode) + "\n" + \
-                 presentation.__str__(mode=self.mode) + "\n" + \
-                 session.__str__(mode=self.mode) + "\n" + \
-                 transport.__str__(mode=self.mode) + "\n" + \
-                 network.__str__(mode=self.mode) + "\n" + \
-                 interface.__str__(mode=self.mode)
+        result = self.applications.str(mode=self.mode) + "\n" + \
+             presentation.str(mode=self.mode) + "\n" + \
+             session.str(mode=self.mode) + "\n" + \
+             transport.str(mode=self.mode) + "\n" + \
+             network.str(mode=self.mode) + "\n" + \
+             interface.str(mode=self.mode)
         return result
 
+    def diagnose(self, nominal_system) -> constants.ErrorLevels:
+        raise NotImplemented
 
-from typing import List
+    def monitor(self) -> None:
+        raise NotImplemented
 
-def monitor():
-    pass
-
-def diagnose():
-    pass
+    def test(self) -> constants.ErrorLevels:
+        raise NotImplemented
 
 
-
-def main(args: List[str] = []):
+def main(args: List[str] = None):
     """
     Parse arguments, decide what mode to work in.
     :param args: a list of options,perhaps passed by a debugger.
     :return:
     """
-    sys.argv.extend(args)
+    if args is not None:
+        sys.argv.extend(args)
     # This code must execute unconditionally, because configuration.py has to
     # know if the IP_COMMAND should come from a file or a command
     options, mode = arg_parser()
 
     if options.debug:
         print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
-    if mode == constants.Modes.NOMINAL or mode == constants.Modes.BOOT:
-        current_system = SystemDescription.discover()
-        if mode == constants.Modes.NOMINAL:
-            current_system.file_from_system_description(options.filename)
-        else:
-            print(current_system.str(options.color))
-    elif mode == constants.Modes.MONITOR:
-        monitor()
+    if mode == constants.Modes.BOOT:
+        current_system: SystemDescription = SystemDescription.discover()
+        current_system.test()
     elif mode == constants.Modes.DIAGNOSE:
-        diagnose()
+        current_system: SystemDescription = SystemDescription.discover()
+        nominal_system: SystemDescription = SystemDescription.system_description_from_file(options.filename)
+        current_system.diagnose(nominal_system)
+    elif mode == constants.Modes.NOMINAL:
+        current_system: SystemDescription = SystemDescription.discover()
+        current_system.file_from_system_description(options.filename)
+    elif mode == constants.Modes.TEST:
+        raise NotImplemented("I haven't quite figured out what I do to test the system")
+        current_system.test()
+    elif mode == constants.Modes.MONITOR:
+        current_system: SystemDescription = SystemDescription.discover()
+        current_system.monitor()
+
+
 """
         # We want to find out what the current state of the system is and record it in a file if
         # in NOMINAL mode or else display it if in BOOT mode
@@ -335,6 +346,7 @@ def main(args: List[str] = []):
     
     
 """
+
 
 def arg_parser() -> Tuple:
     parser = argparse.ArgumentParser()

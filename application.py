@@ -146,7 +146,7 @@ class DNS(object):
         return answer
 
 
-class web(object):
+class Web(object):
     """
     Monitors a web server
     """
@@ -155,50 +155,4 @@ class web(object):
 
 if __name__ == "__main__":
     # This should be moved to a file in test, test_application.py
-    def resolver_test(resolver, rdatatype: dns.rdatatype = dns.rdatatype.A):
-        # server_list: list, qname: str, rdatatype: dns.
-        QNAME = "google.com"
-        answer = dns.query_specific_nameserver(server_list=resolver, qname=QNAME, rdatatype=rdatatype)
-        for rr in answer:
-            print(f"  {rr}")
-
-        okay = True
-        answer = dns.query_specific_nameserver(server_list=[resolver],
-                                               qname=QNAME,
-                                               rdatatype=dns.rdatatype.AAAA)
-        for rr in answer:
-            print(f"  {rr}")
-            if rr not in ["2607:f8b0:4008:80d::200e",
-                          '2607:f8b0:4004:811::200e']:
-                cprint(
-                    f"server {resolver} returned unanticipated IPv6 answer rr",
-                    'yellow')
-                okay = False
-        return okay
-
-
-    my_dns = DNS()
-    cprint("Get list of DNS resolvers, perhaps from /etc/resolv.conf", "blue", file=sys.stderr)
-    local_resolvers = my_dns.get_resolvers()
-    print(local_resolvers)
-    failed_resolver_list = []
-    all_okay = True
-    for resolver in local_resolvers + ['8.8.8.8', '8.8.4.4', '2001:4860:4860::8888', '2001:4860:4860::8844']:
-        cprint(40 * '=' + '\n' + f"Working on resolver {resolver}", 'blue')
-        okay = resolver_test(resolver=resolver, qname="google.com", rdatatype=rdatatype.A)
-        if not okay:
-            failed_resolver_list.append(resolver)
-            cprint(f"Resolver {resolver} failed the IPv4 test.", 'red')
-        all_okay = all_okay and okay
-        okay = resolver_test(resolver=resolver, qname="google.com", rdatatype=rdatatype.AAAA)
-        if not okay:
-            failed_resolver_list.append(resolver)
-            cprint(f"Resolver {resolver} failed the IPv6 test.", 'red')
-        all_okay = all_okay and okay
-    if len(failed_resolver_list) == 0:
-        cprint("All resolvers pass IPv4 checks", 'green')
-    else:
-        cprint(f"Some resolvers failed.  They are:{failed_resolver_list}", 'red')
-
-    cprint(f"Testing a non-existant resolver", 'blue', file=sys.stderr)
-    okay = resolver_test(resolver=['192.168.0.143'], qname="google.com", rdatatype=rdatatype.A)
+    raise NotImplemented
