@@ -5,7 +5,7 @@
 
 from termcolor import cprint as cprint
 import sys
-
+import constants
 try:
     import dns
     from dns import resolver, rdatatype  # rdataclass,
@@ -36,7 +36,7 @@ class Application(object):
         :return:
         """
         d: Dict[str, cls] = {}
-        if 'Linux' == utilities.OsCliInter.system:
+        if utilities.os == constants.OperatingSystems.LINUX:
             apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
             # Output from ps -ax command looks like (under linux)
             '''
@@ -55,10 +55,12 @@ class Application(object):
                 assert len(ps_output) == 5, "The length of ps_output is not 5.  ps_output is " + str(ps_output)
                 pid, term, stat, time, command = app.split()
                 d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command)
-        elif 'Windows' == utilities.OsCliInter.system():
-            raise NotImplemented('in Applications.discover and system windows is not implemented yet')
+        elif utilities.os == constants.OperatingSystems.WINDOWS:
+            raise NotImplemented('in Applications.discover and operating system windows is not implemented yet')
+        elif utilities.os == constants.OperatingSystems.MAC_OS_X:
+            raise NotImplemented('in Applications.discover and operating system Mac OS X is not implemented yet')
         else:
-            raise ValueError(f'in Applications.discover and system {utilities.OsCliInter.system()} is strange')
+            raise ValueError(f'in Applications.discover and utilities.os is {utilities.os} which is bad')
         return d
 
     def __init__(self, pid, term, stat, time, command) -> None:
