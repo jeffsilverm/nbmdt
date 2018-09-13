@@ -14,6 +14,14 @@ class Modes(IntEnum):
     TEST = 4
     NOMINAL = 5
 
+class OperatingSystems(IntEnum):
+    LINUX = 1
+    MAC_OS_X = 2
+    WINDOWS = 3
+    BSD = 4
+    OTHER = 3000
+    UNKNOWN = 0
+
 
 class Layers(IntEnum):
     # This is from the nbmdt_user_manual
