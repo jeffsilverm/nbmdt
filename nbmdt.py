@@ -98,7 +98,7 @@ class SystemDescription(object):
         self.system_name = system_name
 
     @classmethod
-    def system_description_from_file(self, filename: str) -> 'SystemDescription':
+    def system_description_from_file(cls, filename: str) -> 'SystemDescription':
         """
         Read a system description from a file and create a SystemDescription object.
         I couldn't figure out how to return a SystemDescription object, so I return an object
@@ -248,8 +248,11 @@ class SystemDescription(object):
     def monitor(self) -> None:
         raise NotImplemented
 
+    def nominal(self, filename) -> None:
+        self.file_from_system_description(filename)
+
     def test(self) -> constants.ErrorLevels:
-        raise NotImplemented
+        raise NotImplemented("I haven't quite figured out what I do to test the system")
 
 
 def main(args: List[str] = None):
@@ -266,22 +269,22 @@ def main(args: List[str] = None):
 
     if options.debug:
         print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
+    # Get what the system currently actually is
+    current_system: SystemDescription = SystemDescription.discover()
     if mode == constants.Modes.BOOT:
-        current_system: SystemDescription = SystemDescription.discover()
         current_system.test()
     elif mode == constants.Modes.DIAGNOSE:
-        current_system: SystemDescription = SystemDescription.discover()
+        # This is the case where we want to compare the current state against the nominal state
         nominal_system: SystemDescription = SystemDescription.system_description_from_file(options.filename)
         current_system.diagnose(nominal_system)
     elif mode == constants.Modes.NOMINAL:
-        current_system: SystemDescription = SystemDescription.discover()
-        current_system.file_from_system_description(options.filename)
+        current_system.nominal(options.filename)
     elif mode == constants.Modes.TEST:
-        raise NotImplemented("I haven't quite figured out what I do to test the system")
         current_system.test()
     elif mode == constants.Modes.MONITOR:
-        current_system: SystemDescription = SystemDescription.discover()
         current_system.monitor()
+    else:
+        raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
 
 
 """
