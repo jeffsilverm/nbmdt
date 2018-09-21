@@ -108,7 +108,7 @@ if 'linux' == os_name:
     the_os = OperatingSystems.LINUX
 elif 'windows' == os_name:
     the_os = OperatingSystems.WINDOWS
-elif 'mac os' == os_name:
+elif 'darwin' == os_name:
     the_os = OperatingSystems.MAC_OS_X
 else:
     raise ValueError(f"System is {os_name} and I don't recognize it")
