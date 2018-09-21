@@ -22,6 +22,31 @@ class OperatingSystems(IntEnum):
     OTHER = 3000
     UNKNOWN = 0
 
+    def __str__(self):
+        if self == self.LINUX:
+            return "Linux"
+        elif self == self.MAC_OS_X:
+            return "Mac OS X"
+        elif self == self.WINDOWS:
+            return "Microsoft Windows"
+        elif self == self.BSD:
+            return "Berkely Software Distribution (BSD)"
+        elif self == self.OTHER:
+            return "Something else"
+        elif self == self.UNKNOWN:
+            return "Unknown OS"
+        else:
+            raise ValueError(f"{self} is an impossible value")
+
+class OSILevels(Enum):
+    PHYSICAL = 1
+    MEDIAACCESSCONTROL = 2
+    NETWORK = 3
+    TRANSPORT = 4
+    SESSION = 5
+    PRESENTATION = 6
+    APPLICATION = 7
+
 
 class Layers(IntEnum):
     # This is from the nbmdt_user_manual

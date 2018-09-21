@@ -4,11 +4,11 @@
 
 
 import json
-import subprocess
-from enum import Enum
 import platform
-from typing import List
+import subprocess
 from sys import stderr
+from typing import List
+
 from constants import OperatingSystems
 
 """
@@ -33,21 +33,6 @@ from constants import OperatingSystems
 
 
 """
-try:
-    print("Testing the __file__ special variable: " + __file__, file=stderr)        # sys.stderr
-except Exception as e:      # if anything goes wrong
-    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=stderr)      # sys.stderr
-
-
-# This belongs in constants.py - figure out where they are used and rename them.
-class OSILevels(Enum):
-    PHYSICAL = 1
-    MEDIAACCESSCONTROL = 2
-    NETWORK = 3
-    TRANSPORT = 4
-    SESSION = 5
-    PRESENTATION = 6
-    APPLICATION = 7
 
 
 class SystemConfigurationFile(object):
@@ -85,11 +70,9 @@ class OsCliInter(object):
     # imported for the first time and then make it available to any object in class OsCliInter (which should not need
     # to be instantiated.  See https://docs.python.org/3/library/platform.html
     # possible values are: 'Linux', 'Windows', or 'Java'  (what about Mac?)
-    system:str = platform.system().lower()
+    system: str = platform.system().lower()
     assert "linux" == system or "windows" == system or "java" == system, \
         f"platform.system returned an unknown (not unimplemented, that's different) value: {system}"
-
-
 
     @classmethod
     def run_command(cls, command: List[str]) -> str:
@@ -102,22 +85,33 @@ class OsCliInter(object):
         """
 
         completed: subprocess.CompletedProcess = subprocess.run(command,
-                                              stdin=None,
-                                              input=None,
-                                              stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None,
-                                              check=False)
+                                                                stdin=None,
+                                                                input=None,
+                                                                stdout=subprocess.PIPE, stderr=None, shell=False,
+                                                                timeout=None,
+                                                                check=False)
         completed_str = completed.stdout.decode('ascii')
         return completed_str
 
 
-# Globally note the operating system name
+try:
+    print("Testing the __file__ special variable: " + __file__, file=stderr)  # sys.stderr
+except Exception as e:  # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=stderr)  # sys.stderr
+
+# Globally note the operating system name.  Note that this section of the code *must* follow the definition
+# of class OsCliInter or else the compiler will raise a NameError exception at compile time
+# Access the_os using utilities.the_os  The variable is so named to avoid confusion with the os package name
 os_name: str = OsCliInter.system.lower()
-os = OperatingSystems.UNKNOWN
+the_os = OperatingSystems.UNKNOWN
 if 'linux' == os_name:
-    os = OperatingSystems.LINUX
+    the_os = OperatingSystems.LINUX
 elif 'windows' == os_name:
-    os = OperatingSystems.WINDOWS
+    the_os = OperatingSystems.WINDOWS
 elif 'mac os' == os_name:
-    os = OperatingSystems.MAC_OS_X
+    the_os = OperatingSystems.MAC_OS_X
 else:
     raise ValueError(f"System is {os_name} and I don't recognize it")
+
+if "__main__" == __name__:
+    print(f"System is {os_name} A.K.A. {the_os}")
