@@ -203,7 +203,7 @@ def test_argparse() -> None:
     test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"], [("ethernet", "eno", "wifi", "wlp12", "router")])
     test_argp_indv(["--test", 'ethernet=enp3s0'], [("ethernet", "enp3s0")])
     test_argp_indv(["-D"], [("daemon", True)])
-    test_argp_indv(["-daemon"], [("daemon", True)])
+    test_argp_indv(["--daemon"], [("daemon", True)])
     test_argp_indv(["-w"], [("port", 80)])
     test_argp_indv(["-r"], [("rest", True)])
     test_argp_indv(["-p", "3217"], [("port", 3217)])

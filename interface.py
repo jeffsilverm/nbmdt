@@ -118,6 +118,7 @@ class PhysicalLink(Interface):
     """
 
     # A dictionary of Physical Links, key'd by interface name.  The values are PhysicalLink objects
+    raise NotImplemented("DO NOT USE interfaces.py for anything until further notice!  Move content to mac.py", file=sys.stderr)
     DISCOVER_LINK_COMMAND:List[str] = Interface.set_discover_layer_command("link")
     physical_link_dict: Dict[str, "PhysicalLink"] = dict()
 
@@ -237,7 +238,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
                                        f"get_value_from_list failed. fields is {fields}"
             broadcast_addr: str = get_value_from_list(fields, "brd")
         else:
-            raise NotImplementedError(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
+            raise NotImplemented(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
         link_obj = PhysicalLink(if_name=if_name,
                                 state_up=state_up,
                                 broadcast=broadcast,
@@ -262,6 +263,8 @@ class DataLink(Interface):
     """
     Methods for the data link layer in the OSI model: IP addresses
     """
+    raise NotImplementedError("DO NOT USE interfaces.py for anything until further notice!  Move content to mac.py", file=sys.stderr)
+
 
     # a dictionary of Interface objects, keyed by interface name.   The values are lists of DataLink objects
     data_link_dict: Dict[str, List["DataLink"]] = dict()
