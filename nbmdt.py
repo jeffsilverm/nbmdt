@@ -23,7 +23,7 @@ import network  # OSI layer 3: IPv4, IPv6 should be called network
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import session  # OSI layer 5:
 import presentation  # OSI layer 6:
-# import utilities
+import utilities
 
 DEBUG = True
 try:
@@ -121,7 +121,7 @@ class SystemDescription(object):
                                  )
 
     @classmethod
-    def discover(cls) -> object:
+    def discover(self) -> object:
         """
 
         :return: a SystemDescription object.
@@ -135,7 +135,7 @@ class SystemDescription(object):
         interfaces = interface.Interface.discover()
         name: str = platform.node()
 
-        my_system: object = cls.__init__(self=cls,
+        my_system: object = self.__init__(
                                          applications=applications,
                                          presentations=presentations,
                                          sessions=sessions,

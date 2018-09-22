@@ -9,7 +9,7 @@ from typing import Dict, List
 
 import constants
 from layer import Layer
-from utilities import OsCliInter, os, os_name
+from utilities import OsCliInter, os_name, the_os
 
 
 def get_value_from_list(self: list, keyword: str) -> str:
@@ -63,14 +63,15 @@ class Interface(Layer):
     def set_discover_ip_command() -> str:
         # The location of the command to get the interface information is OS specific and common
         # across all interfaces, so it is a class variable
-        if os == constants.OperatingSystems.LINUX:
+        if the_os == constants.OperatingSystems.LINUX:
             # The command to get network access information from the OS.  I suppose it could be in /sbin or /usr/sbin
             if os.path.isfile("/bin/ip"):
                 ip_command: str = "/bin/ip"
             elif os.path.isfile("/usr/bin/ip"):
                 ip_command: str = "/usr/bin/ip"
             else:
-                raise FileNotFoundError("Could not find the ip command, not in /bin/ip nor in /usr/bin/ip")
+                raise FileNotFoundError(
+                    f"Could not find the ip command, not in /bin/ip nor in /usr/bin/ip os is {os_name}")
         else:
             raise NotImplementedError(f"System {OsCliInter.system} not implemented yet")
         return ip_command
@@ -89,18 +90,18 @@ class Interface(Layer):
         # http://man7.org/linux/man-pages/man7/netdevice.7.html
         if "link" != layer and "addr" != layer:
             raise ValueError(f"layer is '{layer}' and should be either 'link' or 'addr' ")
-        if os == constants.OperatingSystems.LINUX:
+        if the_os == constants.OperatingSystems.LINUX:
             discover_command = [Interface.IP_COMMAND, "--oneline", layer, "list"]
-        elif os == constants.OperatingSystems.WINDOWS:
+        elif the_os == constants.OperatingSystems.WINDOWS:
             raise NotImplementedError("System is windows and I haven't written it yet")
-        elif os == constants.OperatingSystems.MAC_OS_X:
+        elif the_os == constants.OperatingSystems.MAC_OS_X:
             raise NotImplementedError("System is Mac OS X and I haven't written it yet")
-        elif os == constants.OperatingSystems.BSD:
+        elif the_os == constants.OperatingSystems.BSD:
             raise NotImplementedError("System is BSD and I haven't written it yet")
-        elif os == constants.OperatingSystems.UNKNOWN:
-            raise ValueError(f"System is {os_name} and I don't recognize it")
+        elif the_os == constants.OperatingSystems.UNKNOWN:
+            raise ValueError(f"System is {os_name} and it's unknown to this program")
         else:
-            raise AssertionError(f"System is {os_name} but os is {os} which is a bad value")
+            raise AssertionError(f"System is {os_name} which is a bad value")
 
         return discover_command
 
@@ -117,6 +118,7 @@ class PhysicalLink(Interface):
     """
 
     # A dictionary of Physical Links, key'd by interface name.  The values are PhysicalLink objects
+    DISCOVER_LINK_COMMAND:List[str] = Interface.set_discover_layer_command("link")
     physical_link_dict: Dict[str, "PhysicalLink"] = dict()
 
     def __init__(self, if_name, state_up, broadcast, multicast, lower_up, carrier,
@@ -136,6 +138,7 @@ class PhysicalLink(Interface):
         self.qlen = qlen
         self.link_addr = link_addr
         self.broadcast_addr = broadcast_addr
+
         for k in kwargs:
             self.__setattr__(k, kwargs[k])
 
@@ -144,22 +147,19 @@ class PhysicalLink(Interface):
     # might have several IPv4 or IPv6 addresses, and a DataLink might span
     # several PhysicalLinks (in the case of bonded interfaces using
     # LACP (Link Aggration Control Protocol)
-    @staticmethod  # keep discover as a static method inside
-    # class PhysicalLink because there is a method
-    # discover in class DataLink
-    def discover() -> None:  # PhysicalLink
+    @classmethod
+    def discover(cls) -> None:  # PhysicalLink
         """
         Discover all of the physical links on this system
         :rtype: A dictionary of physical keyed by interface name
         :return:
         """
-        global physical_link_dict
-        if "Linux" != OsCliInter.system:
-            raise NotImplementedError(f"In PhysicalLink.discover, {OsCliInter.system} is not implemented")
-        else:
-            assert "link" in PhysicalLink.DISCOVER_LINK_COMMAND, \
-                "In PhysicalLink.discover, the word 'link' is not in the " \
-                "DISCOVER_COMMAND"
+        cls.physical_link_dict = dict()
+        if the_os != constants.OperatingSystems.LINUX:
+            raise NotImplementedError(f"In PhysicalLink.discover, {os_name} is not implemented")
+        assert "link" in cls.DISCOVER_LINK_COMMAND, \
+            "In PhysicalLink.discover, the word 'link' is not in the " \
+            f"DISCOVER_COMMAND {cls.DISCOVER_LINK_COMMAND}"
         lnk_str: str = OsCliInter.run_command(PhysicalLink.DISCOVER_LINK_COMMAND)
         interface_list_strs: List[str] = lnk_str.split("\n")
         for if_str in interface_list_strs:
@@ -171,7 +171,7 @@ class PhysicalLink(Interface):
             assert ":" in if_name, f": not found in data physical name {if_name} and it should be there"
             assert if_name not in PhysicalLink.physical_link_dict, \
                 f"{if_name} is *already* in PhysicalLink.physical_link_dict and should not be"
-            physical_link_obj = physical_link_from_if_str(if_str=if_str)
+            physical_link_obj = cls.physical_link_from_if_str(if_str=if_str)
             PhysicalLink.physical_link_dict[if_name] = physical_link_obj
 
     def set_if_name(self, if_name: str) -> None:
@@ -195,68 +195,67 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
         """
         assert isinstance(if_name, str), f"if_name is of type {type(if_name)}, should be str"
         self.if_name = if_name
-    # END OF CLASS PhysicalLink
 
+    @staticmethod
+    def physical_link_from_if_str(if_str, **kwargs):
+        """
+        This method accepts a string, presumably from the ip command (linux), the TBD command
+        (windows) or the TBD command (Mac OS X).  It then creates a PhysicalLink object
+        :param  if_str  a string (which is OS dependent), which describes the physical link
+        """
 
-# Make DISCOVER_LINK_COMMAND a class (not an object) attribute
+        if the_os == constants.OperatingSystems.LINUX:
+            # Assumes if_str is the result of the ip --oneline link show DEV command
+            fields = if_str.split()
+            if_name = fields[1]
+            flags = fields[2]
+            broadcast = "BROADCAST" in flags
+            multicast = "MULTICAST" in flags
+            state_up = "UP" in flags
+            lower_up = "LOWER_UP" in flags
+            carrier = "NO-CARRIER" not in flags
 
-PhysicalLink.DISCOVER_LINK_COMMAND = Interface.set_discover_layer_command("link")
-
-
-def physical_link_from_if_str(if_str, **kwargs):
-    """
-    :param  if_str  a string (which is OS dependent), which describes the physical link
-    """
-
-    if "Linux" == OsCliInter.system:
-        # Assumes if_str is the result of the ip --oneline link show DEV command
-        fields = if_str.split()
-        if_name = fields[1]
-        flags = fields[2]
-        broadcast = "BROADCAST" in flags
-        multicast = "MULTICAST" in flags
-        state_up = "UP" in flags
-        lower_up = "LOWER_UP" in flags
-        carrier = "NO-CARRIER" not in flags
-
-        mtu: int = int(get_value_from_list(fields, "mtu"))
-        qdisc: str = get_value_from_list(fields, "qdisc")
-        state: str = get_value_from_list(fields, "state")
-        mode: str = get_value_from_list(fields, "mode")
-        group: str = get_value_from_list(fields, "group")
-        qlen_str: str = get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
-        if qlen_str[-1:] == """\\""":
-            qlen_str = qlen_str[:-1]
-        try:
-            qlen: int = int(qlen_str)
-        except ValueError:
-            print("qlen_str is not a valid int.  It's " + qlen_str, file=sys.stderr)
-            qlen = 0  # moving on
-        if if_name == "lo:":
-            link_addr: str = get_value_from_list(fields, "link/loopback")
+            mtu: int = int(get_value_from_list(fields, "mtu"))
+            qdisc: str = get_value_from_list(fields, "qdisc")
+            state: str = get_value_from_list(fields, "state")
+            mode: str = get_value_from_list(fields, "mode")
+            group: str = get_value_from_list(fields, "group")
+            qlen_str: str = get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
+            if qlen_str[-1:] == """\\""":
+                qlen_str = qlen_str[:-1]
+            try:
+                qlen: int = int(qlen_str)
+            except ValueError:
+                print("qlen_str is not a valid int.  It's " + qlen_str, file=sys.stderr)
+                print(f"if_str is {if_str}\n", file=sys.stderr)
+                qlen = 0  # moving on
+            if if_name == "lo:":
+                link_addr: str = get_value_from_list(fields, "link/loopback")
+            else:
+                link_addr: str = get_value_from_list(fields, "link/ether")
+            assert len(link_addr) > 0, "link_addr has length 0.  " \
+                                       f"get_value_from_list failed. fields is {fields}"
+            broadcast_addr: str = get_value_from_list(fields, "brd")
         else:
-            link_addr: str = get_value_from_list(fields, "link/ether")
-        assert len(link_addr) > 0, "link_addr has length 0.  " \
-                                   f"get_value_from_list failed. fields is {fields}"
-        broadcast_addr: str = get_value_from_list(fields, "brd")
-    else:
-        raise NotImplementedError(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
-    link_obj = PhysicalLink(if_name=if_name,
-                            state_up=state_up,
-                            broadcast=broadcast,
-                            multicast=multicast,
-                            lower_up=lower_up,
-                            carrier=carrier,
-                            mtu=mtu,
-                            qdisc=qdisc,
-                            state=state,
-                            mode=mode,
-                            group=group,
-                            qlen=qlen,
-                            link_addr=link_addr,
-                            broadcast_addr=broadcast_addr,
-                            kwargs=kwargs)
-    return link_obj
+            raise NotImplementedError(f"{OsCliInter.system} is not implemented yet in PhysicalLink")
+        link_obj = PhysicalLink(if_name=if_name,
+                                state_up=state_up,
+                                broadcast=broadcast,
+                                multicast=multicast,
+                                lower_up=lower_up,
+                                carrier=carrier,
+                                mtu=mtu,
+                                qdisc=qdisc,
+                                state=state,
+                                mode=mode,
+                                group=group,
+                                qlen=qlen,
+                                link_addr=link_addr,
+                                broadcast_addr=broadcast_addr,
+                                kwargs=kwargs)
+        return link_obj
+
+    # END OF CLASS PhysicalLink
 
 
 class DataLink(Interface):
@@ -264,8 +263,9 @@ class DataLink(Interface):
     Methods for the data link layer in the OSI model: IP addresses
     """
 
-    # a dictionary of Interface objects, keyed by interface name.   The values are DataLink objects
+    # a dictionary of Interface objects, keyed by interface name.   The values are lists of DataLink objects
     data_link_dict: Dict[str, List["DataLink"]] = dict()
+    DISCOVER_ADDR_COMMAND: List[str] = Interface.set_discover_layer_command("addr")
 
     # DataLink constructor
     def __init__(self, if_name: str, addr, mask, brd, scope, dynamic, noprefixroute, valid_lft, preferred_lft) -> None:
@@ -289,17 +289,17 @@ class DataLink(Interface):
     # discover all of the data links on the current system
     # The correspondence of data links and phyicals links will NOT be one to one, because some physical links will
     # not have any IP addresses, and some IP addresses will be bound across multiple interfaces
-    @staticmethod  # Do not convert to a static function because there are 2 other discover functions
-    def discover():  # DataLink
+    @classmethod  # Do not convert to a static function because there are 2 other discover functions
+    def discover(cls):  # DataLink
         """
         Call this method to discover all of the data links in the system.
         :return:   A class dictionary of lists of data links.  A single physical link may have several data links
 
         """
-        global data_link_dict
-        if "Linux" != OsCliInter.system:
+        cls.data_link_dict:Dict[str, List[str]] = dict()
+        if constants.OperatingSystems.LINUX != the_os:
             raise NotImplementedError(f"In DataLink.discover, {OsCliInter.system} is not implemented")
-        lnk_str: str = OsCliInter.run_command(DataLink.DISCOVER_ADDR_COMMAND)
+        lnk_str:str = OsCliInter.run_command(cls.DISCOVER_ADDR_COMMAND )
         interface_list_strs: List[str] = lnk_str.split("\n")
         for if_str in interface_list_strs:
             fields = if_str.split()
@@ -316,8 +316,6 @@ class DataLink(Interface):
 
 
 # end of class DataLink  ##########
-
-DataLink.DISCOVER_ADDR_COMMAND = DataLink.set_discover_layer_command("addr")
 
 
 def data_link_from_if_str(fields: List[str]) -> 'DataLink':
@@ -345,7 +343,6 @@ def data_link_from_if_str(fields: List[str]) -> 'DataLink':
 
     assert "mtu" not in fields, \
         "Passed the results of the ip link command instead of ip addr command"
-    assert "Linux" == OsCliInter.system
     #
     if_name = fields[1]
     assert "/" in fields[3], f"'/' not in fields[3], which is {fields[3]} ."

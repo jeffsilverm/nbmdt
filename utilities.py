@@ -84,6 +84,7 @@ class OsCliInter(object):
         :return: A string which is the output of the program in ASCII
         """
 
+        assert isinstance(command, list), f"command should be a list of strings but is actually a string {command}"
         completed: subprocess.CompletedProcess = subprocess.run(command,
                                                                 stdin=None,
                                                                 input=None,
