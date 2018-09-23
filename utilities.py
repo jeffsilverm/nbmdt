@@ -116,3 +116,5 @@ else:
 
 if "__main__" == __name__:
     print(f"System is {os_name} A.K.A. {the_os}")
+    if OperatingSystems.LINUX == the_os:
+        print(f"In linux, the uname -a command output is \n{OsCliInter.run_command(['uname', '-a'])}\n.")

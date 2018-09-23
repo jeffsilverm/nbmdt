@@ -16,14 +16,13 @@ import platform
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-import physical  # OSI layer 1: Hardware
-import interface  # OSI layer 2: ethernet, WiFi
-import mac  # OSI layer 2: # Media Access Control: arp, ndp
-import network  # OSI layer 3: IPv4, IPv6 should be called network
+import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
+# import interface  # OSI layer 2: ethernet, WiFi       # issue 25
+import datalink  # OSI layer 2: # Media Access Control: arp, ndp
+import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
 import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 import session  # OSI layer 5:
 import presentation  # OSI layer 6:
-import utilities
 
 DEBUG = True
 try:
@@ -35,8 +34,8 @@ type_presentation_dict = typing.Dict[str, presentation.Presentation]
 type_session_dict = typing.Dict[str, session.Session]
 type_transport_dict = typing.Dict[str, transport.Transport]
 type_network_dict: dict = typing.Dict[str, network.Network]
-type_mac_dict = typing.Dict[str, mac.Mac]
-type_interface_dict = typing.Dict[str, interface.Interface]
+type_datalink_dict = typing.Dict[str, datalink.DataLink]
+# type_interface_dict = typing.Dict[str, interface.Interface]   # Issue 25
 type_physical_dict = typing.Dict[str, physical.Physical]
 
 """
@@ -57,8 +56,8 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Mod
 
 class SystemDescription(object):
     """Refer to the OSI stack, for example, at https://en.wikipedia.org/wiki/OSI_model.  Objects of this class describe
-     the system, including interfaces, IPv4 and IPv6 addresses, routes, applications.  Each of these objects have a test
-     associated with them"""
+     the system, including devices, datalinks, IPv4 and IPv6 addresses and routes, TCP and UDP, sessions,
+     presentations, applications.  Each of these objects have a test associated with them"""
 
     # Issue 13
     #    CURRENT = None
@@ -68,7 +67,8 @@ class SystemDescription(object):
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
                  networks: type_network_dict = None,
-                 interfaces: type_interface_dict = None,
+                 # interfaces: type_interface_dict = None,          # Issue 25
+                 datalinks: type_datalink_dict = None,
                  mode=constants.Modes.BOOT,
                  configuration_filename: str = None,
                  system_name: str = platform.node()
@@ -92,7 +92,7 @@ class SystemDescription(object):
         self.sessions = sessions
         self.transports = transports  # TCP, UDP
         self.networks = networks  # IPv4, IPv6
-        self.interfaces = interfaces  # Interface including the MAC`
+        self.datalink = datalink    # MAC address
         self.mode = mode
         self.configuration_filename: str = configuration_filename
         self.system_name = system_name
@@ -121,7 +121,7 @@ class SystemDescription(object):
                                  )
 
     @classmethod
-    def discover(self) -> object:
+    def discover(cls) -> object:
         """
 
         :return: a SystemDescription object.
@@ -132,7 +132,8 @@ class SystemDescription(object):
         sessions = session.Session.discover()
         transports = transport.Transport.discover()
         networks = network.Network.discover()
-        interfaces = interface.Interface.discover()
+        # interfaces = interface.Interface.discover()
+        datalinks = datalink.DataLink.discover()
         name: str = platform.node()
 
         my_system: object = self.__init__(
@@ -141,7 +142,7 @@ class SystemDescription(object):
                                          sessions=sessions,
                                          transports=transports,
                                          networks=networks,
-                                         interfaces=interfaces,
+                                         datalinks=datalinks,
                                          system_name=name
                                          )
         return my_system
@@ -239,7 +240,7 @@ class SystemDescription(object):
              session.str(mode=self.mode) + "\n" + \
              transport.str(mode=self.mode) + "\n" + \
              network.str(mode=self.mode) + "\n" + \
-             interface.str(mode=self.mode)
+             datalink.str(mode=self.mode)
         return result
 
     def diagnose(self, nominal_system) -> constants.ErrorLevels:
