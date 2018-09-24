@@ -12,8 +12,10 @@ from termcolor import cprint
 
 from application import DNSFailure
 from configuration import Configuration
-from constants import ErrorLevels
+from constants import ErrorLevels, OperatingSystems
 from layer import Layer
+import interface
+import utilities
 
 
 # The color names described in https://pypi.python.org/pypi/termcolor are:
@@ -39,13 +41,17 @@ class Network(Layer):
     def discover(cls):
         pass
 
-    def __init__(self):
-        self.layer = Layer()
+    def __init__(self, name):
+        self.layer = Layer(name)
+
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
     pass
+
+# Define generic routing table functions here.
+# The flags in the route command output see https://www.thegeekstuff.com/2012/05/route-flags/
 
 
 # Issue 5 renamed IPv4_address to IPv4Address.   Reflecting what PEP-8 says
@@ -55,12 +61,20 @@ class IPv4Address(Network):
     If the name has not been specified, then it is None
     """
 
+    # This might not be generalizable
+    if OperatingSystems.LINUX == utilities.the_os:
+        LIST_IPV4_ADDRS_ON_INTERFACES = [interface.Interface.IP_COMMAND, "-4", "addr", "list"]
+
+
+
     def __init__(self, name: str = None, ipv4_address: Union[str, bytes] = None) -> None:
         """
         :param name:    str remote computer name
         :param ipv4_address: str remote computer name as a dotted quad (e.g. 192.168.0.1) or as a 4 bytes
         :raises ValueError
         """
+
+        self.super(name=name)
 
         def raise_value_error(name, ipv4_address):
             raise ValueError("Create an IPv4Address object with either a name or an IPv4 address but not both " \

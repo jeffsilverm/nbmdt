@@ -185,7 +185,6 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
 
     # END OF CLASS DataLink
 
-DataLink
 if __name__ == "__main__":
     DataLink.discover()
 

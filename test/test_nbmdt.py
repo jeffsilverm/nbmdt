@@ -232,5 +232,6 @@ def test_argparse() -> None:
 print("Start testing here", file=sys.stderr)
 test_argparse()
 
+
 if __name__ == "__main__":
     pytest.main()

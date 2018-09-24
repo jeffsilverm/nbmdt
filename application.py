@@ -36,7 +36,7 @@ class Application(object):
         :return:
         """
         d: Dict[str, cls] = {}
-        if utilities.os == constants.OperatingSystems.LINUX:
+        if utilities.the_os == constants.OperatingSystems.LINUX:
             apps_str: str = utilities.OsCliInter.run_command(["ps", "-ax"])
             # Output from ps -ax command looks like (under linux)
             '''
