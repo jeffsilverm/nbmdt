@@ -5,6 +5,7 @@
 #
 
 import argparse
+import os
 import subprocess
 import sys
 from typing import List, Tuple
@@ -16,6 +17,8 @@ import nbmdt
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 6, "Python must be later than version 3.6, " \
                                                                     f"is currently {str(sys.version_info)} "
+
+TEST_CONFIGURATION_FILENAME = "xyzzy.json"
 
 
 def test_argparse() -> None:
@@ -36,7 +39,8 @@ def test_argparse() -> None:
         import nbmdt
         nbmdt_filename = nbmdt.__file__
         python_executable = sys.executable
-        print(f"The nbmdt filename is {nbmdt_filename} and the python executable is {python_executable}", file=sys.stderr)
+        print(f"The nbmdt filename is {nbmdt_filename} and the python executable is {python_executable}",
+              file=sys.stderr)
         completed = subprocess.run([python_executable, nbmdt_filename] + options,
                                    stdin=None,
                                    input=None,
@@ -99,14 +103,21 @@ def test_argparse() -> None:
         assert not options.monitor, "options.monitor is True when it should be False"
         assert options.diagnose, "options.diagnose is False when it should be True"
 
-    def test_nominal_mode(mode_str):
-        sys.argv = ["nbmdt.py", mode_str]
+    def test_nominal_mode(mode_str, configuration_filename):
+        sys.argv = ["nbmdt.py", mode_str, configuration_filename]
         (options, mode) = nbmdt.arg_parser()
         assert isinstance(options,
                           argparse.Namespace), f"The return from nbmdt.arg_parser should be a 'argparse.Namespace' " \
                                                f"but is {str(type(options))}"
         assert mode == constants.Modes.NOMINAL, f"The mode returned from nbmdt.arg_parser was {mode} not " \
                                                 f"constants.Modes.NOMINAL"
+        if os.path.exists(configuration_filename):
+            assert os.path.isfile(
+                configuration_filename), f"{configuration_filename} exists but is not a file. Probably a directory.  " \
+                                         f"Deleting it is a Bad Idea"
+            os.remove(configuration_filename)
+        nbmdt.main(args=["-N", configuration_filename])
+        assert os.path.isfile(configuration_filename)
 
     def test_debug_option():
         # Does the --debug option work?
@@ -121,20 +132,19 @@ def test_argparse() -> None:
         # The first opportunity to actually test nbmdt.py as a program
         sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose"])
         assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did " \
-                                               "not" \
-                                               " appear in stderr"
+                                               "not appear in stderr\n" + syserr_str
         assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
-                                                  "diagnose did not appear in stderr"
+                                                  "diagnose did not appear in stderr\n" + syserr_str
         sysout_str, syserr_str = run_nbmdt(["--boot"])
         assert "boot " in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
-                                              "appear in syserr"
+                                              "appear in syserr\n"  + syserr_str
         assert "debug " not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
-                                                   "debug appeared in syserr"
+                                                   "debug appeared in syserr\n" + syserr_str
         #
         config_file_name = "mock_nbmdt_config.json"
         stdout_str, syserr_str = run_nbmdt(["--nominal", "--debug", config_file_name])
-        assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr(124)"
-        assert " nominal " in syserr_str.lower(), """ " nominal " not found in st"""
+        assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr_str\n{syserr_str}"
+        assert " nominal " in syserr_str.lower(), """ " nominal " not found in syserr_str""" + "\n" + syserr_str
 
     def test_argp_indv(options_list: List[str], option_results: List[tuple]) -> object:
         """
@@ -172,6 +182,31 @@ def test_argparse() -> None:
             assert att != predicted, f"testing option {attribute}, predicted should have been {predicted} but is {att}"
         return
 
+    def test_select_test(arg_list, if_test) -> None:
+        """
+        Verify that the arguments to the -t option are processed correctly.  According to the NBMDT user manual,
+        nbmdt_user_manual.html#-t_option , the argument is a comma separated list of LAYER=NAME pairs.
+        :param arg_list:
+        :return:
+        """
+
+        LAYER_LIST = "ethernet, wifi, ipv4, ipv6, neighbors, dhcp4, dhcp6, router, nameserver,  local_ports, isp_routing, remote_ports"
+        assert arg_list[0] == "nbmdt.py", f"test_select_test was called with bad arg_list[0], {arg_list[0]} should be 'nbmdt.py'"
+        assert arg_list[1] == "-t" or arg_list[1] == "--test" , f"test_select_test was called with bad arg_list[1], {arg_list[1]} should be -t or --test"
+        select_test_list = arg_list[2]
+
+        nbmdt.main(arg_list)
+        assert nbmdt.options.mode == constants.Modes.NOMINAL, f"{nbmdt.options.mode} should be {constants.Modes.NOMINAL} bad parser"
+        for t in select_test_list:
+            layer,name = t.split("=")
+            assert layer in LAYER_LIST, f"Caller messed up: {layer} is not in LAYER_LIST: {LAYER_LIST}"
+            assert layer in nbmdt.options.test, f"{t} not in nbmdt.options.test {nbmdt.options.test}, bad parser"
+            assert nbmdt.options.test == if_test, f"{nbmdt.options.test} should be {if_test}, bad parser"
+        with pytest.raises(ValueError):
+                sys.argv = ["nbmdt.py", "-t", "outer=rind"]
+                nbmdt.main()
+
+
     # The debug option is critical to everything else, because the argparse test consists of giving an option and
     # testing if the string that recognizes the option is in sys.stderr, a.k.a syserr
     test_debug_option()
@@ -181,8 +216,8 @@ def test_argparse() -> None:
     test_monitor_mode("-m")
     test_diagnose_mode("--diagnose")
     test_diagnose_mode("-d")
-    test_nominal_mode("--nominal")
-    test_nominal_mode("-N")
+    test_nominal_mode("--nominal", TEST_CONFIGURATION_FILENAME)
+    test_nominal_mode("-N", TEST_CONFIGURATION_FILENAME)
     #
     find_multiple_args(["--diagnose", "--boot"])
     find_multiple_args(["--diagnose", "--monitor"])
@@ -191,17 +226,16 @@ def test_argparse() -> None:
     find_multiple_args(["--monitor", "--boot", "--diagnose"])
     find_multiple_args([])  # Must pass at least one of --boot, --monitor, --diagnose
 
-    with pytest.raises(FileNotFoundError):
-        sys.argv = ["nbmdt.py", "--file", "xyzzy.txt"]
-        nbmdt.main()
 
-    if_test = "ethernet=eno1,wifi=wlp12"
-    test_argp_indv(["-t", if_test], [('test', True)])  # Does attribute test exist?  True if so
 
     # @pytest.mark.xfail(raises=ValueError)
-    test_argp_indv(["-t", if_test], [('test', if_test)])
-    test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"], [("ethernet", "eno", "wifi", "wlp12", "router")])
+    # test_argp_indv(["-t", if_test], [('test', if_test)])
+    test_argp_indv(["-t", "ethernet=eno2,wifi=wlp12,router"], [("ethernet", "eno1", "wifi", "wlp12", "router")])
     test_argp_indv(["--test", 'ethernet=enp3s0'], [("ethernet", "enp3s0")])
+    if_test = "ethernet=eno1,wifi=wlp12"
+    test_argp_indv(["-t", if_test], [('test', True)])  # Does attribute test exist?  True if so
+    for if_test in nbmdt.LAYERS_LIST:
+        test_select_test(["-t", if_test], if_test)
     test_argp_indv(["-D"], [("daemon", True)])
     test_argp_indv(["--daemon"], [("daemon", True)])
     test_argp_indv(["-w"], [("port", 80)])
@@ -231,7 +265,6 @@ def test_argparse() -> None:
 
 print("Start testing here", file=sys.stderr)
 test_argparse()
-
 
 if __name__ == "__main__":
     pytest.main()
