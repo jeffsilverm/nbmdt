@@ -7,22 +7,23 @@
 
 # https://pypi.python.org/pypi/termcolor
 import argparse
-import sys
-import typing
-from typing import Tuple
-from typing import List
 import json
 import platform
+import sys
+import typing
+from typing import List
+from typing import Tuple
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
-import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
+# from physical import Physical
 # import interface  # OSI layer 2: ethernet, WiFi       # issue 25
 import datalink  # OSI layer 2: # Media Access Control: arp, ndp
 import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
-import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import session  # OSI layer 5:
+import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
 import presentation  # OSI layer 6:
+import session  # OSI layer 5:
+import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 DEBUG = True
 try:
@@ -36,7 +37,9 @@ type_transport_dict = typing.Dict[str, transport.Transport]
 type_network_dict: dict = typing.Dict[str, network.Network]
 type_datalink_dict = typing.Dict[str, datalink.DataLink]
 # type_interface_dict = typing.Dict[str, interface.Interface]   # Issue 25
+print("dir(physical.Physical) is ", dir(physical.Physical), file=sys.stderr)
 type_physical_dict = typing.Dict[str, physical.Physical]
+print("dir(type_physical_dict) is ", dir(type_physical_dict), file=sys.stderr)
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
@@ -52,6 +55,10 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Mod
 
 
 """
+
+options = None
+LAYERS_LIST = "ethernet,wifi,ipv4,ipv6,neighbors,dhcp4,dhcp6,router,nameserver,local_ports,isp_routing," \
+              "remote_ports,application, presentation,session,transport,network,datalink,physical"
 
 
 class SystemDescription(object):
@@ -69,7 +76,8 @@ class SystemDescription(object):
                  networks: type_network_dict = None,
                  # interfaces: type_interface_dict = None,          # Issue 25
                  datalinks: type_datalink_dict = None,
-                 mode=constants.Modes.BOOT,
+                 physicals: type_physical_dict = None,
+                 mode: constants.Modes = constants.Modes.BOOT,
                  configuration_filename: str = None,
                  system_name: str = platform.node()
                  ) -> None:
@@ -82,7 +90,7 @@ class SystemDescription(object):
         :param sessions:
         :param transports:
         :param networks:
-        :param interfaces:
+        :param datalinks:
         :param mode:
         :param configuration_filename:
         :param system_name: str The name of this computer
@@ -92,7 +100,8 @@ class SystemDescription(object):
         self.sessions = sessions
         self.transports = transports  # TCP, UDP
         self.networks = networks  # IPv4, IPv6
-        self.datalink = datalink    # MAC address
+        self.datalinks = datalinks  # MAC address
+        self.physicals = physicals
         self.mode = mode
         self.configuration_filename: str = configuration_filename
         self.system_name = system_name
@@ -109,16 +118,18 @@ class SystemDescription(object):
         with open(filename, "r") as f:
             so = json.load(f)
 
-        return SystemDescription(applications=so.application,
-                                 presentations=so.presentations,
-                                 sessions=so.presentations,
-                                 transports=so.transports,
-                                 networks=so.networks,
-                                 interfaces=so.interfaces,
-                                 mode=so.mode,
-                                 configuration_filename=filename,
-                                 system_name=so.system_name
-                                 )
+        return SystemDescription(
+            applications=so.applications,
+            presentations=so.presentations,
+            sessions=so.presentations,
+            transports=so.transports,
+            networks=so.networks,
+            datalinks=so.datalinks,
+            physicals=so.physicals,
+            mode=so.mode,
+            configuration_filename=filename,
+            system_name=so.system_name
+        )
 
     @classmethod
     def discover(cls) -> object:
@@ -134,17 +145,19 @@ class SystemDescription(object):
         networks = network.Network.discover()
         # interfaces = interface.Interface.discover()
         datalinks = datalink.DataLink.discover()
+        physicals = physical.Physical.discover()
         name: str = platform.node()
 
-        my_system: object = self.__init__(
-                                         applications=applications,
-                                         presentations=presentations,
-                                         sessions=sessions,
-                                         transports=transports,
-                                         networks=networks,
-                                         datalinks=datalinks,
-                                         system_name=name
-                                         )
+        my_system: object = SystemDescription(
+            applications=applications,
+            presentations=presentations,
+            sessions=sessions,
+            transports=transports,
+            networks=networks,
+            datalinks=datalinks,
+            physicals=physicals,
+            system_name=name
+        )
         return my_system
 
     def file_from_system_description(self, filename: str) -> None:
@@ -234,26 +247,32 @@ class SystemDescription(object):
     @property
     def __str__(self):
         """This generates a nicely formatted report of the state of this system
-        This method is probably most useful in BOOT mode"""
-        result = self.applications.str(mode=self.mode) + "\n" + \
-             presentation.str(mode=self.mode) + "\n" + \
-             session.str(mode=self.mode) + "\n" + \
-             transport.str(mode=self.mode) + "\n" + \
-             network.str(mode=self.mode) + "\n" + \
-             datalink.str(mode=self.mode)
+        This method is probably most useful in BOOT mode.
+
+        The classes should be re-written with __str__ methods which are sensitive to the mode
+        """
+        result = str( self.applications ) + "\n" + \
+                 str( self.presentations ) + "\n" + \
+                 str( self.sessions ) + "\n" + \
+                 str( self.transports ) + "\n" + \
+                 str( self.networks ) + "\n" + \
+                 str( self.datalinks )
         return result
 
     def diagnose(self, nominal_system) -> constants.ErrorLevels:
-        raise NotImplemented
+        raise NotImplementedError
 
     def monitor(self) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def nominal(self, filename) -> None:
         self.file_from_system_description(filename)
 
     def test(self) -> constants.ErrorLevels:
-        raise NotImplemented("I haven't quite figured out what I do to test the system")
+        raise NotImplementedError
+
+    def boot(self) -> constants.ErrorLevels:
+        raise NotImplementedError
 
 
 def main(args: List[str] = None):
@@ -262,6 +281,8 @@ def main(args: List[str] = None):
     :param args: a list of options,perhaps passed by a debugger.
     :return:
     """
+
+    global options, mode
     if args is not None:
         sys.argv.extend(args)
     # This code must execute unconditionally, because configuration.py has to
@@ -272,21 +293,23 @@ def main(args: List[str] = None):
         print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
     # Get what the system currently actually is
     current_system: SystemDescription = SystemDescription.discover()
-    if mode == constants.Modes.BOOT:
-        current_system.test()
-    elif mode == constants.Modes.DIAGNOSE:
-        # This is the case where we want to compare the current state against the nominal state
-        nominal_system: SystemDescription = SystemDescription.system_description_from_file(options.filename)
-        current_system.diagnose(nominal_system)
-    elif mode == constants.Modes.NOMINAL:
-        current_system.nominal(options.filename)
-    elif mode == constants.Modes.TEST:
-        current_system.test()
-    elif mode == constants.Modes.MONITOR:
-        current_system.monitor()
-    else:
-        raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
-
+    try:
+        if mode == constants.Modes.BOOT:
+            current_system.test()
+        elif mode == constants.Modes.DIAGNOSE:
+            # This is the case where we want to compare the current state against the nominal state
+            nominal_system: SystemDescription = SystemDescription.system_description_from_file(options.filename)
+            current_system.diagnose(nominal_system)
+        elif mode == constants.Modes.NOMINAL:
+            current_system.nominal(options.filename)
+        elif mode == constants.Modes.TEST:
+            current_system.test()
+        elif mode == constants.Modes.MONITOR:
+            current_system.monitor()
+        else:
+            raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
+    except NotImplementedError as n:
+        print(f"The mode you selected {str(mode)} isn't implemented yet {str(n)}", file=sys.stderr)
 
 """
         # We want to find out what the current state of the system is and record it in a file if
