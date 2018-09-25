@@ -1,16 +1,24 @@
 from layer import Layer
+import constants
 
 
 class Presentation(Layer):
 
     def __init__(self, s):
+        super().__init__(name="TBD")
         self.presentation = s
-        self.layer = Layer()
 
-    def get_status(self):
-        return self.layer.get_status()
+    def get_status(self) -> constants.ErrorLevels:
+        """
+
+        :rtype: constants.ErrorLevels
+        """
+        return self.get_status()
 
     @classmethod
     def discover(cls):
-        p = cls.__init__(self=cls, s="A presentation representation string")
+        p = Presentation("A presentation representation string")
         return p
+
+if "__main__" == __name__:
+    p = Presentation("BLECH!")
