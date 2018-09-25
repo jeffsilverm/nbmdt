@@ -8,11 +8,11 @@
 # https://pypi.python.org/pypi/termcolor
 import argparse
 import json
+import os
 import platform
 import sys
 import typing
-from typing import List
-from typing import Tuple
+from typing import Tuple, List
 
 import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
 import constants
@@ -79,7 +79,7 @@ class SystemDescription(object):
                  # interfaces: type_interface_dict = None,          # Issue 25
                  datalinks: type_datalink_dict = None,
                  physicals: type_physical_dict = None,
-                 mode: constants.Modes = constants.Modes.BOOT,
+                 # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
                  configuration_filename: str = None,
                  system_name: str = platform.node()
                  ) -> None:
@@ -93,7 +93,6 @@ class SystemDescription(object):
         :param transports:
         :param networks:
         :param datalinks:
-        :param mode:
         :param configuration_filename:
         :param system_name: str The name of this computer
         """
@@ -104,7 +103,6 @@ class SystemDescription(object):
         self.networks = networks  # IPv4, IPv6
         self.datalinks = datalinks  # MAC address
         self.physicals = physicals
-        self.mode = mode
         self.configuration_filename: str = configuration_filename
         self.system_name = system_name
 
@@ -116,7 +114,8 @@ class SystemDescription(object):
         :param filename:
         :return:
         """
-
+        if not os.path.isfile(filename):
+            raise FileNotFoundError(f"The file {filename} does not exist")
         with open(filename, "r") as f:
             so = json.load(f)
 
@@ -128,7 +127,6 @@ class SystemDescription(object):
             networks=so.networks,
             datalinks=so.datalinks,
             physicals=so.physicals,
-            mode=so.mode,
             configuration_filename=filename,
             system_name=so.system_name
         )
@@ -253,31 +251,28 @@ class SystemDescription(object):
 
         The classes should be re-written with __str__ methods which are sensitive to the mode
         """
-        result = str( self.applications ) + "\n" + \
-                 str( self.presentations ) + "\n" + \
-                 str( self.sessions ) + "\n" + \
-                 str( self.transports ) + "\n" + \
-                 str( self.networks ) + "\n" + \
-                 str( self.datalinks )
+        result = "{0}\n{1}\n{2}\n{3}\n{4}\n{5}".format(str(self.applications), str(self.presentations),
+                                                       str(self.sessions), str(self.transports), str(self.networks),
+                                                       str(self.datalinks))
         return result
 
-    def diagnose(self, nominal_system) -> constants.ErrorLevels:
+    def diagnose(self, nominal_system: 'SystemDescription') -> constants.ErrorLevels:
         raise NotImplementedError
 
-    def monitor(self) -> None:
+    def monitor(self, port) -> None:
         raise NotImplementedError
 
     def nominal(self, filename) -> None:
         self.file_from_system_description(filename)
 
-    def test(self) -> constants.ErrorLevels:
+    def test(self, test_specification) -> constants.ErrorLevels:
         raise NotImplementedError
 
     def boot(self) -> constants.ErrorLevels:
         raise NotImplementedError
 
 
-def main(args: List[str] = None):
+def main(args: List[str] = None ):
     """
     Parse arguments, decide what mode to work in.
     :param args: a list of options,perhaps passed by a debugger.
@@ -285,11 +280,14 @@ def main(args: List[str] = None):
     """
 
     global options, mode
-    if args is not None:
-        sys.argv.extend(args)
-    # This code must execute unconditionally, because configuration.py has to
-    # know if the IP_COMMAND should come from a file or a command
-    options, mode = arg_parser()
+
+    # The caller might pass some arguments for testing purposes.  In this case, ignore the command line args
+    if args is None:
+        args = sys.argv[1:]
+    options, mode = arg_parser(args)
+    assert type(options) == argparse.Namespace, \
+        f"options should be of type argparse.Namespace but is actually {type(options)}"
+    assert type(mode) == constants.Modes, f"mode should be of type constants.Modes but is actually {type(mode)}"
 
     if options.debug:
         print(f"The debug option was set.  Mode is {mode}", file=sys.stderr)
@@ -297,21 +295,26 @@ def main(args: List[str] = None):
     current_system: SystemDescription = SystemDescription.discover()
     try:
         if mode == constants.Modes.BOOT:
-            current_system.test()
+            current_system.test(options.test_specification)
         elif mode == constants.Modes.DIAGNOSE:
             # This is the case where we want to compare the current state against the nominal state
-            nominal_system: SystemDescription = SystemDescription.system_description_from_file(options.filename)
+            if not hasattr(options, 'diagnose_filename') or options.diagnose_filename is None:
+                raise ValueError(
+                    "You did not specify a configuration filename when you asked nbmdt to diagnose a system")
+            nominal_system: SystemDescription = SystemDescription.system_description_from_file(
+                options.diagnose_filename)
             current_system.diagnose(nominal_system)
         elif mode == constants.Modes.NOMINAL:
-            current_system.nominal(options.filename)
+            current_system.nominal(options.nominal_filename)
         elif mode == constants.Modes.TEST:
-            current_system.test()
+            current_system.test(options.test_specification)
         elif mode == constants.Modes.MONITOR:
-            current_system.monitor()
+            current_system.monitor(options.monitor_filename)
         else:
             raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
     except NotImplementedError as n:
         print(f"The mode you selected {str(mode)} isn't implemented yet {str(n)}", file=sys.stderr)
+
 
 """
         # We want to find out what the current state of the system is and record it in a file if
@@ -377,49 +380,78 @@ def main(args: List[str] = None):
 """
 
 
-def arg_parser() -> Tuple:
-    parser = argparse.ArgumentParser()
-    print("BUG: add single letter options!", file=sys.stderr)
-    parser.add_argument('--boot', help="Use at boot time.  Outputs messages color coded with status of network "
-                                       "subsystems, and then exits", action="store_true", dest="boot")
-    parser.add_argument('--monitor',
-                        help="Use while system is running.  Presents a RESTful API that a client can use to "
-                             "monitor the state of the network on a host", action="store_true", dest="monitor")
-    parser.add_argument('--diagnose', help="Use when a problem is detected.", action="store_true", dest="diagnose")
-    parser.add_argument('--test', help="Test a particular part of the network", action="store_true", dest="test")
-    parser.add_argument('--nominal', help="Use when the system is working properly to capture the current state."
-                                          "This state will serve as a reference for future testing",
-                        action="store_true", dest="nominal")
-    parser.add_argument('-p', '--port', type=int, default=constants.port,
-                        help='Port where server listens when in monitor mode, default %s' % constants.port)
-    parser.add_argument("--debug", default=False, action="store_true", dest="debug")
-    options = parser.parse_args()
+def arg_parser(args) -> Tuple:
+    """
+    Parse the command line parsed_options
+    :rtype: argparse.Namespace
+    :return: an object with all of the parsed_options included as attributes
+    """
 
-    # Select one and only one of these options
+    # Issue 24 https://github.com/jeffsilverm/nbmdt/issues/24
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    print("BUG: add single letter parsed_options!", file=sys.stderr)
+    group.add_argument('--boot', '-b', help="Use at boot time.  Outputs messages color coded with status of network "
+                                            "subsystems, and then exits", action="store_const",
+                                            const=constants.Modes.BOOT, dest="boot")
+    group.add_argument('--monitor' '-m',
+                       help="Use while system is running.  Presents a RESTful API that a client can use to "
+                            "monitor the state of the network on a host.  ",
+                       action="store", type=int, dest="monitor_port")
+    group.add_argument('--diagnose', '-d',
+                       help="Use when a problem is detected.  Compares the current state of the system "
+                            "against a nominal state.  CONFIGURATION_FILE is required", action="store", dest="diagnose_filename")
+    group.add_argument('--test', '-t', help="Test a particular part of the network", action="store", dest="test_specification")
+    group.add_argument('--nominal', '-N', help="Use when the system is working properly to capture the current state."
+                                               "This state will serve as a reference for future testing.  "
+                                               "CONFIGURATION_FILE is required", action="store", dest="nominal_filename")
+    parser.add_argument("--debug", default=False, action="store_true", dest="debug")
+
+    parsed_options = parser.parse_args(args=args)
+
+    if parsed_options.boot is not None:
+        mode = constants.Modes.BOOT
+    elif parsed_options.diagnose_filename is not None:
+        mode = constants.Modes.DIAGNOSE
+    elif parsed_options.test_specification is not None:
+        mode = constants.Modes.TEST
+    elif parsed_options.monitor_port is not None:
+        mode = constants.Modes.MONITOR
+    elif parsed_options.nominal_filename is not None:
+        mode = constants.Modes.NOMINAL
+    else:
+        raise AssertionError(f"parsed_options did not have a way to set mode\n{dir(parsed_options)}")
+
+
+    """# Select one and only one of these parsed_options
     # Look at the arg parser documentation, https://docs.python.org/3/library/argparse.html
     # There is a mechanism in there to make sure that one and only option is selected.
-    if (options.boot + options.monitor + options.diagnose + options.test + options.nominal) != 1:
+    if (parsed_options.boot + hasattr(parsed_options, "monitor") + hasattr(parsed_options, "diagnose") +
+            parsed_options.test + parsed_options.nominal) != 1:
         raise ValueError(
             "Must have exactly one of --boot (or -b), --monitor (or -m), --diagnose (or -d), --nominal (or -N)\n"
             "sys.argv is " + str(sys.argv))
-    if options.boot:
+    if parsed_options.boot:
         mode = constants.Modes.BOOT
-    elif options.diagnose:
-        mode = constants.Modes.DIAGNOSE
-    elif options.monitor:
+    elif hasattr(parsed_options, 'diagnose'):
+        parsed_options.filename: str = parsed_options.diagnose
+        mode = 
+    elif parsed_options.monitor:
         mode = constants.Modes.MONITOR
-    elif options.test:
+    elif parsed_options.test:
         mode = constants.Modes.TEST
-    elif options.nominal:
+    elif hasattr(parsed_options, 'nominal'):
         mode = constants.Modes.NOMINAL
+        parsed_options.filename: str = parsed_options.nominal
     else:
-        raise AssertionError("The arg_parser returned all mode options cleared.  options is " + str(options))
-    return (options, mode)
+        raise AssertionError("The arg_parser returned all mode parsed_options cleared.  parsed_options is " + 
+        str(parsed_options))
+    """
+
+    return parsed_options, mode
 
     # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
 
 if __name__ == "__main__":
-    # Pass a length 0 list for production
-    # Actually, here you'd never want to pass ANYTHING, because that's a job for pytest.
-    main(["--boot", "--debug"], )
+    main()
