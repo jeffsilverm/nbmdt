@@ -3,18 +3,22 @@
 # This file contains constants for the NBMDT
 #
 from enum import IntEnum, Enum, auto
+import sys
 
 port = 8722  # Default port that the server listens on.  Provides a RESTful interface
 
 
 class Modes(IntEnum):
+
     BOOT = 1
     MONITOR = 2
     DIAGNOSE = 3
     TEST = 4
     NOMINAL = 5
 
+
 class OperatingSystems(IntEnum):
+
     LINUX = 1
     MAC_OS_X = 2
     WINDOWS = 3
@@ -22,6 +26,7 @@ class OperatingSystems(IntEnum):
     OTHER = 3000
     UNKNOWN = 0
 
+    """
     def __str__(self):
         if self == self.LINUX:
             return "Linux"
@@ -37,6 +42,8 @@ class OperatingSystems(IntEnum):
             return "Unknown OS"
         else:
             raise ValueError(f"{self} is an impossible value")
+    """
+
 
 class OSILevels(Enum):
     PHYSICAL = 1
