@@ -3,9 +3,12 @@
 #
 # Contains a class for applications and a class for DNS, which is an application
 
-from termcolor import cprint as cprint
 import sys
+
+from termcolor import cprint as cprint
+
 import constants
+
 try:
     import dns
     from dns import resolver, rdatatype  # rdataclass,
@@ -49,18 +52,16 @@ class Application(object):
             apps_list: str = apps_str.split("\n")
             for app in apps_list:
                 if "PID" in app:
-                    continue
-                ps_output = app.split()
+                    continue  # Skip the header in the ps command
                 # When you get this right, DRY
-                assert len(ps_output) == 5, "The length of ps_output is not 5.  ps_output is " + str(ps_output)
                 pid, term, stat, time, command = app.split()
-                d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command)
-        elif utilities.os == constants.OperatingSystems.WINDOWS:
+                d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command[0])
+        elif utilities.the_os == constants.OperatingSystems.WINDOWS:
             raise NotImplemented('in Applications.discover and operating system windows is not implemented yet')
-        elif utilities.os == constants.OperatingSystems.MAC_OS_X:
+        elif utilities.the_os == constants.OperatingSystems.MAC_OS_X:
             raise NotImplemented('in Applications.discover and operating system Mac OS X is not implemented yet')
         else:
-            raise ValueError(f'in Applications.discover and utilities.os is {utilities.os} which is bad')
+            raise ValueError(f'in Applications.discover and utilities.the_os is {utilities.the_os} which is bad')
         return d
 
     def __init__(self, pid, term, stat, time, command) -> None:
@@ -68,7 +69,7 @@ class Application(object):
 
         :rtype: None
         """
-        self.layer = Layer()
+        self.layer = Layer(command)
         self.pid = pid
         self.term = term
         self.stat = stat
@@ -105,7 +106,7 @@ class DNSFailure(Exception):
 class DNS(object):
 
     def __init__(self):
-        # self.resolvers = self.get_resolvers()
+        # configure=False means ignore /etc/resolv.conf (on linux)
         self.resolver = dns.resolver.Resolver(configure=False)
 
     # Got this from https://github.com/donjajo/py-world/blob/master/resolvconfReader.py
@@ -141,10 +142,7 @@ class DNS(object):
         """
 
         self.resolver.nameservers = server_list
-        assert isinstance(rdatatype_enm, dns.rdatatype), f"The type of rdatatype is {type(rdatatype_enm)} should be " +\
-                                                         str(type(dns.rdatatype))
-        answer: list = dns.resolver.query(qname, rdatatype_enm)
-        answer.sort()
+        answer: dns.resolver.Answer = dns.resolver.query(qname, rdatatype_enm)
         return answer
 
 
@@ -157,4 +155,17 @@ class Web(object):
 
 if __name__ == "__main__":
     # This should be moved to a file in test, test_application.py
-    raise NotImplemented
+    CVV_IPV4 = "208.97.189.29"
+    CVV_IPV6 = "2607:f298:5:115f::23:e397"
+    my_dns = DNS()
+    response: dns.resolver.Answer = my_dns.query_specific_nameserver(server_list=['8.8.8.8'], qname="commercialventvac.com",
+                                                     rdatatype_enm=dns.rdatatype.A)
+    cvv_ipv4_addr: str = response.response.answer[0].items[0].address
+    assert CVV_IPV4 == cvv_ipv4_addr, \
+        f"{cvv_ipv4_addr} should be {CVV_IPV4}, bad DNS IPv4 lookup"
+    response = my_dns.query_specific_nameserver(server_list=['8.8.8.8'], qname="commercialventvac.com",
+                                                     rdatatype_enm=dns.rdatatype.AAAA)
+    cvv_ipv6_addr: str = response.response.answer[0].items[0].address
+    assert CVV_IPV6 == cvv_ipv6_addr, \
+        f"{cvv_ipv6_addr} should be {CVV_IPV6}, bad DNS IPv6 lookup"
+
