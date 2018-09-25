@@ -5,9 +5,8 @@
 
 import sys
 
-from termcolor import cprint as cprint
-
 import constants
+from termcolor import cprint as cprint
 
 try:
     import dns
@@ -54,8 +53,16 @@ class Application(object):
                 if "PID" in app:
                     continue  # Skip the header in the ps command
                 # When you get this right, DRY
-                pid, term, stat, time, command = app.split()
-                d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command[0])
+                try:
+                    pid, term, stat, time, command = app.split(maxsplit=4)
+                except ValueError as v:
+                    print(f"Problems unpacking a line {str(v)} from the ps command: \n{app}\nskip it", file=sys.stderr)
+                    continue
+                # I want the type of command to be consistent.  Without this, sometimes it will be a list and
+                # sometimes a str
+                if isinstance(command, str):
+                    command = list(command)
+                d[pid] = Application(pid=pid, term=term, stat=stat, time=time, command=command)
         elif utilities.the_os == constants.OperatingSystems.WINDOWS:
             raise NotImplemented('in Applications.discover and operating system windows is not implemented yet')
         elif utilities.the_os == constants.OperatingSystems.MAC_OS_X:
@@ -158,14 +165,14 @@ if __name__ == "__main__":
     CVV_IPV4 = "208.97.189.29"
     CVV_IPV6 = "2607:f298:5:115f::23:e397"
     my_dns = DNS()
-    response: dns.resolver.Answer = my_dns.query_specific_nameserver(server_list=['8.8.8.8'], qname="commercialventvac.com",
-                                                     rdatatype_enm=dns.rdatatype.A)
+    response: dns.resolver.Answer = my_dns.query_specific_nameserver(server_list=['8.8.8.8'],
+                                                                     qname="commercialventvac.com",
+                                                                     rdatatype_enm=dns.rdatatype.A)
     cvv_ipv4_addr: str = response.response.answer[0].items[0].address
     assert CVV_IPV4 == cvv_ipv4_addr, \
         f"{cvv_ipv4_addr} should be {CVV_IPV4}, bad DNS IPv4 lookup"
     response = my_dns.query_specific_nameserver(server_list=['8.8.8.8'], qname="commercialventvac.com",
-                                                     rdatatype_enm=dns.rdatatype.AAAA)
+                                                rdatatype_enm=dns.rdatatype.AAAA)
     cvv_ipv6_addr: str = response.response.answer[0].items[0].address
     assert CVV_IPV6 == cvv_ipv6_addr, \
         f"{cvv_ipv6_addr} should be {CVV_IPV6}, bad DNS IPv6 lookup"
-
