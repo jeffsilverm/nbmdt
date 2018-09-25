@@ -32,6 +32,7 @@
     </ol>
     <p>The program is an out growth of a talk I gave at <a
 href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX-C9qi-sng/edit#slide=id.p">LinuxFestNorthwest
+
         in Bellingham, Washington, April 2017</a>.&nbsp; In this talk, I
       discussed how you could use linux software to diagnose network
       problems.&nbsp; One of the comments I got from my audience is "Is
@@ -63,7 +64,10 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
       configuration file.&nbsp; This configuration file contains:<br>
     </p>
     <ul>
-      <li>The state of Network Interface Cards (NICs) (up or down),</li>
+      <li>Hardware information concerning the Network Interface Cards
+        (NICs)</li>
+      <li>The state of the NICs (up or down, are they sending/receiving
+        packets, recording errors?),</li>
       <li>the MAC address</li>
       <li>the ARP cache</li>
       <li>IPv6 neighbors</li>
@@ -83,6 +87,7 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
       is also a <a href="nbmdt_test_plan.html">test plan</a>, which is
       derived from the <a
         href="file:///home/jeffs/nbmdt/docs/nbmdt_requirements.html">requirements
+
         document</a>.&nbsp;&nbsp; The decision to write these documents
       in HTML was deliberate because I wanted to cross reference every
       requirement to a test in the test plan, and backwards.<br>
@@ -121,8 +126,7 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
       <br>
     </dt>
     <dd><span style="background-color:red">Down cause unknown</span></dd>
-    <dt>The resource is flunking its test, cause unknown
-      <br>
+    <dt>The resource is flunking its test, cause unknown <br>
       <br>
     </dt>
     <dd><span style="background-color:magenta"> Failed due to an
@@ -250,14 +254,14 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
       at the command of the system administrator.&nbsp; It is in JSON
       format.&nbsp; When nbmdt is run in nominal mode, it builds a
       description of the system and then creates the nominal
-      configuration
-      file.&nbsp; This file is assumed to be correct.&nbsp; It has to be
-      changed only when the system changes.</p>
+      configuration file.&nbsp; This file is assumed to be
+      correct.&nbsp; It has to be changed only when the system changes.</p>
     <p><br>
     </p>
     <h2><a name="mozTocId821733" class="mozTocH2"></a>Internals</h2>
     <p>See also <a
         href="file:///home/jeffs/logbooks/notes_2017-03.html#mozTocId725313">how
+
 
 
 
@@ -371,8 +375,10 @@ href="http://unix.stackexchange.com/questions/150195/getting-information-from-sy
                   class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">/sys/devices</code>,
                 and the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code>link
 
+
                 merely links to a (grand-)<sup style="margin: 0px;
                   padding: 0px; border: 0px; font-size: 12px;">*</sup>parent
+
                 directory; instead of using the<span
                   class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span
                   class="Apple-converted-space">&nbsp;</span>link,
@@ -489,6 +495,7 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
     <p>See <a href="https://www.tecmint.com/ip-command-examples/">ip
         command examples from tecmint</a>, <a
 href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf">the
+
         ip command cheat sheet</a>&nbsp; , <br>
     </p>
     <h3><a name="mozTocId962741" class="mozTocH3"></a>Critical Networks
@@ -568,14 +575,14 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
       </tbody>
     </table>
     <h1><a name="mozTocId188875" class="mozTocH1"></a>Progress</h1>
-    <p><font color="#ff0000">There is a horrible problem in interfaces.py
-        and it really should be re-written.&nbsp; What I am calling a
-        PhysicalLink is really a DataLink.&nbsp; What I am calling a
-        DataLink is really a Network.&nbsp; What really is physical is
-        something else.&nbsp; Worse, I have a file called mac.py and a
-        file called network.py that probably do the same things, and if
-        not, then they should.&nbsp; Perhaps interface.py should be
-        deprecated or perhaps deleted.</font><br>
+    <p><font color="#ff0000">There is a horrible problem in
+        interfaces.py and it really should be re-written.&nbsp; What I
+        am calling a PhysicalLink is really a DataLink.&nbsp; What I am
+        calling a DataLink is really a Network.&nbsp; What really is
+        physical is something else.&nbsp; Worse, I have a file called
+        mac.py and a file called network.py that probably do the same
+        things, and if not, then they should.&nbsp; Perhaps interface.py
+        should be deprecated or perhaps deleted.</font><br>
     </p>
     <table style=" text-align: left; width: 100%;" border="1"
       cellspacing="2" cellpadding="2">
@@ -777,7 +784,8 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
           <li><a href="#mozTocId336500">Configuration files</a>
             <ol>
               <li><a href="#mozTocId84646">Permanent configuration file</a></li>
-              <li><a href="#mozTocId304901"> </a></li>
+              <li><a href="#mozTocId304901"> </a><br>
+              </li>
               <li><a href="#mozTocId867742">Nominal configuration file</a></li>
             </ol>
           </li>
@@ -810,8 +818,7 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
       <li><a href="#mozTocId729492">Acknowledgements</a></li>
     </ol>
     <br>
-    <p>The output from the <kbd>pip search dns</kbd> command:
-    </p>
+    <p>The output from the <kbd>pip search dns</kbd> command: </p>
     <pre>3xsd (0.0.26)                                  - 3xsd is a native epoll server serving TCP/UDP connections, a high performance static web server, a failover dns server, a http-based distributed file server, a load-balance proxy-cache server, and a warp-drive server. Written in python, take the full power of multi-cores.
 odoo8-addon-connector-dns (8.0.1.0.0.99.dev3)  - DNS connector
 adns (1.4-py1)                                 - An interface to GNU adns - python3 port

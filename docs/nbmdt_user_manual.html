@@ -1,12 +1,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-
-
-<title>NBMDT user manual</title>
-
-
-<style>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>NBMDT user manual</title>
+    <style>
 /* This is from constants.py 
 # NORMAL = 1  # Everything is working properly
 # SLOW = 2  # Up, but running slower than allowed
@@ -28,318 +25,341 @@
 .other { background-color: #595959; color: white; }
 
 </style>
-</head><body>
-<h1><a name="mozTocId540848" class="mozTocH1"></a>The Network Boot Monitor and Diagnostic Tool (nbmdt)</h1>
-
-
-<p>The Network Boot Monitor and Diagnostic Tool (nbmdt) is a program 
-designed to troubleshoot a home network.&nbsp; The nbmdt can 
-find the following errors:<br>
-</p>
-
-
-<ul>
-
-
-  <li>Wiring - both catastrophic errors and poor quality issues<br>
-  </li>
-  <li>WiFi - both catastrophic errors and poor quality issues</li>
-  <li>pinging the router - both errors, losses, and speed<br>
-  </li>
-  <li>getting an IPv4 address from the dynamic host configuration protocol daemon (DHCPd).<br>
-  </li>
-  <li>getting an IPv6 address from the router or using DHCPd6<br>
-</li>
-  <li>nameserver unreachable</li>
-  <li>nameserver returning bad address</li>
-<li>nameserver slow<br>
-</li>
-
-  <li>local ports not open</li>
-  <li>Routing issues within the ISP</li>
-  <li>Remote hosts reachable</li>
-  <li>remote ports not open<br>
-  </li>
-</ul>
-
-
-<p>In addition, the nbmdt can:<br>
-</p>
-
-
-<ul>
-
-
-  <li>Get the addresses of other systems on the local area network</li>
-  <li>Detect changes in the network configuration.</li>
-  <li>daemonize itself and run in the background, accessible via an API</li>
-  <li>Use scapy scripts to test things in other ways</li>
-  <li>logs errors</li>
-</ul>
-
-
-<p>nbmdt can run:<br>
-</p>
-
-
-<ul>
-
-
-  <li>nbmdt can run at startup, output helpful information and then 
-optionally daemonize itself.&nbsp; The daemon provides a RESTful API<br>
-  </li>
-  <li>It can also run in a terminal, test the network, and diagnose the problem.&nbsp; It will not use the API provided by the daemon</li>
-  <li>There is also an nbmdt terminal mode that will use the daemon API.&nbsp; It uses ANSI-X3.64 style color graphics</li>
-  <li>There is a shim that uses the daemon and presents a web based API.</li>
-</ul>
-
-
-<h2><a name="mozTocId853930" class="mozTocH2"></a>nbmdt command line options</h2>
-
-
-<p>Start the nbmdt as follows:<br>
-</p>
-
-
-<p><acronym>python nbmdt.py <var>[configuration_file]</var> <var>options</var></acronym>
-</p>
-<p>Where <var>options</var> are:
-</p>
-
-<dl>
-  <dt>-b --boot</dt>
-<dd>Run at boot time.&nbsp; In the interests of 
-brevity, it just reports on what is working and what is not, it makes no
- attempt to figure out why</dd>
-<dt>-m --monitor</dt>
-<dd>Uses VT-220 (ANSI-X3.64) style graphics and colors.&nbsp; The terminal does not scroll.</dd>
-<dt>-d --diagnose</dt><dd>This is the default: test the entire network.&nbsp; This is also
-  relatively slow, because it takes time to see if counters are
-  incrementing, packet loss rates, and other more subtle tests of the system.</dd><dt>-N --nominal</dt>
-<dd>Assumes that the network is working properly at the moment, and
-    records the current state of the network in a configuration file</dd>
-<dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]
-
-      --test <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]</acronym>
-  </dt>
-<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a
-  comma separated list of layers to test. You may also list which
-  components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span></dd>
-<dt><acronym>-t <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]
-      --test <var>LAYER</var>[=<var>name</var>] [,<var>LAYER</var>[=<var>name</var>]]</acronym>
-  </dt>
-<dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by using a
-  comma separated list of layers to test. You may also list which
-  components of layer you wish to test.&nbsp; <i>LAYER</i> may be one of <span style="font-family: monospace;">ethernet</span>, <span style="font-family: monospace;">wifi</span>, <span style="font-family: monospace;">ipv4</span>, <span style="font-family: monospace;">ipv6</span>, <span style="font-family: monospace;">neighbors</span>, <span style="font-family: monospace;">dhcp4</span>, <span style="font-family: monospace;">dhcp6</span>, <span style="font-family: monospace;">router</span>, <span style="font-family: monospace;">nameserver</span>,&nbsp; <span style="font-family: monospace;">local_ports</span>, <span style="font-family: monospace;">isp_routing</span>, <span style="font-family: monospace;">remote_ports</span>.</dd>
-<dt>-D --daemon</dt>
-<dd>Run in daemon mode.&nbsp; The program creates a copy of itself that
-    runs as a daemon.&nbsp; The daemon presents either a RESTful API
-    interface or a web interface.&nbsp; This allows unprivileged users to
-    test the system because the daemon is privileged and the clients are
-    not.</dd>
-<dt>-w --web</dt>
-<dd>Present an web interface using HTML, CSS, Javascript.&nbsp; Suitable for use with a browser</dd>
-<dt>-r --rest</dt>
-<dd>Present a RESTful interface.&nbsp; Suitable for use with cybernetic clients (the default)<br>
-</dd>
-
-<dt>-p <var>n</var> --port <var>n</var><br>
-</dt>
-<dd>The port that the daemon listens on.&nbsp; The default is 80.&nbsp; If running nbmdt not as root, then the operating system will require that pick a port number greater than 1024.<br>
-</dd>
-<dt>-M --mask <var>bits</var></dt>
-<dd>This "tightens" the range of IPv4 addresses that the daemon will listen to.&nbsp; This will be used most commonly with <a href="https://www.rfc-editor.org/info/rfc1918">RFC 1918 private IP addresses</a>. Common values will be:<br> 
-  <table style=" text-align: left; width: 100%;" border="1" cellspacing="2" cellpadding="2">
-
-    <tbody>
-      <tr>
-        <th>Bits<br>
-        </th>
-        <th>Usage<br>
-        </th>
-        <th>Addresses<br>
-        </th>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">0<br>
-        </td>
-        <td style="vertical-align: top;">listen to anything anywhere on the Internet</td>
-        <td style="vertical-align: top;">4.3 billion<br>
-        </td>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">8<br>
-        </td>
-        <td style="vertical-align: top;">listen to anything on the 10.0.0.0/8 subnet.&nbsp; This is an RFC 1918 private IPv4 address range with 16 million addresses.<br>
-        </td>
-        <td style="vertical-align: top;">16 million<br>
-        </td>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">12<br>
-        </td>
-        <td style="vertical-align: top;">listen to anything in the range of 172.12.0.0/12&nbsp; to 172.16.0.0/16 subnet.&nbsp; <br>
-        </td>
-        <td style="vertical-align: top;"><br>
-        </td>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">16<br>
-        </td>
-        <td style="vertical-align: top;">listen to anything in the 192.168.0.0 subnet</td>
-        <td style="vertical-align: top;">65,534<br>
-        </td>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">24<br>
-        </td>
-        <td style="vertical-align: top;">listen to anything in the 
-192.168.x.0 subnet, where x is the&nbsp; 3 octet of IPv4 address of the 
-first interface(for most homes in which you want the daemon to listen to
- clients elsewhere in the house, 24 is probably the best value</td>
-        <td style="vertical-align: top;">254<br>
-        </td>
-      </tr>
-      <tr>
-        <td style="vertical-align: top;">32<br>
-        </td>
-        <td style="vertical-align: top;">listen only to clients on this machine)(which is the default), 127.0.0.1<br>
-        </td>
-        <td style="vertical-align: top;">1<br>
-        </td>
-      </tr>
-    </tbody>
-  
-  </table>
-
-  <br>
-
-</dd>
-<dt>-l --ll</dt>
-<dd>Listen only to clients that have link local IPv6 addresses.&nbsp; Such 
-addresses are only allowed on the link, which would be the ethernet or 
-WiFi domain.
-</dd>
-<dt>-u --ula -ULA<br>
-</dt>
-<dd>Listen only to clients that have unique local IPv6 addresses.&nbsp; 
-Such addresses are only allowed "locally", they are analogous to RFC 
-1918 IPv4 addresses.<br>
-</dd>
-<dt>-g --global</dt>
-<dd>Listen to any IPv6 address anywhere in the world.&nbsp; This implies -u or --ula
-</dd><dt>-c --color</dt>
-  <dd>Use color.&nbsp; This is the default</dd>
-<dt>-n --nocolor</dt>
-  <dd>Do not use color</dd><dt>-v --verbose</dt>
-  <dd>Verbose, provides more information</dd>
-<dt>--debug</dt>
-  <dd>Run <acronym>nbmdt</acronym> in debug mode.&nbsp; Of use to the nbmdt software developers and probably nobody else.<br>
-</dd>
-<dt>-h --help</dt>
-<dd>Provide help</dd>
-</dl>
-
-
-
-
-<p>The optional <i>configuration_file&nbsp;</i> names the configuration file to use.&nbsp; If the -N or --nominal options are included and the configuration file already exists, then a new file is created with a number appended to the end of the filename.<br>
-</p>
-
-
-<h2><a name="mozTocId173090" class="mozTocH2"></a>nbmdt in use</h2>
-
-
-<h3><a name="mozTocId240448" class="mozTocH3"></a>Meanings of the colors</h3>
-
-
-<p><br>
-</p>
-
-
-<h3><a name="mozTocId906669" class="mozTocH3"></a>At system startup time</h3>
-
-
-<p>Run the nbmdt in a startup script that runs after all of the 
-applications that you want to test have started.&nbsp; Here is typical 
-run:<br>
-</p>
-<p style="font-family: Courier New,Courier,monospace;">
-<acronym>nbmdt    --boot</acronym><br>
-<span class="normal">ethernet interface eno1 is good</span><br>
-<span class="down">ethernet interface enp3s0 is administratively down</span><br>
-<span class="down">ethernet interface en2 is not plugged in</span><br>
-<span class="down">WiFi interface is not connected to any access point</span><br>
-<span class="normal">interface eno1 has IPv4 address 10.0.0.14</span><br>
-<span class="degraded">interface enp3s0 does not have an IPv4 address</span><br>
-<span class="degraded">interface en2 does not have an IPv4 address</span><br>
-<span class="normal">interface eno1 has IPv6 link local address</span><br>
-<span class="normal">interface eno1 has IPv6 unique local address</span><br>
-<span class="normal">interface eno1 has IPv6 global address</span><br>
-<span class="degraded">interface enp3s0 does not have an IPv4 address</span><br>
-<span class="down_dependency">interface en2 does not have an IPv4 address</span><br>
-<span class="down_dependency">interface WIFI does not have an IPv4 address</span><br>
-<span class="down_dependency">interface WIFI does not have an IPv6 ink local address</span><br>
-<span class="normal">interface eno1 has IPv6 unique local address </span><br>
-<span class="normal">interface eno1 has IPv6 global address</span><br>
-<span class="normal">default IPv4 gateway is 10.0.0.1 and is pingable</span><br>
-<span class="normal">default IPv6 gateway is fe80::6bf:6dff:fed9:8ab4 and is pingable</span><br>
-<span class="normal">interface eno1 has a Unique Local Address (ULA) fd00::ae7f:4068:cb55:3152/128</span><br>
-<span class="other">There is another IPv4 address in the routing table and it is not pingable.</span><br>
-<span class="other">There is another IPv6 address in the routing table and it is not pingable.</span><br>
-<span class="changed">There are IPv4 neighbors at 10.0.0.13, 10.0.0.12, 10.0.0.8</span><br>
-<span class="changed">There are IPv6 neighbors at </span><br>
-<span class="changed">There is a nameserver at 10.0.0.1 and it is reachable</span><br>
-<span class="changed">There is a nameserver at 8.8.8.8 and it is reachable</span><br>
-<span class="changed">There is a nameserver at 2001:4860:4860::8888 and it is reachable</span><br>
-<span class="normal">The nameserver at 10.0.0.1 was tested with f5.com and returned 104.219.111.168 which is correct</span><br>
-<span class="changed">The nameserver at 207.126.96.248 was tested f5.com and returned 32.12.18.11 which is wrong, should be 104.219.111.168</span><br>
-<span class="normal">The local time differs from the network time protocol NTP server&nbsp;&nbsp; by 231 milliseconds</span><br>
-<span class="degraded">The local time differs from the network time protocol NTP server&nbsp; by 1342 millseconds</span><br>
-<span class="slow">Ping round trip time to commercialventvac.com is 1345 msec</span><br>
-<span class="down_acknowleged">Acknowledged</span><br>
-</p>
-
-<p style="font-family: Courier New,Courier,monospace;">
-<acronym>nbmdt    --test ethernet=eno1</acronym><br>
-<span class="normal">ethernet interface eno1 is up</span><br>
-<span class="normal">ethernet interface eno1 is plugged in</span><br>
-<span class="normal">ethernet interface eno1 is a broadcast device</span><br>
-<span class="normal">ethernet interface eno1 is a multicast device</span><br>
-<span class="degraded">ethernet interface eno1 has 250 overruns</span><br>
-</p>
-
-<p><br>
-
-
-</p>
-
-
-<p>
-  <br>
-
-</p>
-
-
-<p><br>
-</p>
-
-
-<p><br>
-</p>
-
-
-<p><br>
-</p>
-
-
-
-
-
-<hr style="width: 100%; height: 2px;"><br>
-<ol id="mozToc">
-<!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId540848">The Network Boot Monitor and Diagnostic Tool (nbmdt)</a><ol><li><a href="#mozTocId853930">nbmdt command line options</a></li><li><a href="#mozTocId173090">nbmdt in use</a><ol><li><a href="#mozTocId240448">Meanings of the colors</a></li><li><a href="#mozTocId906669">At system startup time</a></li></ol></li></ol></li>
-</ol>
-<br>
-<br>
-</body></html>
+  </head>
+  <body>
+    <h1><a name="mozTocId540848" class="mozTocH1"></a>The Network Boot
+      Monitor and Diagnostic Tool (nbmdt)</h1>
+    <p>The Network Boot Monitor and Diagnostic Tool (nbmdt) is a program
+      designed to troubleshoot a home network.&nbsp; The nbmdt can find
+      the following errors:<br>
+    </p>
+    <ul>
+      <li>Wiring - both catastrophic errors and poor quality issues<br>
+      </li>
+      <li>WiFi - both catastrophic errors and poor quality issues</li>
+      <li>pinging the router - both errors, losses, and speed<br>
+      </li>
+      <li>getting an IPv4 address from the dynamic host configuration
+        protocol daemon (DHCPd).<br>
+      </li>
+      <li>getting an IPv6 address from the router or using DHCPd6<br>
+      </li>
+      <li>nameserver unreachable</li>
+      <li>nameserver returning bad address</li>
+      <li>nameserver slow<br>
+      </li>
+      <li>local ports not open</li>
+      <li>Routing issues within the ISP</li>
+      <li>Remote hosts reachable</li>
+      <li>remote ports not open<br>
+      </li>
+    </ul>
+    <p>In addition, the nbmdt can:<br>
+    </p>
+    <ul>
+      <li>Get the addresses of other systems on the local area network</li>
+      <li>Detect changes in the network configuration.</li>
+      <li>daemonize itself and run in the background, accessible via an
+        API</li>
+      <li>Use scapy scripts to test things in other ways</li>
+      <li>logs errors</li>
+    </ul>
+    <p>nbmdt can run:<br>
+    </p>
+    <ul>
+      <li>nbmdt can run at startup, output helpful information and then
+        optionally daemonize itself.&nbsp; The daemon provides a RESTful
+        API<br>
+      </li>
+      <li>It can also run in a terminal, test the network, and diagnose
+        the problem.&nbsp; It will not use the API provided by the
+        daemon</li>
+      <li>There is also an nbmdt terminal mode that will use the daemon
+        API.&nbsp; It uses ANSI-X3.64 style color graphics</li>
+      <li>There is a shim that uses the daemon and presents a web based
+        API.</li>
+    </ul>
+    <h2><a name="mozTocId853930" class="mozTocH2"></a>nbmdt command line
+      options</h2>
+    <p>Start the nbmdt as follows:<br>
+    </p>
+    <p><acronym>python nbmdt.py <var>options&nbsp;</var></acronym> <var>[configuration_file]</var>
+      <var></var>
+    </p>
+    <p>Where <var>options</var> are:
+    </p>
+    <dl>
+      <dt>-b --boot</dt>
+      <dd>Run at boot time.&nbsp; In the interests of brevity, it just
+        reports on what is working and what is not, it makes no attempt
+        to figure out why</dd>
+      <dt>-m --monitor</dt>
+      <dd>Uses VT-220 (ANSI-X3.64) style graphics and colors.&nbsp; The
+        terminal does not scroll.</dd>
+      <dt>-d --diagnose</dt>
+      <dd>This is the default: test the entire network.&nbsp; This is
+        also relatively slow, because it takes time to see if counters
+        are incrementing, packet loss rates, and other more subtle tests
+        of the system.</dd>
+      <dt><acronym><a name="-t_option"></a>-t <var>LAYER</var>[=<var>name</var>]
+          [,<var>LAYER</var>[=<var>name</var>]] --test <var>LAYER</var>[=<var>name</var>]
+          [,<var>LAYER</var>[=<var>name</var>]]</acronym> </dt>
+      <dd>Test <var>LAYER</var>.&nbsp; You can test multiple layers by
+        using a comma separated list of layers to test. You may also
+        list which components of layer you wish to test.&nbsp; <var>name</var>
+        is the component at that layer to be tested, the default is to
+        test everything.&nbsp; <i>LAYER</i> may be one of <span
+          style="font-family: monospace;">ethernet</span>, <span
+          style="font-family: monospace;">wifi</span>, <span
+          style="font-family: monospace;">ipv4</span>, <span
+          style="font-family: monospace;">ipv6</span>, <span
+          style="font-family: monospace;">neighbors</span>, <span
+          style="font-family: monospace;">dhcp4</span>, <span
+          style="font-family: monospace;">dhcp6</span>, <span
+          style="font-family: monospace;">router</span>, <span
+          style="font-family: monospace;">nameserver</span>, <span
+          style="font-family: monospace;">local_ports</span>, <span
+          style="font-family: monospace;">isp_routing</span>, <span
+          style="font-family: monospace;">remote_ports, application,
+          presentation, session, transport, network, datalink, physical.<br>
+        </span></dd>
+      <dt>-N --nominal <var>filename</var><br>
+      </dt>
+      <dd>Assumes that the network is working properly at the moment,
+        and records the current state of the network in a configuration
+        file</dd>
+      <dt>-D --daemon</dt>
+      <dd>Run in daemon mode.&nbsp; The program creates a copy of itself
+        that runs as a daemon.&nbsp; The daemon presents either a
+        RESTful API interface or a web interface.&nbsp; This allows
+        unprivileged users to test the system because the daemon is
+        privileged and the clients are not.</dd>
+      <dt>-w --web</dt>
+      <dd>Present an web interface using HTML, CSS, Javascript.&nbsp;
+        Suitable for use with a browser</dd>
+      <dt>-r --rest</dt>
+      <dd>Present a RESTful interface.&nbsp; Suitable for use with
+        cybernetic clients (the default)<br>
+      </dd>
+      <dt>-p <var>n</var> --port <var>n</var><br>
+      </dt>
+      <dd>The port that the daemon listens on.&nbsp; The default is
+        80.&nbsp; If running nbmdt not as root, then the operating
+        system will require that pick a port number greater than 1024.<br>
+      </dd>
+      <dt>-M --mask <var>bits</var></dt>
+      <dd>This "tightens" the range of IPv4 addresses that the daemon
+        will listen to.&nbsp; This will be used most commonly with <a
+          href="https://www.rfc-editor.org/info/rfc1918">RFC 1918
+          private IP addresses</a>. Common values will be:<br>
+        <table style=" text-align: left; width: 100%;" border="1"
+          cellspacing="2" cellpadding="2">
+          <tbody>
+            <tr>
+              <th>Bits<br>
+              </th>
+              <th>Usage<br>
+              </th>
+              <th>Addresses<br>
+              </th>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">0<br>
+              </td>
+              <td style="vertical-align: top;">listen to anything
+                anywhere on the Internet</td>
+              <td style="vertical-align: top;">4.3 billion<br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">8<br>
+              </td>
+              <td style="vertical-align: top;">listen to anything on the
+                10.0.0.0/8 subnet.&nbsp; This is an RFC 1918 private
+                IPv4 address range with 16 million addresses.<br>
+              </td>
+              <td style="vertical-align: top;">16 million<br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">12<br>
+              </td>
+              <td style="vertical-align: top;">listen to anything in the
+                range of 172.12.0.0/12&nbsp; to 172.16.0.0/16
+                subnet.&nbsp; <br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">16<br>
+              </td>
+              <td style="vertical-align: top;">listen to anything in the
+                192.168.0.0 subnet</td>
+              <td style="vertical-align: top;">65,534<br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">24<br>
+              </td>
+              <td style="vertical-align: top;">listen to anything in the
+                192.168.x.0 subnet, where x is the&nbsp; 3 octet of IPv4
+                address of the first interface(for most homes in which
+                you want the daemon to listen to clients elsewhere in
+                the house, 24 is probably the best value</td>
+              <td style="vertical-align: top;">254<br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">32<br>
+              </td>
+              <td style="vertical-align: top;">listen only to clients on
+                this machine)(which is the default), 127.0.0.1<br>
+              </td>
+              <td style="vertical-align: top;">1<br>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <br>
+      </dd>
+      <dt>-l --ll</dt>
+      <dd>Listen only to clients that have link local IPv6
+        addresses.&nbsp; Such addresses are only allowed on the link,
+        which would be the ethernet or WiFi domain.
+      </dd>
+      <dt>-u --ula -ULA<br>
+      </dt>
+      <dd>Listen only to clients that have unique local IPv6
+        addresses.&nbsp; Such addresses are only allowed "locally", they
+        are analogous to RFC 1918 IPv4 addresses.<br>
+      </dd>
+      <dt>-g --global</dt>
+      <dd>Listen to any IPv6 address anywhere in the world.&nbsp; This
+        implies -u or --ula
+      </dd>
+      <dt>-c --color</dt>
+      <dd>Use color.&nbsp; This is the default</dd>
+      <dt>-n --nocolor</dt>
+      <dd>Do not use color</dd>
+      <dt>-v --verbose</dt>
+      <dd>Verbose, provides more information</dd>
+      <dt>--debug</dt>
+      <dd>Run <acronym>nbmdt</acronym> in debug mode.&nbsp; Of use to
+        the nbmdt software developers and probably nobody else.<br>
+      </dd>
+      <dt>-h --help</dt>
+      <dd>Provide help</dd>
+    </dl>
+    <p>The optional <i>configuration_file&nbsp;</i> names the
+      configuration file to use.&nbsp; If the -N or --nominal options
+      are included and the configuration file already exists, then a new
+      file is created with a number appended to the end of the filename.<br>
+    </p>
+    <h2><a name="mozTocId173090" class="mozTocH2"></a>nbmdt in use</h2>
+    <h3><a name="mozTocId240448" class="mozTocH3"></a>Meanings of the
+      colors</h3>
+    <p><br>
+    </p>
+    <h3><a name="mozTocId906669" class="mozTocH3"></a>At system startup
+      time</h3>
+    <p>Run the nbmdt in a startup script that runs after all of the
+      applications that you want to test have started.&nbsp; Here is
+      typical run:<br>
+    </p>
+    <p style="font-family: Courier New,Courier,monospace;">
+      <acronym>nbmdt --boot</acronym><br>
+      <span class="normal">ethernet interface eno1 is good</span><br>
+      <span class="down">ethernet interface enp3s0 is administratively
+        down</span><br>
+      <span class="down">ethernet interface en2 is not plugged in</span><br>
+      <span class="down">WiFi interface is not connected to any access
+        point</span><br>
+      <span class="normal">interface eno1 has IPv4 address 10.0.0.14</span><br>
+      <span class="degraded">interface enp3s0 does not have an IPv4
+        address</span><br>
+      <span class="degraded">interface en2 does not have an IPv4 address</span><br>
+      <span class="normal">interface eno1 has IPv6 link local address</span><br>
+      <span class="normal">interface eno1 has IPv6 unique local address</span><br>
+      <span class="normal">interface eno1 has IPv6 global address</span><br>
+      <span class="degraded">interface enp3s0 does not have an IPv4
+        address</span><br>
+      <span class="down_dependency">interface en2 does not have an IPv4
+        address</span><br>
+      <span class="down_dependency">interface WIFI does not have an IPv4
+        address</span><br>
+      <span class="down_dependency">interface WIFI does not have an IPv6
+        ink local address</span><br>
+      <span class="normal">interface eno1 has IPv6 unique local address
+      </span><br>
+      <span class="normal">interface eno1 has IPv6 global address</span><br>
+      <span class="normal">default IPv4 gateway is 10.0.0.1 and is
+        pingable</span><br>
+      <span class="normal">default IPv6 gateway is
+        fe80::6bf:6dff:fed9:8ab4 and is pingable</span><br>
+      <span class="normal">interface eno1 has a Unique Local Address
+        (ULA) fd00::ae7f:4068:cb55:3152/128</span><br>
+      <span class="other">There is another IPv4 address in the routing
+        table and it is not pingable.</span><br>
+      <span class="other">There is another IPv6 address in the routing
+        table and it is not pingable.</span><br>
+      <span class="changed">There are IPv4 neighbors at 10.0.0.13,
+        10.0.0.12, 10.0.0.8</span><br>
+      <span class="changed">There are IPv6 neighbors at </span><br>
+      <span class="changed">There is a nameserver at 10.0.0.1 and it is
+        reachable</span><br>
+      <span class="changed">There is a nameserver at 8.8.8.8 and it is
+        reachable</span><br>
+      <span class="changed">There is a nameserver at
+        2001:4860:4860::8888 and it is reachable</span><br>
+      <span class="normal">The nameserver at 10.0.0.1 was tested with
+        f5.com and returned 104.219.111.168 which is correct</span><br>
+      <span class="changed">The nameserver at 207.126.96.248 was tested
+        f5.com and returned 32.12.18.11 which is wrong, should be
+        104.219.111.168</span><br>
+      <span class="normal">The local time differs from the network time
+        protocol NTP server&nbsp;&nbsp; by 231 milliseconds</span><br>
+      <span class="degraded">The local time differs from the network
+        time protocol NTP server&nbsp; by 1342 millseconds</span><br>
+      <span class="slow">Ping round trip time to commercialventvac.com
+        is 1345 msec</span><br>
+      <span class="down_acknowleged">Acknowledged</span><br>
+    </p>
+    <p style="font-family: Courier New,Courier,monospace;">
+      <acronym>nbmdt --test ethernet=eno1</acronym><br>
+      <span class="normal">ethernet interface eno1 is up</span><br>
+      <span class="normal">ethernet interface eno1 is plugged in</span><br>
+      <span class="normal">ethernet interface eno1 is a broadcast device</span><br>
+      <span class="normal">ethernet interface eno1 is a multicast device</span><br>
+      <span class="degraded">ethernet interface eno1 has 250 overruns</span><br>
+    </p>
+    <p><br>
+    </p>
+    <p> <br>
+    </p>
+    <p><br>
+    </p>
+    <p><br>
+    </p>
+    <p><br>
+    </p>
+    <hr style="width: 100%; height: 2px;"><br>
+    <ol id="mozToc">
+      <!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6-->
+      <li><a href="#mozTocId540848">The Network Boot Monitor and
+          Diagnostic Tool (nbmdt)</a>
+        <ol>
+          <li><a href="#mozTocId853930">nbmdt command line options</a></li>
+          <li><a href="#mozTocId173090">nbmdt in use</a>
+            <ol>
+              <li><a href="#mozTocId240448">Meanings of the colors</a></li>
+              <li><a href="#mozTocId906669">At system startup time</a></li>
+            </ol>
+          </li>
+        </ol>
+      </li>
+    </ol>
+    <br>
+    <br>
+  </body>
+</html>
