@@ -83,33 +83,38 @@ class Physical(Layer):
         self.configuration: str = configuration
         self.resources: str = resources
 
+    # Not implemented yet
+    @classmethod
+    def discover(cls)-> dict:
+        return {}
 
-def physical_linux() -> constants.ErrorLevels:
-    """
-    Test the physical interfaces against known good interfaces
-    :return:
-    """
-    print("In physical_linux", file=sys.stderr)
-    # Execute the
-    # Look in the nbmdt requirements document for the lshw - C network command and the
-    # lspci -nnk | grep -iA2 net commands.  That is a way to test the physical layer.Woot!
-    command = ["lshw" "-C" "network"]
 
-    results = utilities.OsCliInter.run_command(command=command)
-    for r in results.split("\n"):
-        while True:
-            # lshw could be so much better...  There is a known bug with lshw with JSON output
-            key, value = r.split()
-            key = key.strip()
-            value = value.strip()
-            key = re.sub(r"/\s+/_/", key)
-            if "*-network" in r:  # Skip a header
-                break
+    def physical_linux(self) -> constants.ErrorLevels:
+        """
+        Test the physical interfaces against known good interfaces
+        :return:
+        """
+        print("In physical_linux", file=sys.stderr)
+        # Execute the
+        # Look in the nbmdt requirements document for the lshw - C network command and the
+        # lspci -nnk | grep -iA2 net commands.  That is a way to test the physical layer.Woot!
+        command = ["lshw" "-C" "network"]
 
-        # interface.PhysicalLink.physical_link_dict[if_name].physical_attributes.if_name = if_name
-    return constants.ErrorLevels.UNKNOWN
+        results = utilities.OsCliInter.run_command(command=command)
+        for r in results.split("\n"):
+            while True:
+                # lshw could be so much better...  There is a known bug with lshw with JSON output
+                key, value = r.split()
+                key = key.strip()
+                value = value.strip()
+                key = re.sub(r"/\s+/_/", key)
+                if "*-network" in r:  # Skip a header
+                    break
 
-    """
+            # interface.PhysicalLink.physical_link_dict[if_name].physical_attributes.if_name = if_name
+        return constants.ErrorLevels.UNKNOWN
+
+        """
     
     Any dictionary or table should be key'd by the logical name.
     
@@ -124,8 +129,8 @@ H/W path           Device      Class          Description
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (i2mac+network) *  $ 
 
     
-    """
-    """
+        """
+        """
     If you want to diagnose just the network (in linux) try something like this:
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ sudo lshw -C network
 [sudo] password for jeffs: 
@@ -233,46 +238,46 @@ H/W path           Device      Class          Description
 /1                 docker0     network        Ethernet interface
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
 
-    """
+        """
 
 
-def physical_windows() -> constants.ErrorLevels:
-    print("In physical_windows", file=sys.stderr)
-    if "Windows" == platform.system():
-        raise NotImplementedError("Windows not implemented yet")
-    return constants.ErrorLevels.OTHER
+    def physical_windows() -> constants.ErrorLevels:
+        print("In physical_windows", file=sys.stderr)
+        if "Windows" == platform.system():
+            raise NotImplementedError("Windows not implemented yet")
+        return constants.ErrorLevels.OTHER
 
 
-def physical_mac() -> constants.ErrorLevels:
-    print("In physical_mac", file=sys.stderr)
-    if "Mac" == platform.system():
-        raise NotImplementedError("Mac OS X not implemented yet")
-    return constants.ErrorLevels.OTHER
+    def physical_mac(self) -> constants.ErrorLevels:
+        print("In physical_mac", file=sys.stderr)
+        if "Mac" == platform.system():
+            raise NotImplementedError("Mac OS X not implemented yet")
+        return constants.ErrorLevels.OTHER
 
 
-def physical_java() -> constants.ErrorLevels:
-    print("In physical_java", file=sys.stderr)
-    if "Java" == platform.system():
-        raise NotImplementedError("java not implemented yet")
-    return constants.ErrorLevels.OTHER
+    def physical_java(self) -> constants.ErrorLevels:
+        print("In physical_java", file=sys.stderr)
+        if "Java" == platform.system():
+            raise NotImplementedError("java not implemented yet")
+        return constants.ErrorLevels.OTHER
 
 
-def physical() -> constants.ErrorLevels:
-    """
-    Test the NICs.  This is operating system independent
-    :return:
-    """
+    def physical(self) -> constants.ErrorLevels:
+        """
+        Test the NICs.  This is operating system independent
+        :return:
+        """
 
-    if "linux" == utilities.OsCliInter.system:
-        return physical_linux()
-    elif "windows" == utilities.OsCliInter.system:
-        return physical_windows()
-    elif 'darwin' == utilities.OsCliInter.system:
-        return physical_mac()
-    elif 'java' == utilities.OsCliInter.system:
-        return physical_java()
-    else:
-        raise ValueError("")
+        if "linux" == utilities.OsCliInter.system:
+            return self.physical_linux()
+        elif "windows" == utilities.OsCliInter.system:
+            return self.physical_windows()
+        elif 'darwin' == utilities.OsCliInter.system:
+            return self.physical_mac()
+        elif 'java' == utilities.OsCliInter.system:
+            return self.physical_java()
+        else:
+            raise ValueError("")
 
 
 if "__main__" == __name__:
