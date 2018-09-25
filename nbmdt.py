@@ -37,9 +37,11 @@ type_transport_dict = typing.Dict[str, transport.Transport]
 type_network_dict: dict = typing.Dict[str, network.Network]
 type_datalink_dict = typing.Dict[str, datalink.DataLink]
 # type_interface_dict = typing.Dict[str, interface.Interface]   # Issue 25
-print("dir(physical.Physical) is ", dir(physical.Physical), file=sys.stderr)
-type_physical_dict = typing.Dict[str, physical.Physical]
-print("dir(type_physical_dict) is ", dir(type_physical_dict), file=sys.stderr)
+try:
+    type_physical_dict = typing.Dict[str, physical.Physical]
+except AttributeError as e:
+    print(f"physical.Physical is raising an Attribute error.  {dir(physical)}",
+          f"physical is in file {physical.__file__} . ", file=sys.stderr)
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
