@@ -68,7 +68,7 @@ class DataLink(Interface):
     # several MACs (in the case of bonded interfaces using
     # LACP (Link Aggration Control Protocol)
     @classmethod
-    def discover(cls) -> None:  # DataLink
+    def discover(cls):  # DataLink
         """
         Discover all of the physical links on this system
         :rtype: A dictionary of DataLinks  keyed by interface name
