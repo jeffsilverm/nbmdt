@@ -139,3 +139,5 @@ colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black',
 # on is down
 # it as
 MAXINT=4294967296
+LAYERS_LIST = "ethernet,wifi,ipv4,ipv6,neighbors,dhcp4,dhcp6,router,nameserver,local_ports,isp_routing," \
+              "remote_ports,application, presentation,session,transport,network,datalink,physical"
