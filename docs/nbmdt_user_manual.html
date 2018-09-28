@@ -84,10 +84,8 @@
     <p>Start the nbmdt as follows:<br>
     </p>
     <p><acronym>python nbmdt.py <var>options&nbsp;</var></acronym> <var>[configuration_file]</var>
-      <var></var>
-    </p>
-    <p>Where <var>options</var> are:
-    </p>
+      <var></var> </p>
+    <p>Where <var>options</var> are: </p>
     <dl>
       <dt>-b --boot</dt>
       <dd>Run at boot time.&nbsp; In the interests of brevity, it just
@@ -96,7 +94,7 @@
       <dt>-m --monitor</dt>
       <dd>Uses VT-220 (ANSI-X3.64) style graphics and colors.&nbsp; The
         terminal does not scroll.</dd>
-      <dt>-d --diagnose</dt>
+      <dt>-d --diagnose <var>filename</var></dt>
       <dd>This is the default: test the entire network.&nbsp; This is
         also relatively slow, because it takes time to see if counters
         are incrementing, packet loss rates, and other more subtle tests
@@ -226,8 +224,7 @@
       <dt>-l --ll</dt>
       <dd>Listen only to clients that have link local IPv6
         addresses.&nbsp; Such addresses are only allowed on the link,
-        which would be the ethernet or WiFi domain.
-      </dd>
+        which would be the ethernet or WiFi domain. </dd>
       <dt>-u --ula -ULA<br>
       </dt>
       <dd>Listen only to clients that have unique local IPv6
@@ -236,8 +233,7 @@
       </dd>
       <dt>-g --global</dt>
       <dd>Listen to any IPv6 address anywhere in the world.&nbsp; This
-        implies -u or --ula
-      </dd>
+        implies -u or --ula </dd>
       <dt>-c --color</dt>
       <dd>Use color.&nbsp; This is the default</dd>
       <dt>-n --nocolor</dt>
@@ -267,8 +263,8 @@
       applications that you want to test have started.&nbsp; Here is
       typical run:<br>
     </p>
-    <p style="font-family: Courier New,Courier,monospace;">
-      <acronym>nbmdt --boot</acronym><br>
+    <p style="font-family: Courier New,Courier,monospace;"> <acronym>nbmdt
+        --boot</acronym><br>
       <span class="normal">ethernet interface eno1 is good</span><br>
       <span class="down">ethernet interface enp3s0 is administratively
         down</span><br>
@@ -325,8 +321,8 @@
         is 1345 msec</span><br>
       <span class="down_acknowleged">Acknowledged</span><br>
     </p>
-    <p style="font-family: Courier New,Courier,monospace;">
-      <acronym>nbmdt --test ethernet=eno1</acronym><br>
+    <p style="font-family: Courier New,Courier,monospace;"> <acronym>nbmdt
+        --test ethernet=eno1</acronym><br>
       <span class="normal">ethernet interface eno1 is up</span><br>
       <span class="normal">ethernet interface eno1 is plugged in</span><br>
       <span class="normal">ethernet interface eno1 is a broadcast device</span><br>
