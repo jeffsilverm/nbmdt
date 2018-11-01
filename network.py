@@ -735,6 +735,13 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $
 
     # *********************
 
+# See Issue 25 for a module about ARP
+# https://github.com/jeffsilverm/nbmdt/issues/25
+
+# See Issue 26 for a CLI command for Network Discover Protocol (NDP)
+# See https://www.linux.org/docs/man8/ndptool.html
+# https://github.com/jeffsilverm/nbmdt/issues/26
+
 if __name__ in "__main__":
 
     print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
