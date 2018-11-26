@@ -669,7 +669,6 @@ jeffs@jeffs-desktop:/home/jeffs  $
         """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
         command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
         show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
-        IP_COMMAND = "/usr/bin/ip"
         completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
                                    stdin=None, input=None,
                                    stdout=subprocess.PIPE, stderr=None,
