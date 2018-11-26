@@ -72,3 +72,12 @@ class Functionality:
         """
         r = self.__and__(other)
         return r
+
+if "__main__" == __name__:
+    a = Functionality(.5)
+    b = Functionality(.6)
+    print(f".5 * .6 should be .3, is {a*b}")
+    print(f".6 * .5 should be .3, is {b*a}")
+    print(f"Type of * should be 'Functionality', is {type(a*b)}")
+
+ 
