@@ -11,6 +11,7 @@ import configparser
 import sys
 import os
 
+IP_COMMAND="/sbin/ip"	# For ubuntu at least.  Should be a configuration item or else an auto-configuration item.
 
 class FixedConfiguration(object):
     """

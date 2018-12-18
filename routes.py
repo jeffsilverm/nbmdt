@@ -87,6 +87,8 @@ default via 192.168.0.1 dev eno1
 jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ 
         
 
+# Another way to do it would be to look at /proc/*/route and /proc/*/ipv6_route
+# notes_2018-12.html#mozTocId983008
 
     
     """
