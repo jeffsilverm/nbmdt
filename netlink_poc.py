@@ -53,7 +53,8 @@ def new_address_callback(ipdb2, netlink_message, action):
         elif netlink_message['family'] == socket.AF_INET6:
             netlink_message['family'] = "IPv6"
         else:
-            pass
+            print(f"WARNING: Unknown value of family: {netlink_message['family']}",
+                  file=sys.stderr)
         pp.pprint(netlink_message['attrs']+"\n"+netlink_message['family'])
         the_current_time = ping_time
         print(the_current_time, ipdb2, file=sys.stderr)
