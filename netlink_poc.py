@@ -6,10 +6,14 @@
 import datetime
 import pprint  # We'll use this later
 import socket
-import sys
 import time
 import typing
 from enum import Enum
+import sys
+# From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
+from pyroute2 import IW
+from pyroute2.netlink import NetlinkError
+
 
 import pyroute2
 from pyroute2 import IPDB
@@ -71,7 +75,7 @@ def new_address_callback(ipdb2, netlink_message, action):
 # from https://docs.pyroute2.org/general.html
 def routing_table() -> dict:
     # get access to the netlink socket
-    ip = IPRoute()
+    global ip
 
     link_table = dict()  # dictionary of interface names, key'd by interface index
     links: typing.List[pyroute2.IPRoute] = ip.get_links()
@@ -90,11 +94,21 @@ def routing_table() -> dict:
             elif attr[0] == 'IFLA_AF_SPEC':
                 link_table[link_index]['IFLA_AF_SPEC'] = attr[1]
                 try:
-                    print(f"Inteface {link_index} named {link_table[link_index]['IFLA_IFNAME']} has IFLA_AF_SPEC:")
-                    pp.pprint(link_table[link_index]['IFLA_AF_SPEC'])
+                    ifstr = pp.pformat(link_table[link_index]['IFLA_AF_SPEC'])
+                    print(f"Inteface {link_index} named {link_table[link_index]['IFLA_IFNAME']}",
+                          "has IFLA_AF_SPEC:\n" + ifstr)
                 except KeyError as k:
-                    print(f"Raised KeyError on link_index {link_index} k is {k}")
-    # FYI: XDP is eXpress Data Path, see https://www.slideshare.net/lcplcp1/introduction-to-ebpf-and-xdp
+                    print(f"Raised KeyError on link_index {link_index} k is {k}", file=sys.stderr)
+                else:
+                    if attr[1]['attrs'][0][0] != 'AF_INET':
+                        print(f"attr[1]['attrs'][0][0] should be AF_INET, is actually {attr[1]['attrs'][0][0]}",
+                              file=sys.stderr)
+                    if attr[1]['attrs'][1][0] != 'AF_INET6':
+                        print(f"attr[1]['attrs'][0][0] should be AF_INET, is actually {attr[1]['attrs'][1][0]}",
+                              file=sys.stderr)
+
+
+# FYI: XDP is eXpress Data Path, see https://www.slideshare.net/lcplcp1/introduction-to-ebpf-and-xdp
     # Google XDP Benchmarks mlx4
     # BPF and XDP Reference guide https://cilium.readthedocs.io/en/v1.3/bpf/ However, that points to
     # https://cilium.readthedocs.io/en/v1.3/ which points to https://cilium.readthedocs.io/en/v1.3/install/guides/#mesos
@@ -116,12 +130,33 @@ def print_routing_table(links) -> None:
 
 
 if "__main__" == __name__:
-    link_tble = routing_table()
+    ip = IPRoute()
     ipdb = IPDB()
+    link_tble = routing_table()
     # Set up the watcher
     addr_callback = ipdb.register_callback(new_address_callback)
     for i in range(1, 20):
         print(f"Sleeping {i} {the_current_time}", file=sys.stderr)
         time.sleep(1)
+
+    # From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
+
+    ipv4_def_route = ip.get_default_routes(family=socket.AF_INET)
+    ipv4_def_route_str = pp.pformat(ipv4_def_route)
+    print("IPv4 " + 40*'=' + "\n" + ipv4_def_route_str)
+    ipv6_def_route = ip.get_default_routes(family=socket.AF_INET6)
+    ipv6_def_route_str = pp.pformat(ipv6_def_route)
+    print("IPv6 " + 40*'-' + "\n" + ipv6_def_route_str)
+    iw = IW()
+    index = ip.link_lookup(ifname=sys.argv[1])[0]
+    try:
+        iw.get_interface_by_ifindex(index)
+        print("wireless interface")
+    except NetlinkError as e:
+        if e.code == 19:  # 19 'No such device'
+            print("not a wireless interface")
+    finally:
+        iw.close()
+        ip.close()
 
     ipdb.unregister_callback(addr_callback)
