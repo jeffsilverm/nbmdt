@@ -138,6 +138,7 @@ if "__main__" == __name__:
     for i in range(1, 20):
         print(f"Sleeping {i} {the_current_time}", file=sys.stderr)
         time.sleep(1)
+    ipdb.unregister_callback(addr_callback)
 
     # From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
 
@@ -147,6 +148,12 @@ if "__main__" == __name__:
     ipv6_def_route = ip.get_default_routes(family=socket.AF_INET6)
     ipv6_def_route_str = pp.pformat(ipv6_def_route)
     print("IPv6 " + 40*'-' + "\n" + ipv6_def_route_str)
+    assert ipv4_def_route[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv4_def_route is not organized as expected" + \
+        pp.format(ipv4_def_route)
+    print("444444==> The IPv4 default gateway is: ", ipv4_def_route[0]['attrs'][2][1])
+    assert ipv6_def_route[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv6_def_route is not organized as expected" + \
+        pp.format(ipv6_def_route)
+    print("666666==> The IPv6 default gateway is: ", ipv6_def_route[0]['attrs'][2][1])
     iw = IW()
     index = ip.link_lookup(ifname=sys.argv[1])[0]
     try:
@@ -159,4 +166,4 @@ if "__main__" == __name__:
         iw.close()
         ip.close()
 
-    ipdb.unregister_callback(addr_callback)
+
