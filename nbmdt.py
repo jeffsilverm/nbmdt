@@ -160,6 +160,7 @@ class SystemDescription(object):
 
 if __name__ == "__main__":
     mode = Modes.NOMINAL    # For debugging
+    command_line_asgs =
     current_system = SystemDescription()
     current_system_str = str(current_system)
     print ( current_system_str )
