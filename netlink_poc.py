@@ -6,18 +6,18 @@
 import datetime
 import pprint  # We'll use this later
 import socket
+import sys
 import time
 import typing
 from enum import Enum
-import sys
-# From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
-from pyroute2 import IW
-from pyroute2.netlink import NetlinkError
-
+from typing import List
 
 import pyroute2
 from pyroute2 import IPDB
 from pyroute2 import IPRoute
+# From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
+from pyroute2 import IW
+from pyroute2.netlink import NetlinkError
 
 pp = pprint.PrettyPrinter(indent=3)
 
@@ -82,12 +82,13 @@ def routing_table() -> dict:
     for link in links:
         link_attrs = link['attrs']
         link_index = link['index']
-        assert isinstance(link_attrs, list),\
+        assert isinstance(link_attrs, list), \
             f"link_attrs should be a list but is actually a {type(link_attrs)} of length {len(link_attrs)}"
         for attr in link_attrs:
             assert isinstance(attr,
-                            pyroute2.netlink.nla_slot), f"attrs should be pyroute2.netlink.nla_slot but is really a " \
-               f"{type(attr)}"
+                        pyroute2.netlink.nla_slot), f"attrs should be pyroute2.netlink.nla_slot but is really a " \
+                                                          f"" \
+                                                          f"{type(attr)}"
             if attr[0] == 'IFLA_IFNAME':
                 link_table[link_index] = dict()
                 link_table[link_index]['IFLA_IFNAME'] = attr[1]
@@ -107,13 +108,12 @@ def routing_table() -> dict:
                         print(f"attr[1]['attrs'][0][0] should be AF_INET, is actually {attr[1]['attrs'][1][0]}",
                               file=sys.stderr)
 
-
-# FYI: XDP is eXpress Data Path, see https://www.slideshare.net/lcplcp1/introduction-to-ebpf-and-xdp
+    # FYI: XDP is eXpress Data Path, see https://www.slideshare.net/lcplcp1/introduction-to-ebpf-and-xdp
     # Google XDP Benchmarks mlx4
     # BPF and XDP Reference guide https://cilium.readthedocs.io/en/v1.3/bpf/ However, that points to
     # https://cilium.readthedocs.io/en/v1.3/ which points to https://cilium.readthedocs.io/en/v1.3/install/guides/#mesos
     # which points to https://cilium.readthedocs.io/en/v1.3/configuration/metrics/ which points to
-# https://prometheus.io/ and also
+    # https://prometheus.io/ and also
     # https://grafana.com/
 
     print_routing_table(links)
@@ -129,6 +129,28 @@ def print_routing_table(links) -> None:
         pp.pprint(link)
 
 
+def search_attr_list_by_key(attr_list: List, sought: str) -> str:
+    """The attributer list is a list of attributes returned from netlink.
+    Each attribute is implemented as a tuple.  The first element in the
+    tuple tells what attribute this is.  The second element is the value"""
+    for at in attr_list:
+        if at[0] == sought:
+            return at[1]
+    else:
+        raise KeyError(f"Unable to find the attribute {sought} in the attribute list {attr_list}")
+
+
+def convert_attr_list_to_dict(attr_list: List) -> dict:
+    """The attributer list is a list of attributes returned from netlink.
+        Each attribute is implemented as a tuple.  The first element in the
+        tuple tells what attribute this is.  The second element is the value.  This is done
+        because networks don't have good primitives for dictionaries.  Python does.  Let's use it"""
+    d = dict()
+    for at in attr_list:
+        d[at[0]] = at[1]
+    return d
+
+
 if "__main__" == __name__:
     ip = IPRoute()
     ipdb = IPDB()
@@ -142,34 +164,50 @@ if "__main__" == __name__:
 
     # From https://stackoverflow.com/questions/16422507/python-is-a-given-network-interface-wifi-or-ethernet
 
-    ipv4_def_route = ip.get_default_routes(family=socket.AF_INET)
-    ipv4_def_route_str = pp.pformat(ipv4_def_route)
-    print("IPv4 " + 40*'=' + "\n" + ipv4_def_route_str)
-    ipv6_def_route = ip.get_default_routes(family=socket.AF_INET6)
-    ipv6_def_route_str = pp.pformat(ipv6_def_route)
-    print("IPv6 " + 40*'-' + "\n" + ipv6_def_route_str)
-    assert ipv4_def_route[0]['attrs'][1][0] == 'RTA_GATEWAY', f"ipv4_def_route is not organized as expected" + \
-        f"ipv4_def_route[0]['attrs'][1][0] is {ipv4_def_route[0]['attrs'][1][0] } should be RTA_GATEWAY\n" + \
-        pp.pformat(ipv4_def_route)
-    print("444444==> The IPv4 default gateway is: ", ipv4_def_route[0]['attrs'][1][1])
-    assert ipv6_def_route[0]['attrs'][3][0] == 'RTA_GATEWAY', f"ipv6_def_route is not organized as expected" + \
-        f"ipv6_def_route[0]['attrs'][3][0] is {ipv6_def_route[0]['attrs'][3][0] } should be RTA_GATEWAY\n" + \
-        pp.pformat(ipv6_def_route)
-    print("666666==> The IPv6 default gateway is: ", ipv6_def_route[0]['attrs'][3][1])
+    ipv4_def_route_lst = ip.get_default_routes(family=socket.AF_INET)
+    ipv4_def_route_lst_str = pp.pformat(ipv4_def_route_lst)
+    print("IPv4 " + 40 * '=' + "\n" + ipv4_def_route_lst_str)
+    ipv6_def_route_lst = ip.get_default_routes(family=socket.AF_INET6)
+    ipv6_def_route_lst_str = pp.pformat(ipv6_def_route_lst)
+    print("IPv6 " + 40 * '-' + "\n" + ipv6_def_route_lst_str)
+    assert len(ipv4_def_route_lst) == 1, \
+        f"The length of ipv4_def_route_lst should be 1, but it actually is {len(ipv4_def_route_lst)}\n" + \
+            str(ipv4_def_route_lst)
+    ipv4_def_route_dict = convert_attr_list_to_dict(ipv4_def_route_lst[0]['attrs'])
+    assert len(ipv6_def_route_lst) == 1, \
+        f"The length of ipv6_def_route_lst should be 1, but it actually is {len(ipv6_def_route_lst)}\n" + \
+        str(ipv6_def_route_lst)
+    ipv6_def_route_dict = convert_attr_list_to_dict(ipv6_def_route_lst[0]['attrs'])
+
+    # assert ipv4_def_route_lst[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv4_def_route_lst is not organized as
+    # expected" + \
+    #                                                              f"ipv4_def_route_lst[0]['attrs'][2][0] is {
+    # ipv4_def_route_lst[0]['attrs'][2][0] } should be RTA_GATEWAY\n" + \
+    #                                                              pp.pformat(ipv4_def_route_lst)
+    print("444444==> The IPv4 default gateway is: ", ipv4_def_route_dict['RTA_GATEWAY'] )
+    # assert ipv6_def_route_lst[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv6_def_route_lst is not organized as
+    # expected" + \
+    #                                                              f"ipv6_def_route_lst[0]['attrs'][2][0] is {
+    # ipv6_def_route_lst[0]['attrs'][2][0] } should be RTA_GATEWAY\n" + \
+    #                                                              pp.pformat(ipv6_def_route_lst)
+    print("666666==> The IPv6 default gateway is: ", ipv6_def_route_dict['RTA_GATEWAY'] )
     iw = IW()
     if len(sys.argv) < 2:
-        ifname=input("Enter the wireless interface name (e.g. wlan0) ")
+        ifname = input("Enter the wireless interface name (e.g. wlan0) ")
     else:
         ifname = sys.argv[1]
-    index = ip.link_lookup(ifname=ifname)[0]
     try:
-        iw.get_interface_by_ifindex(index)
-        print("wireless interface")
-    except NetlinkError as e:
-        if e.code == 19:  # 19 'No such device'
-            print("not a wireless interface")
-    finally:
-        iw.close()
-        ip.close()
+        index = ip.link_lookup(ifname=ifname)[0]
+    except IndexError:
+        print(f"ip.link_lookup did not find an interface named {ifname}", file=sys.stderr)
+    else:
+        try:
+            iw.get_interface_by_ifindex(index)
+            print("wireless interface")
+        except NetlinkError as e:
+            if e.code == 19:  # 19 'No such device'
+                print("not a wireless interface")
+        pp.pprint(iw.scan(ifindex=index))
 
-
+    iw.close()
+    ip.close()
