@@ -148,14 +148,20 @@ if "__main__" == __name__:
     ipv6_def_route = ip.get_default_routes(family=socket.AF_INET6)
     ipv6_def_route_str = pp.pformat(ipv6_def_route)
     print("IPv6 " + 40*'-' + "\n" + ipv6_def_route_str)
-    assert ipv4_def_route[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv4_def_route is not organized as expected" + \
-        pp.format(ipv4_def_route)
-    print("444444==> The IPv4 default gateway is: ", ipv4_def_route[0]['attrs'][2][1])
-    assert ipv6_def_route[0]['attrs'][2][0] == 'RTA_GATEWAY', f"ipv6_def_route is not organized as expected" + \
-        pp.format(ipv6_def_route)
-    print("666666==> The IPv6 default gateway is: ", ipv6_def_route[0]['attrs'][2][1])
+    assert ipv4_def_route[0]['attrs'][1][0] == 'RTA_GATEWAY', f"ipv4_def_route is not organized as expected" + \
+        f"ipv4_def_route[0]['attrs'][1][0] is {ipv4_def_route[0]['attrs'][1][0] } should be RTA_GATEWAY\n" + \
+        pp.pformat(ipv4_def_route)
+    print("444444==> The IPv4 default gateway is: ", ipv4_def_route[0]['attrs'][1][1])
+    assert ipv6_def_route[0]['attrs'][3][0] == 'RTA_GATEWAY', f"ipv6_def_route is not organized as expected" + \
+        f"ipv6_def_route[0]['attrs'][3][0] is {ipv6_def_route[0]['attrs'][3][0] } should be RTA_GATEWAY\n" + \
+        pp.pformat(ipv6_def_route)
+    print("666666==> The IPv6 default gateway is: ", ipv6_def_route[0]['attrs'][3][1])
     iw = IW()
-    index = ip.link_lookup(ifname=sys.argv[1])[0]
+    if len(sys.argv) < 2:
+        ifname=input("Enter the wireless interface name (e.g. wlan0) ")
+    else:
+        ifname = sys.argv[1]
+    index = ip.link_lookup(ifname=ifname)[0]
     try:
         iw.get_interface_by_ifindex(index)
         print("wireless interface")
