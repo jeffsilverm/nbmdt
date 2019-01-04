@@ -207,6 +207,19 @@ if "__main__" == __name__:
         except NetlinkError as e:
             if e.code == 19:  # 19 'No such device'
                 print("not a wireless interface")
+# Given what is written at https://github.com/svinota/pyroute2/blob/master/pyroute2/iwutil.py:
+# Reverse it
+        # ----------
+        # If you're too lazy to read the kernel sources, but still need
+        # something not implemented here, you can use reverse engineering
+        # on a reference implementation. E.g.::
+        #     # strace -e trace=network -f -x -s 4096 \\
+        #             iw phy phy0 interface add test type monitor
+        # Will dump all the netlink traffic between the program `iw` and
+        # the kernel. Three first packets are the generic netlink protocol
+        # discovery, you can ignore them. All that follows, is the
+        # nl80211 traffic::
+# Sounds like maybe using the iw command is the right way to go.
         pp.pprint(iw.scan(ifindex=index))
 
     iw.close()
