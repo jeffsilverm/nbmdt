@@ -307,12 +307,12 @@ def main(args: List[str] = None):
             current_system.boot()
         elif mode == constants.Modes.DIAGNOSE:
             # This is the case where we want to compare the current state against the nominal state
-            if not hasattr(options, 'diagnose_filename') or options.diagnose_filename is None:
+            if not hasattr(options, 'configuration_filename') or options.configuration_filename is None:
                 raise ValueError(
                     "You did not specify a configuration filename when you asked nbmdt to diagnose a system")
-            current_system.diagnose(options.diagnose_filename)
+            current_system.diagnose(options.configuration_filename)
         elif mode == constants.Modes.NOMINAL:
-            current_system.nominal(options.nominal_filename)
+            current_system.nominal(options.configuration_filename)
         elif mode == constants.Modes.TEST:
             current_system.test(options.test_specification)
         elif mode == constants.Modes.MONITOR:
@@ -405,16 +405,19 @@ def arg_parser(args) -> Tuple:
                        help="Use while system is running.  Presents a RESTful API that a client can use to "
                             "monitor the state of the network on a host.  ",
                        action="store", type=int, dest="monitor_port")
+    # Issue 27 https://github.com/jeffsilverm/nbmdt/issues/27
     group.add_argument('--diagnose', '-d',
                        help="Use when a problem is detected.  Compares the current state of the system "
-                            "against a nominal state.  CONFIGURATION_FILE is required", action="store",
-                       dest="diagnose_filename")
+                            "against a nominal state.  CONFIGURATION_FILE is optional, if not given"
+                            "the diagnose tests the ability of the system to automatically configure itself",
+                       nargs='?', default=None,
+                       action="store", dest="configuration_filename")
     group.add_argument('--test', '-t', help="Test a particular part of the network", action="store",
                        dest="test_specification")
     group.add_argument('--nominal', '-N', help="Use when the system is working properly to capture the current state."
                                                "This state will serve as a reference for future testing.  "
                                                "CONFIGURATION_FILE is required", action="store",
-                       dest="nominal_filename")
+                       dest="configuration_filename")
     parser.add_argument("--debug", default=False, action="store_true", dest="debug")
 
     try:
@@ -431,13 +434,13 @@ def arg_parser(args) -> Tuple:
 
     if parsed_options.boot is not None:
         mode = constants.Modes.BOOT
-    elif parsed_options.diagnose_filename is not None:
+    elif parsed_options.configuration_filename is not None:
         mode = constants.Modes.DIAGNOSE
     elif parsed_options.test_specification is not None:
         mode = constants.Modes.TEST
     elif parsed_options.monitor_port is not None:
         mode = constants.Modes.MONITOR
-    elif parsed_options.nominal_filename is not None:
+    elif parsed_options.configuration_filename is not None:
         mode = constants.Modes.NOMINAL
     else:
         raise AssertionError(f"parsed_options did not have a way to set mode\n{dir(parsed_options)}")
