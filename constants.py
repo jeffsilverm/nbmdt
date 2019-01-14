@@ -4,6 +4,9 @@
 #
 from enum import IntEnum, Enum, auto
 import sys
+# Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
+import typing
+from typing import Tuple, List
 
 port = 8722  # Default port that the server listens on.  Provides a RESTful interface
 
@@ -141,3 +144,13 @@ colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black',
 MAXINT=4294967296
 LAYERS_LIST = "ethernet,wifi,ipv4,ipv6,neighbors,dhcp4,dhcp6,router,nameserver,local_ports,isp_routing," \
               "remote_ports,application, presentation,session,transport,network,datalink,physical"
+
+# Moved here from nbmdt.py Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
+type_application_dict = typing.Dict[str, "application.Application"]
+type_presentation_dict = typing.Dict[str, "presentation.Presentation"]
+type_session_dict = typing.Dict[str, "session.Session"]
+type_transport_dict = typing.Dict[str, "transport.Transport"]
+type_network_dict = typing.Dict[str, "network.Network"]
+type_datalink_dict = typing.Dict[str, "datalink.DataLink"]
+type_interface_dict = typing.Dict[str, "interface.Interface"]   # Issue 25 re-written
+type_physical_dict = typing.Dict[str, "physical.Physical"]  # Issue 29

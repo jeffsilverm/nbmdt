@@ -6,11 +6,16 @@
 import json
 import platform
 import subprocess
-from sys import stderr
+import sys
 from typing import List
 
 from constants import OperatingSystems
-from nbmdt import SystemDescription
+from constants import ErrorLevels
+from constants import type_application_dict, type_presentation_dict, type_session_dict, \
+    type_transport_dict, type_network_dict, type_datalink_dict, type_interface_dict, \
+    type_physical_dict
+
+# from nbmdt import SystemDescription
 
 
 """
@@ -234,7 +239,7 @@ class SystemDescription(object):
         print(f"The nominal configuration file is going to be {filename}", file=sys.stderr)
         self.file_from_system_description(filename)
 
-    def boot(self) -> constants.ErrorLevels:
+    def boot(self) -> ErrorLevels:
         print("Going to test in boot mode", file=sys.stderr)
         raise NotImplementedError
 
@@ -242,16 +247,17 @@ class SystemDescription(object):
         print(f"going to monitor on port {port}", file=sys.stderr)
         raise NotImplementedError
 
-    def diagnose(self, filename) -> constants.ErrorLevels:
+    def diagnose(self, filename) -> ErrorLevels:
         print(f"In diagnostic mode, nomminal filename is {filename}", file=sys.stderr)
         nominal_system: SystemDescription = SystemDescription.system_description_from_file(filename)
         raise NotImplementedError
-        return constants.ErrorLevels.UNKNOWN
+        return ErrorLevels.UNKNOWN
 
-    def test(self, test_specification) -> constants.ErrorLevels:
+    def test(self, test_specification) -> ErrorLevels:
         print(f"The test_specification is {test_specification}", file=sys.stderr)
         raise NotImplementedError
-        return constants.ErrorLevels.UNKNOWN
+        return ErrorLevels.UNKNOWN
+
 
 class SystemDescriptionFile(SystemDescription):
     """This class handles interfacing between the program and the configuration file.  Thus, when the system is in its
@@ -262,15 +268,16 @@ class SystemDescriptionFile(SystemDescription):
         """Create a SystemDescription object which has all of the information in a system configuration file"""
 
         with open(configuration_filename, "r") as json_fp:
-            c_dict = json.load(json_fp)         # Configuration dictionary
-        super(SystemDescriptionFile, self).__init__(applications=c_dict["applications"],
-                                                    presentations=c_dict["presentations"],
-                                                    sessions=c_dict["sessions"],
-                                                    transports=c_dict["networks"],
-                                                    datalinks=c_dict["datalinks"],
-                                                    physicals=c_dict["physicals"],
+            c_dict = json.load(json_fp)  # Configuration dictionary
+        # Issue 31 Instead of raising a KeyError exception, just use None
+        super(SystemDescriptionFile, self).__init__(applications=c_dict.get("applications"),
+                                                    presentations=c_dict.get("presentations"),
+                                                    sessions=c_dict.get("sessions"),
+                                                    transports=c_dict.get("networks"),
+                                                    datalinks=c_dict.get("datalinks"),
+                                                    physicals=c_dict.get("physicals"),
                                                     configuration_filename=configuration_filename,
-                                                    system_name=None    # for now.
+                                                    system_name=None  # for now.
                                                     )
         self.version = c_dict['version']
         self.timestamp = c_dict['timestamp']
@@ -325,9 +332,9 @@ class OsCliInter(object):
 
 
 try:
-    print("Testing the __file__ special variable: " + __file__, file=stderr)  # sys.stderr
+    print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
 except Exception as e:  # if anything goes wrong
-    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=stderr)  # sys.stderr
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 
 # Globally note the operating system name.  Note that this section of the code *must* follow the definition
 # of class OsCliInter or else the compiler will raise a NameError exception at compile time

@@ -16,7 +16,7 @@ pp = PrettyPrinter(indent=4)
 sd_obj = utilities.SystemDescriptionFile( TEST_CONFIGURATION_FILE )
 assert isinstance( sd_obj, utilities.SystemDescription ), f"sd_obj is not an instance of SystemDescription, it's {type(sd_obj)}"
 pp.pprint( sd_obj)
-assert isinstance(sd_obj["version"], str), f'sd_obj["version"] should be a string, but it\'s really a {type(sd_obj["version"])}'
+assert isinstance(sd_obj.version, str), f'sd_obj["version"] should be a string, but it\'s really a {type(sd_obj.version)}'
 assert sd_obj.version == "0.01"
 assert sd_obj.timestamp == "Sat Jan 12 18:39:16 PST 2019", f'sd_obj["timestamp"] should be ' \
     f'"Sat Jan 12 18:39:16 PST 2019" but is really {sd_obj["timestamp"]}'

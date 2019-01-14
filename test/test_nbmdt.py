@@ -3,7 +3,7 @@
 #
 # The Network Boot Monitor Diagnostic tool testing
 #
-
+from mock import patch
 import argparse
 import os
 import pprint
@@ -22,6 +22,47 @@ TEST_CONFIGURATION_FILENAME = "xyzzy.json"
 MONITOR_PORT = 20080
 
 pp = pprint.PrettyPrinter(indent=2, width=120)
+
+class testSystemDescription():
+
+# Read https://semaphoreci.com/community/tutorials/mocks-and-monkeypatching-in-python
+# Copy the rest of the methods from class SystemDescription in nbmdt.py to here
+    def __init__(self, applications: type_application_dict = None,
+                 presentations: type_presentation_dict = None,
+                 sessions: type_session_dict = None,
+                 transports: type_transport_dict = None,
+                 networks: type_network_dict = None,
+                 # interfaces: type_interface_dict = None,          # Issue 25
+                 datalinks: type_datalink_dict = None,
+                 physicals: type_physical_dict = None,
+                 # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
+                 configuration_filename: str = None,
+                 system_name: str = platform.node()
+                 ) -> None:
+        """
+        Populate a description of the system.  Note that this method is
+        a constructor, and all it does is create a SystemDescription object.
+
+        :param applications:
+        :param presentations:
+        :param sessions:
+        :param transports:
+        :param networks:
+        :param datalinks:
+        :param configuration_filename:
+        :param system_name: str The name of this computer
+        """
+        self.applications = {"applications": "Mocked" }
+        self.presentations = presentations
+        self.sessions = sessions
+        self.transports = transports  # TCP, UDP
+        self.networks = networks  # IPv4, IPv6
+        self.datalinks = datalinks  # MAC address
+        self.physicals = physicals
+        self.configuration_filename: str = configuration_filename
+        self.system_name = system_name
+
+
 
 
 def test_argparse() -> None:

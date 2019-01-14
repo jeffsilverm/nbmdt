@@ -3,46 +3,37 @@
 #
 # The Network Boot Monitor Diagnostic tool
 #
-
-
-# https://pypi.python.org/pypi/termcolor
 import argparse
-import json
-import os
-import platform
 import sys
-import typing
 from typing import Tuple, List
+
+import constants
 import utilities
 
-import application  # OSI layer 7: HTTP, HTTPS, DNS, NTP
-import constants
 # from physical import Physical
 # import interface  # OSI layer 2: ethernet, WiFi       # issue 25
-import datalink  # OSI layer 2: # Media Access Control: arp, ndp
-import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
-import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
-import presentation  # OSI layer 6:
-import session  # OSI layer 5:
-import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+# import datalink  # OSI layer 2: # Media Access Control: arp, ndp
+# import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
+# import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
+# import presentation  # OSI layer 6:
+# import session  # OSI layer 5:
+# import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 DEBUG = True
 try:
     print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
 except Exception as e:  # if anything goes wrong
     print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
-type_application_dict = typing.Dict[str, application.Application]
-type_presentation_dict = typing.Dict[str, presentation.Presentation]
-type_session_dict = typing.Dict[str, session.Session]
-type_transport_dict = typing.Dict[str, transport.Transport]
-type_network_dict: dict = typing.Dict[str, network.Network]
-type_datalink_dict = typing.Dict[str, datalink.DataLink]
-# type_interface_dict = typing.Dict[str, interface.Interface]   # Issue 25
-try:
-    type_physical_dict = typing.Dict[str, physical.Physical]
-except AttributeError as e:
-    print(f"physical.Physical is raising an Attribute error.  {dir(physical)}",
-          f"physical is in file {physical.__file__} . ", file=sys.stderr)
+# Issue 29 moved the definitions of
+# type_application_dict, type_presentation_dict, type_session_dict
+# type_transport_dict, type_network_dict, type_datalink_dict, type_interface_dict
+# To constants.py  Re-write Issue 25 to reflect this change
+#
+# try:
+#    type_physical_dict = typing.Dict[str, physical.Physical]
+# except AttributeError as e:
+#    print(f"physical.Physical is raising an Attribute error.  {dir(physical)}",
+#          f"physical is in file {physical.__file__} . ", file=sys.stderr)
 
 """
 Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Module
@@ -58,12 +49,8 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Mod
 
 
 """
-
 options = None
 mode = None
-
-
-
 
 
 def main(args: List[str] = None):
@@ -217,21 +204,20 @@ def arg_parser(args) -> Tuple:
         # Hail Mary - no matter how bad the argument list is butchered, boot mode should still work
         parsed_options.boot = constants.Modes.BOOT
     except SystemExit as s:
-        print(f"parser.parse_args raised a SystemExit error. Before I die, args is {args}"\
+        print(f"parser.parse_args raised a SystemExit error. Before I die, args is {args}" 
               f"and the exception information is {str(s)}")
         raise SystemExit(s)
 
-
     if parsed_options.boot is not None:
-        mode = constants.Modes.BOOT
+        mode_ = constants.Modes.BOOT
     elif parsed_options.configuration_filename is not None:
-        mode = constants.Modes.DIAGNOSE
+        mode_ = constants.Modes.DIAGNOSE
     elif parsed_options.test_specification is not None:
-        mode = constants.Modes.TEST
+        mode_ = constants.Modes.TEST
     elif parsed_options.monitor_port is not None:
-        mode = constants.Modes.MONITOR
+        mode_ = constants.Modes.MONITOR
     elif parsed_options.configuration_filename is not None:
-        mode = constants.Modes.NOMINAL
+        mode_ = constants.Modes.NOMINAL
     else:
         raise AssertionError(f"parsed_options did not have a way to set mode\n{dir(parsed_options)}")
 
@@ -260,7 +246,7 @@ def arg_parser(args) -> Tuple:
         str(parsed_options))
     """
 
-    return parsed_options, mode
+    return parsed_options, mode_
 
     # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
