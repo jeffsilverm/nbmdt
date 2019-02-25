@@ -382,6 +382,7 @@ if "__main__" == __name__:
 (Pdb) node_list[0].find("size").text
 '1000000000'
 (Pdb) node_list[0].find("capacity").text
+
 '1000000000'
 (Pdb) node_list[0].find("width").text
 '32'

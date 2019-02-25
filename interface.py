@@ -9,6 +9,7 @@ from typing import Dict, List
 
 import constants
 from layer import Layer
+# Removed  Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
 from utilities import OsCliInter, os_name, the_os
 
 

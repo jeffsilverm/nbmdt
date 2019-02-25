@@ -3,7 +3,7 @@
 #
 # The Network Boot Monitor Diagnostic tool testing
 #
-
+from mock import patch
 import argparse
 import os
 import pprint
@@ -11,10 +11,9 @@ import subprocess
 import sys
 from typing import List, Tuple
 
-import pytest
-
 import constants
 import nbmdt
+import pytest
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 6, "Python must be later than version 3.6, " \
                                                                     f"is currently {str(sys.version_info)} "
@@ -23,6 +22,47 @@ TEST_CONFIGURATION_FILENAME = "xyzzy.json"
 MONITOR_PORT = 20080
 
 pp = pprint.PrettyPrinter(indent=2, width=120)
+
+class testSystemDescription():
+
+# Read https://semaphoreci.com/community/tutorials/mocks-and-monkeypatching-in-python
+# Copy the rest of the methods from class SystemDescription in nbmdt.py to here
+    def __init__(self, applications: type_application_dict = None,
+                 presentations: type_presentation_dict = None,
+                 sessions: type_session_dict = None,
+                 transports: type_transport_dict = None,
+                 networks: type_network_dict = None,
+                 # interfaces: type_interface_dict = None,          # Issue 25
+                 datalinks: type_datalink_dict = None,
+                 physicals: type_physical_dict = None,
+                 # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
+                 configuration_filename: str = None,
+                 system_name: str = platform.node()
+                 ) -> None:
+        """
+        Populate a description of the system.  Note that this method is
+        a constructor, and all it does is create a SystemDescription object.
+
+        :param applications:
+        :param presentations:
+        :param sessions:
+        :param transports:
+        :param networks:
+        :param datalinks:
+        :param configuration_filename:
+        :param system_name: str The name of this computer
+        """
+        self.applications = {"applications": "Mocked" }
+        self.presentations = presentations
+        self.sessions = sessions
+        self.transports = transports  # TCP, UDP
+        self.networks = networks  # IPv4, IPv6
+        self.datalinks = datalinks  # MAC address
+        self.physicals = physicals
+        self.configuration_filename: str = configuration_filename
+        self.system_name = system_name
+
+
 
 
 def test_argparse() -> None:
@@ -99,22 +139,23 @@ def test_argparse() -> None:
         assert isinstance(options, argparse.Namespace), \
             f"The return from nbmdt.arg_parser should be an 'argparse.Namespace' but is {str(type(options))} "
         assert constants.Modes.MONITOR == mode, f"Should be in monitor mode but is really {str(mode)} or {mode}"
-        assert isinstance(options.monitor_port, int), f"options.monitor_port should be type int but is really {type(options.monitor_port)}"
+        assert isinstance(options.monitor_port,
+                          int), f"options.monitor_port should be type int but is really {type(options.monitor_port)}"
         assert str(options.monitor_port) == monitor_port_str, f"options.monitor_port should be {monitor_port_str} " \
-                                                         f"but is really {str(options.monitor_port)}"
+                                                              f"but is really {str(options.monitor_port)}"
 
-    def test_diagnose_mode(option, diagnose_filename):
+    def test_diagnose_mode(option, configuration_filename):
         # option can be --diagnose or -d
         assert isinstance(option, str)
-        args = [option, diagnose_filename]
+        args = [option, configuration_filename]
         (options, mode) = nbmdt.arg_parser(args=args)
         assert isinstance(options,
                           argparse.Namespace), f"The return from nbmdt.arg_parser should be a 'argparse.Namespace' " \
                                                f"but is {str(type(options))}"
         assert mode == constants.Modes.DIAGNOSE, f"The mode returned from nbmdt.arg_parser was {str(mode)} " \
                                                  "not constants.Modes.DIAGNOSE"
-        assert options.diagnose_filename == diagnose_filename, \
-            f"options.monitor_filename should be {diagnose_filename} but is really {options.diagnose_filename}"
+        assert options.configuration_filename == configuration_filename, \
+            f"options.monitor_filename should be {configuration_filename} but is {options.configuration_filename}"
 
         # Verify that if the configuration file is not given, that the parser raises a ValueError exception
         with pytest.raises(SystemExit):
@@ -142,32 +183,50 @@ def test_argparse() -> None:
         assert os.path.isfile(configuration_filename)
 
     def test_debug_option():
-        # Does the --debug option work?
-        args = ["--diagnose", TEST_CONFIGURATION_FILENAME, "--debug"]
-        (options, mode) = nbmdt.arg_parser(args=args)
-        assert isinstance(options.debug, bool), f"options.debug should be boolean but is actually {type(options.debug)}"
-        assert options.debug, "debug switch was given, but options.debug is False"
-        args = ["--diagnose", TEST_CONFIGURATION_FILENAME]
-        (options, mode) = nbmdt.arg_parser(args=args)
-        assert isinstance(options.debug, bool), f"options.debug should be boolean but is actually {type(options.debug)}"
-        assert not options.debug, "debug switch was not given, but options.debug is True"
-        # The first opportunity to actually test nbmdt.py as a program
-        sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose", TEST_CONFIGURATION_FILENAME])
-        assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug did " \
-                                               "not appear in stderr\n" + syserr_str
-        assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
-                                                  "diagnose did not appear in stderr\n" + syserr_str
-        sysout_str, syserr_str = run_nbmdt(["--boot"])
-        assert "boot " in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did not " \
-                                              "appear in syserr\n" + syserr_str
-        assert "debug " not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
-                                                   "debug appeared in syserr\n" + syserr_str
-        #
-        config_file_name = "mock_nbmdt_config.json"
-        stdout_str, syserr_str = run_nbmdt(["--nominal", config_file_name, "--debug", ])
-        assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr_str\n" \
-                                               f"{syserr_str}"
-        assert " nominal " in syserr_str.lower(), """ " nominal " not found in syserr_str""" + "\n" + syserr_str
+        try:
+            # Does the --debug option work?
+            args = ["--diagnose", TEST_CONFIGURATION_FILENAME, "--debug"]
+            (options, mode) = nbmdt.arg_parser(args=args)
+            assert isinstance(options.debug,
+                              bool), f"options.debug should be boolean but is actually {type(options.debug)}"
+            assert options.debug, "debug switch was given, but options.debug is False"
+            args = ["--diagnose", TEST_CONFIGURATION_FILENAME]
+            (options, mode) = nbmdt.arg_parser(args=args)
+            assert isinstance(options.debug,
+                              bool), f"options.debug should be boolean but is actually {type(options.debug)}"
+            assert not options.debug, "debug switch was not given, but options.debug is True"
+            # The first opportunity to actually test nbmdt.py as a program
+            sysout_str, syserr_str = run_nbmdt(["--debug", "--diagnose", TEST_CONFIGURATION_FILENAME])
+            assert "debug " in syserr_str.lower(), "while running nbmdt.py, the --debug option was given but debug " \
+                                                   "did " \
+                                                   "not appear in stderr\n" + syserr_str
+            assert "diagnose " in syserr_str.lower(), "while running nbmdt.py, the --diagnose option was given but " \
+                                                      "diagnose did not appear in stderr\n" + syserr_str
+            #
+            sysout_str, syserr_str = run_nbmdt(["--boot"])
+            assert "boot " in syserr_str.lower(), "while running nbmdt.py, the --boot option was given but boot did " \
+                                                  "not " \
+                                                  "appear in syserr\n" + syserr_str
+            assert "debug " not in syserr_str.lower(), "while running nbmdt.py, the --debug option was not given but " \
+                                                       "debug appeared in syserr\n" + syserr_str
+            #
+            config_file_name = "mock_nbmdt_config.json"
+            stdout_str, syserr_str = run_nbmdt(["--nominal", config_file_name, "--debug", ])
+            # This shouldn't be necessary, but I added it in the process of trobleshooting Issue 28
+            assert "debug " in syserr_str.lower(), "while running nbmdt.py with --nominal, the --debug option was " \
+                                                   "given but debug did not appear in stderr\n" + syserr_str
+            assert config_file_name in syserr_str, f"config_file_name {config_file_name} is not in the syserr_str\n" \
+                                                   f"{syserr_str}"
+            assert len(syserr_str) > 0, """syserr_str is an empty string"""
+            print(f"len(syserr_str) is {len(syserr_str)}, syserr_str is '{syserr_str}'", file=sys.stderr)
+            # Issue 28 https://github.com/jeffsilverm/nbmdt/issues/28
+            # There was a leading space here, so it was " nominal " instead of "nominal"
+            assert "nominal " in syserr_str.lower(), """ "nominal " not found in syserr_str""" + "\n" + syserr_str
+        except AssertionError:
+            sys.stderr.flush()
+            raise
+        else:
+            print("test_debug_option passes all tests :=) ", file=sys.stderr)
 
     def test_argp_indv(options_list: List[str], option_results: List[tuple]) -> object:
         """
@@ -209,6 +268,7 @@ def test_argparse() -> None:
         Verify that the arguments to the -t option are processed correctly.  According to the NBMDT user manual,
         nbmdt_user_manual.html#-t_option , the argument is a comma separated list of LAYER=NAME pairs.
         :param arg_list:
+        :param selected the test that is selected
         :return:
         """
 
@@ -223,7 +283,8 @@ def test_argparse() -> None:
                                                    f"{constants.Modes.TEST} bad parser"
         for t in select_test_list:
             layer, name = t.split("=")
-            assert layer in constants.LAYERS_LIST, f"Caller messed up: {layer} is not in LAYERS_LIST: {constants.LAYERS_LIST}"
+            assert layer in constants.LAYERS_LIST, f"Caller messed up: {layer} is not in LAYERS_LIST: " \
+                                                   f"{constants.LAYERS_LIST}"
             assert layer in nbmdt.options.test, f"{t} not in nbmdt.options.test {nbmdt.options.test}, bad parser"
             assert nbmdt.options.test == selected, f"{nbmdt.options.test} should be {selected}, bad parser"
         with pytest.raises(ValueError):
