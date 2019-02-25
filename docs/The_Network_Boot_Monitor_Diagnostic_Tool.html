@@ -31,13 +31,14 @@
         of the system, which is "nominal"</li>
     </ol>
     <p>The program is an out growth of a talk I gave at <a
-href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX-C9qi-sng/edit#slide=id.p">LinuxFestNorthwest
+href="https://docs.google.com/presentation/d/e/2PACX-1vRR38f5efmexSvISg-pE3HVMhSWQ9DkB2uKNuBoZGSaAicQ01hjeHGD1e1WeOo-YHjTegwAKBQ8yQI6/pub?start=false&amp;loop=false&amp;delayms=60000">LinuxFestNorthwest
+
 
         in Bellingham, Washington, April 2017</a>.&nbsp; In this talk, I
-      discussed how you could use linux software to diagnose network
+      discussed how you could use Linux software to diagnose network
       problems.&nbsp; One of the comments I got from my audience is "Is
       there a program that contains all of the tribal knowledge you
-      have?".<br>
+      have?".&nbsp; The NBMDT is that program.<br>
     </p>
     <ol>
     </ol>
@@ -65,28 +66,37 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
     </p>
     <ul>
       <li>Hardware information concerning the Network Interface Cards
-        (NICs)</li>
+        (NICs) Carrier detected, any WiFi networks received.<br>
+      </li>
       <li>The state of the NICs (up or down, are they sending/receiving
-        packets, recording errors?),</li>
+        packets, recording errors?), connected to a WiFi SSID.&nbsp; The
+        nbmdt knows all of the SSIDs it has ever connected to.&nbsp;
+        There are some booleans to indicate if WEP or WPA is
+        acceptable.&nbsp; By default, these are False, which is safest.<br>
+      </li>
       <li>the MAC address</li>
-      <li>the ARP cache</li>
+      <li>the ARP cache, IPv4 neighbors<br>
+      </li>
       <li>IPv6 neighbors</li>
-      <li>routing table</li>
+      <li>routing table, including the default gateway.<br>
+      </li>
       <li>IPv4 address</li>
       <li>IPv6 address</li>
       <li>listening UDP, TCP, and SCTP ports.</li>
+      <li>Can use nagios plugins which are standalone programs (not perl
+        code unless it includes the perl command)<br>
+      </li>
     </ul>
     <h2><a name="mozTocId888884" class="mozTocH2"></a>Documentation</h2>
     <p>This file has introductory documentation.&nbsp; In this file, I
-      lay out what the NBMDT actually does.&nbsp; There is also a <a
-        href="How_to_install_use_and_test_monitor.sh.html">user document</a>
-      that has the instructions that a user needs in order to actually
-      the program.&nbsp; There is a <a
-        href="../../../nbmdt/docs/nbmdt_requirements.html">requirements
+      lay out what the NBMDT actually does and how to use it.&nbsp;
+      There is a <a href="../../../nbmdt/docs/nbmdt_requirements.html">requirements
+
         document</a>, which is derived from this document.&nbsp; There
       is also a <a href="nbmdt_test_plan.html">test plan</a>, which is
       derived from the <a
         href="file:///home/jeffs/nbmdt/docs/nbmdt_requirements.html">requirements
+
 
         document</a>.&nbsp;&nbsp; The decision to write these documents
       in HTML was deliberate because I wanted to cross reference every
@@ -95,7 +105,11 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
     <p><br>
     </p>
     <h2><a name="mozTocId305441" class="mozTocH2"></a>Display</h2>
-    <br>
+    &nbsp;When NBMDT runs at boot time, it starts a daemon.&nbsp; When
+    the daemon starts, it runs the terminal mode client once, which
+    gives the state of the network at startup time, which causes the
+    output to get recorded in dmesg (in linux) as well as on the
+    console.<br>
     <h3><a name="mozTocId378908" class="mozTocH3"></a>Meaning of the
       displays:</h3>
     <p>The state of an item being monitored or reported on can be easily
@@ -119,54 +133,79 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
         increased risk of failure because a dependency is down.<span></span></span></dd>
     <dt>However, the dependency has some redundancy so the fact that
       there is an upstream failure does not mean that this interface is
-      down. For example, there are multiple DNS servers. If a server
-      fails, the resolver will pick a different name server. So DNS will
-      be working, but there will be fewer servers than normal and a
-      greater risk of subsequent failure.<br>
+      down. For example, there are multiple DNS servers. If a single
+      nameserver fails, the resolver will pick a different name server.
+      So DNS will be working, but there will be fewer servers than
+      normal and a greater risk of subsequent failure.<br>
       <br>
     </dt>
     <dd><span style="background-color:red">Down cause unknown</span></dd>
-    <dt>The resource is flunking its test, cause unknown <br>
+    <dt>The resource is flunking its test, cause unknown. <br>
       <br>
     </dt>
     <dd><span style="background-color:magenta"> Failed due to an
         upstream dependency.</span></dd>
     <dt>The resource is flunking a health check for some known reason.
-      For example, if an applicationm depends on a database, and the
+      For example, if an application depends on a database, and the
       database fails, then the application will fail. In this case, the
       database will be marked as "failed cause unknown" and the
       application will be marked as "failed due to an upstream
-      dependency"<br>
+      dependency".&nbsp; If a network interface card (NIC) fails and it
+      is the default gateway, then IPv4 and IPv6 are going to fail, TCP
+      and UDP are going to fail, HTTP, HTTPS, and SSH are going to
+      fail.&nbsp; However, if there are two NICs that are bonded with
+      Link Aggration Control Protocol (LACP) and NIC fails, then that
+      NIC will be bad, the virtual interface will be at decreased risk,
+      and everything above it on the stack will be normal.<br>
     </dt>
     <dl>
       <dd><span style="color:white;background-color:Blue ;">The
           configuration file is wrong</span></dd>
-      <dt>The NBMDT is looking for a resource that is in the .ini file,
-        but can't be found in the system. Or there is a resourece that
-        is <b>not</b> in the configuration file, but the NBMDT found
-        it. The MAC address of the interface is wrong. This means that
-        the .ini file is wrong, perhaps because it is running on the
-        wrong system or perhaps the configuration changed<br>
-        <br>
+      <dt>The configuration file might be wrong for any of a number of
+        reasons:</dt>
+      <dt><br>
+      </dt>
+    </dl>
+    <ul>
+      <li>NBMDT is looking for a resource that is in the .ini file, but
+        can't be found in the system.</li>
+      <li>A resource that is <b>not</b> in the configuration file, but
+        the NBMDT found it. This is easy for fix: run the <tt>nbmdt </tt>program
+        with the <tt>--nominal</tt> switch.</li>
+      <li>The MAC address of the interface is wrong. This means that the
+        .ini file is wrong, perhaps because it is running on the wrong
+        system, the NIC was exchanged, or ethtool was used to anonymize
+        the MAC address.&nbsp; If this a real problem, then fix
+        it.&nbsp; However, if the .ini file is wrong, then again, run
+        the <tt>nbmdt</tt> program with <tt>--nominal</tt>.</li>
+    </ul>
+    <p><br>
+    </p>
+    <dl>
+      <dt> <br>
       </dt>
       <dd><span style="background-color:gray; color:black;">A label</span></dd>
     </dl>
     <dd><br>
     </dd>
-    <dt>A label or some annotation</dt>
+    <dt>A label or some annotation.&nbsp; If the path from here to a
+      remote server has changed but the remote server is still working,
+      then it will be labeled.<br>
+    </dt>
     <br>
     <h2><a name="mozTocId569121" class="mozTocH2"></a>Operational modes
     </h2>
-    <p>The NBMDT has 4 operational modes: nominal, startup, and
-      monitoring.<br>
+    <p>The NBMDT has 4 operational modes: nominal, startup, diagnose,
+      and monitoring.<br>
     </p>
     <dl>
       <dt>Nominal</dt>
       <dd>In nominal mode, NBMDT assumes that everything is as it should
         be.&nbsp; Guided by the permanent configuration file, it
-        explores the NICs and the network that the NICs are connected to
-        and then builds a running configuration file in .ini file. Then,
-        as necessary, it will read the contents of that file into its
+        explores the NICs and the network that the NICs are connected
+        to, name servers, servers of interest, network paths to them and
+        then builds a running configuration file.ini file. Then, as
+        necessary, it will read the contents of that file into its
         memory and use that as the basis for monitoring.&nbsp; The
         system administrator can compare that configuration file against
         the original to figure out what changed.<br>
@@ -189,7 +228,8 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
         For example, testing that name resolution works is critical and
         should be tested frequently.&nbsp; Testing that a particular
         name server is working is less critical, because name servers
-        are redundant.<br>
+        are redundant.&nbsp; Likewise time servers are not that
+        critical.<br>
       </dd>
       <dt>Diagnostic</dt>
       <dd>In diagnostic mode, NBMDT attempts to figure out why something
@@ -203,7 +243,13 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
             indication of a problem.</li>
           <li>routes - is the default gateway or default router
             pingable?</li>
+          <li>Did the default router change?</li>
           <li>Diagnosing the neighbor discovery protocol</li>
+          <li>name server reachable</li>
+          <li>time server reachable</li>
+          <li>Remote servers of interest reachable</li>
+          <li>network path to remote server change<br>
+          </li>
         </ul>
         A future extension of NBMDT is going to be a dependency
         description language which allow the operator to pinpoint what
@@ -245,11 +291,11 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
       applications that are listening are still listening.&nbsp; NBMDT
       generates only one alert, because it understands the dependencies.</p>
     <p>The permanent configuration file also records some system
-      specific things, such as where the ip command is.</p>
-    <h3><a name="mozTocId304901" class="mozTocH3"></a> <br>
-    </h3>
-    <h3><a name="mozTocId867742" class="mozTocH3"></a>Nominal
-      configuration file</h3>
+      specific things, such as where the ip command is, the nagios
+      plugins, and any python plugins.<br>
+    </p>
+    <h3><a name="mozTocId304901" class="mozTocH3"></a> Nominal
+      configuration file </h3>
     <p>The nominal configuration file is generated by the nbmdt program
       at the command of the system administrator.&nbsp; It is in JSON
       format.&nbsp; When nbmdt is run in nominal mode, it builds a
@@ -261,6 +307,7 @@ href="https://docs.google.com/presentation/d/1NyiSXTFujouZWrTUxXusOmwivYENxqvBJX
     <h2><a name="mozTocId821733" class="mozTocH2"></a>Internals</h2>
     <p>See also <a
         href="file:///home/jeffs/logbooks/notes_2017-03.html#mozTocId725313">how
+
 
 
 
@@ -376,8 +423,10 @@ href="http://unix.stackexchange.com/questions/150195/getting-information-from-sy
                 and the<span class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code>link
 
 
+
                 merely links to a (grand-)<sup style="margin: 0px;
                   padding: 0px; border: 0px; font-size: 12px;">*</sup>parent
+
 
                 directory; instead of using the<span
                   class="Apple-converted-space">&nbsp;</span><code style="margin: 0px; padding: 1px 5px; border: 0px; font-size: 13px; font-family: Consolas, Menlo, Monaco, &quot;Lucida Console&quot;, &quot;Liberation Mono&quot;, &quot;DejaVu Sans Mono&quot;, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, monospace, sans-serif; background-color: rgb(239, 240, 241); white-space: pre-wrap;">device</code><span
@@ -416,21 +465,24 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
     </table>
     <h3><a name="mozTocId181640" class="mozTocH3"></a>The relationship
       between the OSI model and the NBMDT python source files</h3>
-    <table style=" text-align: left; width: 100%;" border="1"
-      cellspacing="2" cellpadding="2">
+    <p>See 56 network tools.<br>
+    </p>
+    <table style=" text-align: left; width: 100%;" cellspacing="2"
+      cellpadding="2" border="1">
       <tbody>
         <tr>
           <th>Layer<br>
           </th>
           <th>Typical tools to monitor and control<br>
           </th>
-          <th>files<br>
+          <th>files in the nbmdt<br>
           </th>
         </tr>
         <tr>
           <td style="vertical-align: top;">Application<br>
           </td>
-          <td style="vertical-align: top;">nc, curl, wget<br>
+          <td style="vertical-align: top;">nc, dig, ntp, chrome,
+            firefox, seamonkey, ab<br>
           </td>
           <td style="vertical-align: top;">applications.py<br>
           </td>
@@ -438,15 +490,14 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
         <tr>
           <td style="vertical-align: top;">Presentation<br>
           </td>
-          <td style="vertical-align: top;"><br>
-          </td>
+          <td style="vertical-align: top;"> curl, wget, </td>
           <td style="vertical-align: top;">presentation.py<br>
           </td>
         </tr>
         <tr>
           <td style="vertical-align: top;">Session<br>
           </td>
-          <td style="vertical-align: top;">ss<br>
+          <td style="vertical-align: top;">ss, openssl<br>
           </td>
           <td style="vertical-align: top;">session.py<br>
           </td>
@@ -464,7 +515,7 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
           <td style="vertical-align: top;">Network<br>
           </td>
           <td style="vertical-align: top;">ip address, ping, ping6,
-            ifconfig <br>
+            ifconfig, arpwatch <br>
           </td>
           <td style="vertical-align: top;">routes.py, routing.py<br>
           </td>
@@ -484,7 +535,7 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
         <tr>
           <td style="vertical-align: top;">Physical<br>
           </td>
-          <td style="vertical-align: top;">iwlist, ethtool <br>
+          <td style="vertical-align: top;">iwlist, ethtool, mii-tool <br>
           </td>
           <td style="vertical-align: top;"><strike>interfaces.py</strike>
             <code>class PhysicalInterface</code>&nbsp;&nbsp; <br>
@@ -496,13 +547,14 @@ href="http://tools.ietf.org/html/rfc2863#section-3.1.14" style="margin:
         command examples from tecmint</a>, <a
 href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_cheatsheet_1214_jcs_print.pdf">the
 
+
         ip command cheat sheet</a>&nbsp; , <br>
     </p>
     <h3><a name="mozTocId962741" class="mozTocH3"></a>Critical Networks
       and NBMDT python source files<br>
     </h3>
-    <table style=" text-align: left; width: 100%;" border="1"
-      cellspacing="2" cellpadding="2">
+    <table style=" text-align: left; width: 100%;" cellspacing="2"
+      cellpadding="2" border="1">
       <tbody>
         <tr>
           <th>Service<br>
@@ -542,8 +594,8 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
     </table>
     <h3><a name="mozTocId89729" class="mozTocH3"></a>Other important
       files</h3>
-    <table style=" text-align: left; width: 100%;" border="1"
-      cellspacing="2" cellpadding="2">
+    <table style=" text-align: left; width: 100%;" cellspacing="2"
+      cellpadding="2" border="1">
       <tbody>
         <tr>
           <th>file<br>
@@ -584,8 +636,8 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
         things, and if not, then they should.&nbsp; Perhaps interface.py
         should be deprecated or perhaps deleted.</font><br>
     </p>
-    <table style=" text-align: left; width: 100%;" border="1"
-      cellspacing="2" cellpadding="2">
+    <table style=" text-align: left; width: 100%;" cellspacing="2"
+      cellpadding="2" border="1">
       <tbody>
         <tr>
           <td style="vertical-align: top;">OSI layer<br>
@@ -784,9 +836,8 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
           <li><a href="#mozTocId336500">Configuration files</a>
             <ol>
               <li><a href="#mozTocId84646">Permanent configuration file</a></li>
-              <li><a href="#mozTocId304901"> </a><br>
-              </li>
-              <li><a href="#mozTocId867742">Nominal configuration file</a></li>
+              <li><a href="#mozTocId304901"> Nominal configuration file
+                </a></li>
             </ol>
           </li>
           <li><a href="#mozTocId821733">Internals</a>
@@ -808,7 +859,7 @@ href="https://access.redhat.com/sites/default/files/attachments/rh_ip_command_ch
               <li><a href="#mozTocId181640">The relationship between the
                   OSI model and the NBMDT python source files</a></li>
               <li><a href="#mozTocId962741">Critical Networks and NBMDT
-                  python source files</a></li>
+                  python source files </a></li>
               <li><a href="#mozTocId89729">Other important files</a></li>
             </ol>
           </li>
