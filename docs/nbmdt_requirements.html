@@ -3,6 +3,12 @@
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Network Boot Monitor Diagnostic Tool (NBMDT)</title>
+    <style>
+.clueless { background-color:orange; }
+/* from RFC 2119, see https://tools.ietf.org/html/rfc2119 */
+.keyword { text-decoration: underline; }
+</style>
+
   </head>
   <body style=" color: rgb(0, 0, 0); background-color: rgb(204, 204,
     204);" link="#0000FF" vlink="#FF0000" alink="#000088">
@@ -356,6 +362,21 @@ href="file:///home/jeffs/nbmdt/Network%20Boot%20Monitor%20Diagnostic%20Tool%20%2
       convention.&nbsp; The rationale is that the NBMDT tests networks,
       but the NBMDT is also tested by pytest and other test programs.<br>
     </p>
+<p>Nagios plugins
+<br>
+</p>
+<p><b>Python plugins</b>.  The .ini file gives the directory where the python plugins live.  The nbmdt will scan this directory,
+looking for files with .py file types.  Refer to <a href="https://tools.ietf.org/html/rfc2119">RFC 2119</a> for "the meaning of <style class="keyword">must</span>, etc.  Any python file in this directory <style class="keyword">must</span>  have a class with the same name as the filename.
+This class <style class="keyword">may</span>  import or derive from another class in this file or elsewhere.  This class <style class="keyword">must</span>  have a method,
+<code>describe_yourself</code> that returns a directory with the following fields:
+<dl>
+<dt>level</dt>
+<dd>Which level in the protocol stack it checks.  These levels are described by class <code>OSILevels</code> in file <tt>constants.py</tt>.  If there is no particular device that this class tests, then the nbmdt will do something, <span class="clueless">I just do not know what yet</span>.</dd>
+<dt>object_name</dt>
+<dd>The name of object, or a list of the object names that this class checks</dd>
+<dt>pytest instructions</dt>
+<dd style="clueless">I have not quite figured out how to do this yet.</dd> 
+</dl>
     <p><br>
     </p>
     <hr style="width: 100%; height: 2px;">
