@@ -1,0 +1,70 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><title>How to install, use, and test monitor.sh</title></head><body>
+<h1>How to install, use, and test monitor.sh</h1>
+<h2>What monitor.sh is</h2>
+<p>Monitor.sh is a very short, very quickly done, and very crude network
+ monitor and testing tool written in bash and intended for linux.&nbsp; 
+It will tell you when everything is working, and it will tell you 
+something is not working, but it won't tell you why.&nbsp; You have to 
+figure that out yourself.<br>
+</p>
+<p>So, for example, suppose you are monitoring <a href="http://www.commercialventvac.com">http://www.commercialventvac.com</a>
+ .&nbsp; If the server goes down but the router in your house is still 
+working, then you will see only the text for the site turns red.&nbsp; 
+Everything else will stay green.&nbsp; By way of contrast, if your local
+ gateway (router, WiFi access point) fails, then everything will turn 
+red.</p>
+<h2>How to install it</h2>
+<p>Get monitor.sh from <a href="https://github.com/jeffsilverm/nbmdt">github: https://github.com/jeffsilverm/nbmdt</a>.&nbsp; Monitor.sh is just like every other simple shell script: just put it in some directory somewhere, run <kbd>chmod a+x monitor.sh</kbd> so that it is executable.&nbsp; monitor.sh does not need any special privileges to run.&nbsp; <br>
+</p>
+<h2>How to run it.<br>
+</h2>
+<p> To run the monitor.sh script, give the command <kbd>bash ./monitor.sh</kbd> .&nbsp; That will run the script.&nbsp; Once.&nbsp; However, if you want to monitor your network continuously, then use the <kbd>watch</kbd> command, as in <kbd>watch -b -c ./monitor.sh</kbd>&nbsp;&nbsp; .&nbsp; The -b option will cause&nbsp; <kbd>watch</kbd>
+  to make a noise if the script returns something other than 0, in other
+ words, if the script detects a failure.&nbsp; The -c option will 
+cause&nbsp; <kbd>watch</kbd>  to pass the escape codes needed for the colors.</p>
+<p>My linux desktop has several workspaces on the screen.&nbsp; So I 
+configure the terminal window to be always in visible work space and 
+always on top.&nbsp; I then make the font as small as I can stand, and 
+then I make the window as small as I can.&nbsp; Because the status is 
+show by background color, I can check on the status from across the 
+room.&nbsp; At that distance, I won't know what's wrong, but I will know
+ that something is wrong.<br>
+</p>
+<h2>How to test it.</h2>
+<p>My favorite way to test it is to change the routing table so that the
+ packets destined for whatever you are testing don't arrive there.&nbsp;
+ So, for example, my home network uses IPv4 addresses that begin with 
+192.168.0.x (also represented as 192.168.0.0/24).&nbsp; So, if I want to
+ break my test of Google's name servers, I become root with the <kbd>sudo</kbd> command and command <kbd>sudo ip route add 8.8.8.8 via 192.168.0.247</kbd> where 192.168.0.247 is some random address in my 192.168.0.0/24 network that is not being used.</p>
+<h2>Future directions</h2>
+<p>I have not planned to add anything further to monitor.sh.&nbsp; 
+However, it is very simple, and if you like it, feel free to extend it 
+as you wish.&nbsp; It's licensed under one of the GPLs, so technically 
+if you do make a change to it, you have to give it back to me.&nbsp; As a
+ practical matter, I'd like to know what you do with it, but I'm not 
+going to sue you if you don't.</p>
+<p><br>
+</p>
+<p><br>
+</p>
+<p><br>
+</p>
+<p>How to install the dns package:<br>
+</p>
+<pre>
+jeffs@jeffs-laptop:~/Downloads/dnspython-master $ <kbd>sudo python3 setup.py install</kbd>
+</pre>
+<p>How to install the yaml package under Fedora:
+<pre>
+jeffs@jeffs-laptop:~/nbmdt (development)*$ <kbd>sudo dnf install python3-yaml</kbd>
+</pre>
+<p>How to install the <kbd>ip</kbd>, <kbd>lshw</kbd>, and <kbd>ss</kbd> command in the <tt>ubuntu</tt> docker container.
+<p>Docker is a very popular way of distributing software.  This paragraph explains how to get docker, if you don't have it,
+how to get the ubuntu container, how to install the linux commands that the nbmdt needs.
+
+
+
+
+</body></html>

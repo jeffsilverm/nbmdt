@@ -1,383 +1,427 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-<title>Network Boot Monitor Diagnostic Tool (NBMDT)</title>
-</head><body style=" color: rgb(0, 0, 0); background-color: rgb(204, 204, 204);" vlink="#FF0000" alink="#000088" link="#0000FF">
-<h1><a name="mozTocId568287" class="mozTocH1"></a>Requirements for the Network Boot Diagnostic and Monitoring Tool (NBMDT)</h1>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Network Boot Monitor Diagnostic Tool (NBMDT)</title>
+    <style>
+.clueless { background-color:orange; }
+/* from RFC 2119, see https://tools.ietf.org/html/rfc2119 */
+.keyword { text-decoration: underline; }
+</style>
 
-<p>This page lays out the requirements for the NBMDT.&nbsp; The NBMDT is a python program that</p>
-
-<ol>
-
-  <li>Verifies that the network is working properly at system boot time<br>
-  </li>
-  <li>Diagnosis problems in the network by comparing a known good state of the network with the current state of the network</li>
-  <li>Monitors the network to verify that it is working properly.</li>
-</ol>
-
-<p>There is user documentation (which as of this writing, also has developer information that should be separated out) at <a href="The_Network_Boot_Monitor_Diagnostic_Tool.html">The_Network_Boot_Monitor_Diagnostic_Tool.html</a></p>
-
-<p><br>
-</p>
-
-<h2><a name="mozTocId320689" class="mozTocH2"></a>Table of contents</h2>
-
-<ol id="mozToc">
-
-<!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6--><li><a href="#mozTocId568287">Requirements for the Network Boot Diagnostic and Monitoring Tool (NBMDT)</a><ol><li><a href="#mozTocId320689">Table of contents</a></li><li><a href="#mozTocId954355">Requirements</a><ol><li><a href="#mozTocId63074">Dependencies</a></li><li><a href="#mozTocId314080">Errors</a></li><li><a href="#mozTocId185204" style="">Execution environments</a><ol><li><a href="#mozTocId951070">Platforms</a></li><li><a href="#mozTocId508795">Terminal software</a></li><li><a href="#mozTocId730933">python software</a></li></ol></li><li><a href="#mozTocId156608">User Interfaces</a></li></ol></li></ol></li><li><a href="#mozTocId192195">Testing procedures</a></li><li><a href="#mozTocId174413">Acronyms</a></li>
-</ol>
-
-<p><br>
-</p>
-
-<h2><a name="mozTocId954355" class="mozTocH2"></a>Requirements</h2>
-
-<p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
-      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and
-      "OPTIONAL" in this document are to be interpreted as described in
-      <a href="https://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.</p>
-
-<p>The NBMDT <span style="text-decoration: underline;">shall</span> test the following components:</p>
-
-<ul>
-
-  <li>Ethernet</li>
-  <li>WiFi</li>
-  <li>ARP</li>
-  <li>NDS</li>
-  <li>IPv4</li>
-  <li>IPv6</li>
-  <li>DNS</li>
-  <li>NTP</li>
-  <li>A list of applications that run on this machine and use resources across the network<br>
-  </li>
-  <li>A list of services that run on this machine that resources across the network may use</li>
-</ul>
-
-<p>The NBMDT <span style="text-decoration: underline;">may</span> test additional components.</p>
-<ul>
-  <li>Hardware tests using the linux commands <acronym>sudo lshw -C network</acronym> Or <acronym>lspci -nnk | grep -iA2 net</acronym> .<br>
+  </head>
+  <body style=" color: rgb(0, 0, 0); background-color: rgb(204, 204,
+    204);" link="#0000FF" vlink="#FF0000" alink="#000088">
+    <h1><a name="mozTocId568287" class="mozTocH1"></a>Requirements for
+      the Network Boot Diagnostic and Monitoring Tool (NBMDT)</h1>
+    <p>This page lays out the requirements for the NBMDT.&nbsp; The
+      NBMDT is a python program that</p>
+    <ol>
+      <li>Verifies that the network is working properly at system boot
+        time<br>
+      </li>
+      <li>Diagnosis problems in the network by comparing a known good
+        state of the network with the current state of the network</li>
+      <li>Monitors the network to verify that it is working properly.</li>
+    </ol>
+    <p>There is user documentation (which as of this writing, also has
+      developer information that should be separated out) at <a
+        href="The_Network_Boot_Monitor_Diagnostic_Tool.html">The_Network_Boot_Monitor_Diagnostic_Tool.html</a></p>
+    <p><br>
+    </p>
+    <h2><a name="mozTocId320689" class="mozTocH2"></a>Table of contents</h2>
+    <ol id="mozToc">
+      <!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6-->
+      <li><a href="#mozTocId568287">Requirements for the Network Boot
+          Diagnostic and Monitoring Tool (NBMDT)</a>
+        <ol>
+          <li><a href="#mozTocId320689">Table of contents</a></li>
+          <li><a href="#mozTocId954355">Requirements</a>
+            <ol>
+              <li><a href="#mozTocId63074">Dependencies</a></li>
+              <li><a href="#mozTocId314080">Errors</a></li>
+              <li><a href="#mozTocId185204" style="">Execution
+                  environments</a>
+                <ol>
+                  <li><a href="#mozTocId951070">Platforms</a></li>
+                  <li><a href="#mozTocId508795">Terminal software</a></li>
+                  <li><a href="#mozTocId730933">python software</a></li>
+                </ol>
+              </li>
+              <li><a href="#mozTocId156608">User Interfaces</a></li>
+            </ol>
+          </li>
+        </ol>
+      </li>
+      <li><a href="#mozTocId192195">Testing procedures</a></li>
+      <li><a href="#mozTocId174413">Acronyms</a></li>
+    </ol>
+    <p><br>
+    </p>
+    <h2><a name="mozTocId954355" class="mozTocH2"></a>Requirements</h2>
+    <p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL"
+      in this document are to be interpreted as described in <a
+        href="https://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.</p>
+    <p>The NBMDT <span style="text-decoration: underline;">shall</span>
+      test the following components:</p>
+    <ul>
+      <li>Ethernet</li>
+      <li>WiFi</li>
+      <li>ARP</li>
+      <li>NDS</li>
+      <li>IPv4</li>
+      <li>IPv6</li>
+      <li>DNS</li>
+      <li>NTP</li>
+      <li>A list of applications that run on this machine and use
+        resources across the network<br>
+      </li>
+      <li>A list of services that run on this machine that resources
+        across the network may use</li>
+    </ul>
+    <p>The NBMDT <span style="text-decoration: underline;">may</span>
+      test additional components.</p>
+    <ul>
+      <li>Hardware tests using the linux commands <acronym>sudo lshw -C
+          network</acronym> Or <acronym>lspci -nnk | grep -iA2 net</acronym>
+        .<br>
+        <br>
+      </li>
+    </ul>
+    <p>The implementer <span style="text-decoration: underline;">shall</span>
+      document which of these requirements are met in each release.</p>
+    <p>The NBMDT is "test" software, in that it tests a network.&nbsp;
+      However, the NBMDT itself must also be tested, just as any other
+      software is tested.&nbsp; The t<a href="mozTocId192195">est
+        procedures section below</a> describes how to test that the
+      NBMDT tests networks effectively.<br>
+    </p>
+    <h3><a name="mozTocId63074" class="mozTocH3"></a>Dependencies<br>
+    </h3>
+    <p>The NBMDT understands dependencies.&nbsp; The NBMDT shall
+      differentiate between a component that fails because a component
+      it depends on has failed and a component that has failed for an
+      unknown reason.&nbsp; The NBMDT should do as much as it can to
+      diagnose the problem.<br>
+    </p>
+    <ol>
+      <li>All client applications depend on DNS.</li>
+      <li>Some client applications depend on NTP</li>
+      <li>Every client application depends on remote servers.&nbsp; It
+        is not practical to test all remote servers, so one of the
+        configuration items shall be a list of servers to test and a
+        procedure for testing them.&nbsp; Tests developed for nagios may
+        be used here.<br>
+      </li>
+      <li>All Applications also depend on TCP or UDP (other transport
+        protocols, such as SCTP, are possible)</li>
+      <li>DNS depends on UDP and might depend on TCP.&nbsp; A list of
+        optional remote name servers should be a configuration
+        item.&nbsp; nbmdt may develop a list of remote name servers by
+        inspecting /etc/resolve.conf on UNIX systems and TBD on
+        MS-Windows.&nbsp; It must be a configuration error if nbmdt is
+        unable to develop a list of at least one remote name server.</li>
+      <li>Some systems depend on remote authentication, i.e. AD,
+        Kerberos, NIS.</li>
+      <li>Kerberos depends on NTP.&nbsp; Does AD?&nbsp; Does NIS?<br>
+      </li>
+      <li>NTP depends on UDP.&nbsp; <br>
+      </li>
+      <li>TCP depends on either IPv4 or IPv6 but preferably both</li>
+      <li>UDP depends on either IPv4 or IPv6 but preferably both</li>
+      <li>IPv6 routing depends on IPv6 on all interfaces it is enabled
+        for</li>
+      <li>IPv4 routing depends on IPv4 on all interfaces it is enabled
+        for</li>
+      <li>IPv4 depends on ethernet or WiFi or both (Other media are
+        possible)</li>
+      <li>IPv4 on Ethernet or Wifi (or other 802.x media) depend on ARP</li>
+      <li>IPv6 depends on NDP</li>
+      <li>IPv4 depends on the default router.&nbsp; It must be a <a
+href="file:///home/jeffs/nbmdt/Network%20Boot%20Monitor%20Diagnostic%20Tool%20%28NBMDT%29.html#CONFIGURATION_ERROR">configuration
+          error</a> if the NBMDT cannot identify a default IPv4 router.<br>
+      </li>
+      <li>IPv6 depends on the default router.&nbsp; It should be a <a
+          href="#CONFIGURATION_ERROR">configuration error</a> if the
+        NBMDT cannot identify a default IPv6 router.</li>
+      <li>IPv4 might depend on DHCP or it might be configured through a
+        file.&nbsp; The NBMDT shall identify how IPv4 is configured and
+        shall verify that the configuration is reasonable</li>
+      <li>IPv6 might depend on DHCP6, or through NDP, or it might be
+        configured through a file.&nbsp; The NBMDT shall identify how
+        IPv6 is configured and shall verify that the configuration is
+        reasonable.&nbsp; If the IPv6 configuration changes because of a
+        change in router configuration that has propagated through NDS,
+        then the NBMDT shall indicate an <a
+          href="#UNEXPECTED_CONFIGURATION_CHANGE">UNEXPECTED
+          CONFIGURATION CHANGE</a>.<br>
+      </li>
+      <li>IPv4 depends on <a href="#ARP">ARP</a></li>
+      <li>IPv6 depends on <a href="#NDP">NDP</a>.<br>
+      </li>
+      <li>ARP depends on Ethernet or WiFi</li>
+      <li>NDP depends on Ethernet or WiFi</li>
+      <li>WiFi depends on its <a href="#AP">AP</a><br>
+      </li>
+      <li>Ethernet adapter must be UP, and packet counters must be
+        increasing</li>
+      <li>At least one Ethernet or WiFi adapter must have an IPv4
+        address (really?)</li>
+      <li>At least one Ethernet or WiFi adapter must have either a
+        global unicast IPv6 or a unique local IPv6 address</li>
+      <li>If an Ethernet adapter has no carrier, then its IPv4 and IPv6
+        addresses need not be defined. If the addresses are not defined
+        in this case, then NBMDT shall indicate a <a
+          href="#DEPENDENCY_FAILURE">DEPENDENCY FAILURE</a>.<br>
+      </li>
+      <li>WiFi adapter must be connected, and packet counters must be
+        increasing.<br>
+      </li>
+    </ol>
+    <h3><a name="mozTocId314080" class="mozTocH3"></a>Errors<br>
+    </h3>
+    <p>NBMDT has the following error conditions (in order of increasing
+      severity):</p>
+    <ol>
+      <li><a name="NORMAL"></a>NORMAL</li>
+      <li><a name="UNEXPECTED_CONFIGURATION_CHANGE"></a>UNEXPECTED
+        CONFIGURATION CHANGE - The network is still working, but
+        something has changed.&nbsp; For example, DHCP might have handed
+        out a new IPv4 address, the default nameservers might have
+        changed, or the WiFi SSD might be new.<br>
+      </li>
+      <li>DEGRADED_REDUNDANT due to a loss of a redundant dependency
+        (e.g. one of several name servers has failed)</li>
+      <li><a name="DEGRADED_PERFORMANCE"></a>DEGRADED_PERFORMANCE&nbsp;
+        loss of performance (e.g. excess round trip times, packet loss)</li>
+      <li>FAILURE ACKNOWLEDGED an error was reported to the operator,
+        and he or she has acknowledged it</li>
+      <li><a name="DEPENDENCY_FAILURE"></a>DEPENDENCY FAILURE something
+        that this component depends on has failed</li>
+      <li><a name="FAILURE"></a>FAILURE This component is down, cause is
+        unknown, but not due to something that this component depends
+        on.</li>
+      <li><a name="CONFIGURATION_ERROR"></a>CONFIGURATION ERROR NBMDT is
+        unable to figure out something important on its own, and that
+        configuration item is not in the configuration file. Syntax
+        errors in the configuration file.</li>
+    </ol>
+    <h3><a name="mozTocId185204" class="mozTocH3"></a>Execution
+      environments<br>
+    </h3>
+    <h4><a name="mozTocId951070" class="mozTocH4"></a>Platforms</h4>
+    <p>The nbmdt <span style="text-decoration: underline;">should</span>
+      be tested on the following platforms:</p>
+    <ul>
+      <li>Linux</li>
+      <ul>
+        <li>Debian based</li>
+        <li>redhat based</li>
+        <li>SUSE<br>
+        </li>
+      </ul>
+      <li>Mac OS X</li>
+      <li>MS-Windows</li>
+      <ul>
+        <li>Windows/10</li>
+        <li>Windows Server</li>
+      </ul>
+      <li>Rasperry PI</li>
+    </ul>
+    <p>Implementations <span style="text-decoration: underline;">may</span>
+      be tested on additional platforms.<br>
+    </p>
+    <p>The implementer <span style="text-decoration: underline;">shall</span>
+      describe what environments the current release of the software
+      supports.<br>
+    </p>
+    <ul>
+    </ul>
+    <h4><a name="mozTocId508795" class="mozTocH4"></a>Terminal software<br>
+    </h4>
+    <p>The nbmdt <span style="text-decoration: underline;">should</span>
+      run on the following terminal software:</p>
+    <ul>
+      <li>Windows:</li>
+      <ul>
+        <li>putty</li>
+        <li>command.exe</li>
+        <li>power shell</li>
+        <li>Native python<br>
+        </li>
+      </ul>
+      <li>Linux</li>
+      <ul>
+        <li>gnome-terminal</li>
+        <li>mate-terminal</li>
+        <li>kde-terminal</li>
+      </ul>
+      <li>Mac OS X</li>
+      <ul>
+        <li>terminal</li>
+        <li>tmux</li>
+      </ul>
+      <li>Rasberry PI</li>
+      <ul>
+        <li>TBD<br>
+        </li>
+      </ul>
+    </ul>
+    <h4><a name="mozTocId730933" class="mozTocH4"></a>python software<br>
+    </h4>
+    <p>The nbmdt <span style="text-decoration: underline;">shall</span>
+      run under Python 3.6.&nbsp; It <span style="text-decoration:
+        underline;">should</span> run under Python 3.7 with no changes.<br>
+    </p>
+    <h3><a name="mozTocId156608" class="mozTocH3"></a>User Interfaces</h3>
+    <p>The nbmdt shall provide the following user interfaces:</p>
+    <ul>
+      <li>A CLI suitable for scripting</li>
+      <li>A terminal graphical interface that uses ANSI X3.64 escape
+        characters and commonly used terminal extensions as described
+        above.</li>
+      <li>A GUI using python graphical interface libraries such as
+        tkinter</li>
+      <li>A web user interface suitable for use with a browser</li>
+    </ul>
+    <p><br>
+    </p>
+    <h1><a name="mozTocId192195" class="mozTocH1"></a>Testing procedures</h1>
+    <p>The NBMDT <span style="text-decoration: underline;">shall</span>
+      test the network starting at the lowest levels of the OSI model
+      and work upwards.</p>
+    <p>The nbmdt <span style="text-decoration: underline;">shall</span>
+      itself be tested using these tests in simulation, as described in
+      the <a href="nbmdt_test_plan.html">test plan</a>.<br>
+    </p>
+    <p><br>
+    </p>
+    <h2>Rough draft of testing procedures</h2>
+    <p>The section describes how the NBMDT tests networks</p>
+    <h3>Physical<br>
+    </h3>
+    <h4>ethernet</h4>
+    <p>The nbmdt <span style="text-decoration: underline;">shall</span>
+      detect the following ethernet failures:</p>
+    <ul>
+      <li>no carrier (unplugged)<br>
+      </li>
+      <li>interface downed by command</li>
+      <li>high frame loss rate</li>
+      <li>high collision rate</li>
+      <li>incoming packet rate too low</li>
+      <li>error packets too high</li>
+      <li>Collisions too high</li>
+    </ul>
+    <p><br>
+    </p>
+    <p>See the <a href="nbmdt_test_plan.html#mozTocId338377">test plan
+        linux ethernet section</a>.<br>
+    </p>
     <br>
-  </li>
-</ul>
-
-
-<p>The implementer <span style="text-decoration: underline;">shall</span> document which of these requirements are met in each release.</p>
-
-<p>The NBMDT is "test" software, in that it tests a network.&nbsp; 
-However, the NBMDT itself must also be tested, just as any other 
-software is tested.&nbsp; The t<a href="mozTocId192195">est procedures section below</a> describes how to test that the NBMDT tests networks effectively.<br>
+    <h4>wifi</h4>
+    <p>The nbmdt <span style="text-decoration: underline;">shall</span>
+      detect the following wifi failures:</p>
+    <ul>
+      <li>no carrier</li>
+      <li>interface down by command</li>
+      <li>no connection to access point</li>
+      <li>no access points visible or heard from</li>
+      <li><br>
+      </li>
+    </ul>
+    <h3>Network</h3>
+    <p>The nbmdt <span style="text-decoration: underline;">shall</span>
+      detect failures on computers that are multi-home (have more than
+      one address).<br>
+    </p>
+    <h4>IPv4</h4>
+    <p><br>
+    </p>
+    <h4>IPv6</h4>
+    <h3>Transport</h3>
+    <h4>TCP</h4>
+    <p><br>
+    </p>
+    <h4>UDP</h4>
+    <p><br>
+    </p>
+    <p><br>
+    </p>
+    <p><br>
+    </p>
+    <p><br>
+    </p>
+    <hr width="100%" size="2">
+    <h1>Notes to programmers</h1>
+    <p>Any identifier or filename that begins with test, Test, or TEST
+      is reserved for use by pytest.&nbsp; If there is an object that
+      checks that something is working, use check, Check, or
+      CHECK.&nbsp; When speaking or writing about the NBMDT, use this
+      convention.&nbsp; The rationale is that the NBMDT tests networks,
+      but the NBMDT is also tested by pytest and other test programs.<br>
+    </p>
+<p>Nagios plugins
+<br>
 </p>
-
-
-<h3><a name="mozTocId63074" class="mozTocH3"></a>Dependencies<br>
-</h3>
-
-<p>The NBMDT understands dependencies.&nbsp; The NBMDT shall 
-differentiate between a component that fails because a component it 
-depends on has failed and a component that has failed for an unknown 
-reason.&nbsp; The NBMDT should do as much as it can to diagnose the 
-problem.<br>
-</p>
-
-<ol>
-
-  <li>All client applications depend on DNS.</li>
-  <li>Some client applications depend on NTP</li>
-  <li>Every client application depends on remote servers.&nbsp; It is 
-not practical to test all remote servers, so one of the configuration 
-items shall be a list of servers to test and a procedure for testing 
-them.&nbsp; Tests developed for nagios may be used here.<br>
-  </li>
-  <li>All Applications also depend on TCP or UDP (other transport protocols, such as SCTP, are possible)</li>
-  <li>DNS depends on UDP and might depend on TCP.&nbsp; A list of 
-optional remote name servers should be a configuration item.&nbsp; nbmdt
- may develop a list of remote name servers by inspecting 
-/etc/resolve.conf on UNIX systems and TBD on MS-Windows.&nbsp; It must 
-be a configuration error if nbmdt is unable to develop a list of at 
-least one remote name server.</li>
-  <li>Some systems depend on remote authentication, i.e. AD, Kerberos, NIS.</li>
-  <li>Kerberos depends on NTP.&nbsp; Does AD?&nbsp; Does NIS?<br>
-  </li>
-  <li>NTP depends on UDP.&nbsp; <br>
-  </li>
-  <li>TCP depends on either IPv4 or IPv6 but preferably both</li>
-  <li>UDP depends on either IPv4 or IPv6 but preferably both</li>
-  <li>IPv6 routing depends on IPv6 on all interfaces it is enabled for</li>
-  <li>IPv4 routing depends on IPv4 on all interfaces it is enabled for</li>
-  <li>IPv4 depends on ethernet or WiFi or both (Other media are possible)</li>
-  <li>IPv4 on Ethernet or Wifi (or other 802.x media) depend on ARP</li>
-  <li>IPv6 depends on NDP</li>
-  <li>IPv4 depends on the default router.&nbsp; It must be a <a href="file:///home/jeffs/nbmdt/Network%20Boot%20Monitor%20Diagnostic%20Tool%20%28NBMDT%29.html#CONFIGURATION_ERROR">configuration error</a> if the NBMDT cannot identify a default IPv4 router.<br>
-  </li>
-  <li>IPv6 depends on the default router.&nbsp; It should be a <a href="#CONFIGURATION_ERROR">configuration error</a> if the NBMDT cannot identify a default IPv6 router.</li>
-  <li>IPv4 might depend on DHCP or it might be configured through a 
-file.&nbsp; The NBMDT shall identify how IPv4 is configured and shall 
-verify that the configuration is reasonable</li>
-  <li>IPv6 might depend on DHCP6, or through NDP, or it might be 
-configured through a file.&nbsp;
- The NBMDT shall identify how IPv6 is configured and shall verify that 
-the configuration is reasonable.&nbsp; If the IPv6 configuration changes
- because of a change in router configuration that has propagated through
- NDS, then the NBMDT shall indicate an <a href="#UNEXPECTED_CONFIGURATION_CHANGE">UNEXPECTED CONFIGURATION CHANGE</a>.<br>
-  </li>
-  <li>IPv4 depends on <a href="#ARP">ARP</a></li>
-  <li>IPv6 depends on <a href="#NDP">NDP</a>.<br>
-  </li>
-  <li>ARP depends on Ethernet or WiFi</li>
-  <li>NDP depends on Ethernet or WiFi</li>
-  <li>WiFi depends on its <a href="#AP">AP</a><br>
-  </li>
-  <li>Ethernet adapter must be UP, and packet counters must be increasing</li>
-  <li>At least one Ethernet or WiFi adapter must have an IPv4 address (really?)</li>
-  <li>At least one Ethernet or WiFi adapter must have either a global unicast IPv6 or a unique local IPv6 address</li>
-  <li>If an Ethernet adapter has no carrier, then its IPv4 and IPv6 
-addresses need not be defined. If the addresses are not defined in this 
-case, then NBMDT shall indicate a <a href="#DEPENDENCY_FAILURE">DEPENDENCY FAILURE</a>.<br>
-  </li>
-  <li>WiFi adapter must be connected, and packet counters must be increasing.<br>
-  </li>
-</ol>
-
-<h3><a name="mozTocId314080" class="mozTocH3"></a>Errors<br>
-</h3>
-
-<p>NBMDT has the following error conditions (in order of increasing severity):</p>
-
-<ol>
-
-  <li><a name="NORMAL"></a>NORMAL</li>
-  <li><a name="UNEXPECTED_CONFIGURATION_CHANGE"></a>UNEXPECTED 
-CONFIGURATION CHANGE - The network is still working, but something has 
-changed.&nbsp; For example, DHCP might have handed out a new IPv4 
-address, the default nameservers might have changed, or the WiFi SSD 
-might be new.<br>
-  </li>
-  <li>DEGRADED_REDUNDANT due to a loss of a redundant dependency (e.g. one of several name servers has failed)</li>
-  <li><a name="DEGRADED_PERFORMANCE"></a>DEGRADED_PERFORMANCE&nbsp; loss of performance (e.g. excess round trip times, packet loss)</li>
-  <li>FAILURE ACKNOWLEDGED an error was reported to the operator, and he or she has acknowledged it</li>
-  <li><a name="DEPENDENCY_FAILURE"></a>DEPENDENCY FAILURE something that this component depends on has failed</li>
-  <li><a name="FAILURE"></a>FAILURE This component is down, cause is unknown, but not due to something that this component depends on.</li>
-  <li><a name="CONFIGURATION_ERROR"></a>CONFIGURATION ERROR NBMDT is 
-unable to figure out something important on its own, and that 
-configuration item is not in the configuration file. Syntax errors in 
-the configuration file.</li>
-</ol>
-
-<h3><a name="mozTocId185204" class="mozTocH3"></a>Execution environments<br>
-</h3>
-
-<h4><a name="mozTocId951070" class="mozTocH4"></a>Platforms</h4>
-
-<p>The nbmdt <span style="text-decoration: underline;">shoud</span> be tested on the following platforms:</p>
-
-<ul>
-
-  <li>Linux</li>
-  <ul>
-    <li>Debian based</li>
-    <li>redhat based</li>
-<li>SUSE<br>
-</li>
-
-  </ul>
-  <li>Mac OS X</li>
-  <li>MS-Windows</li>
-  <ul>
-    <li>Windows/10</li>
-    <li>Windows Server</li>
-  </ul>
-  <li>Rasperry PI</li></ul>
-<p>Implementations <span style="text-decoration: underline;">may</span> be tested on additional platforms.<br>
-</p>
-<p>The implementer <span style="text-decoration: underline;">shall</span> describe what environments the current release of the software supports.<br>
-</p>
-<ul>
-
-</ul>
-
-
-<h4><a name="mozTocId508795" class="mozTocH4"></a>Terminal software<br>
-</h4>
-
-<p>The nbmdt <span style="text-decoration: underline;">should</span> run on the following terminal software:</p>
-
-<ul>
-
-  <li>Windows:</li>
-  <ul>
-    <li>putty</li>
-    <li>command.exe</li>
-    <li>power shell</li>
-    <li>Native python<br>
-    </li>
-  </ul>
-  <li>Linux</li>
-  <ul>
-    <li>gnome-terminal</li>
-    <li>mate-terminal</li>
-    <li>kde-terminal</li>
-  </ul>
-  <li>Mac OS X</li>
-  <ul>
-    <li>terminal</li>
-    <li>tmux</li>
-  </ul>
-  <li>Rasberry PI</li>
-  <ul>
-    <li>TBD<br>
-    </li>
-  </ul>
-</ul>
-
-<h4><a name="mozTocId730933" class="mozTocH4"></a>python software<br>
-</h4>
-
-<p>The nbmdt <span style="text-decoration: underline;">shall</span> run under Python 3.6.&nbsp; It <span style="text-decoration: underline;">should</span> run under Python 3.7 with no changes.<br>
-</p>
-
-<h3><a name="mozTocId156608" class="mozTocH3"></a>User Interfaces</h3>
-
-<p>The nbmdt shall provide the following user interfaces:</p>
-
-<ul>
-
-  <li>A CLI suitable for scripting</li>
-  <li>A terminal graphical interface that uses ANSI X3.64 escape characters and commonly used terminal extensions as described above.</li>
-  <li>A GUI using python graphical interface libraries such as tkinter</li>
-  <li>A web user interface suitable for use with a browser</li>
-</ul>
-
-<p><br>
-</p>
-
-<h1><a name="mozTocId192195" class="mozTocH1"></a>Testing procedures</h1>
-
-<p>The NBMDT <span style="text-decoration: underline;">shall</span> test the network starting at the lowest levels of the OSI model and work upwards.</p>
-
-<p>The nbmdt <span style="text-decoration: underline;">shall</span> itself be tested using these tests in simulation, as described in the <a href="nbmdt_test_plan.html">test plan</a>.<br>
-</p>
-
-
-<p><br>
-</p>
-
-<h2>Rough draft of testing procedures</h2>
-
-<p>The section describes how the NBMDT tests networks</p>
-<h3>Physical<br>
-
-</h3>
-
-
-
-<h4>ethernet</h4>
-<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect the following ethernet failures:</p>
-<ul>
-  <li>no carrier (unplugged)<br>
-  </li>
-  <li>interface downed by command</li>
-  <li>high frame loss rate</li>
-  <li>high collision rate</li>
-  <li>incoming packet rate too low</li>
-  <li>error packets too high</li>
-  <li>Collisions too high</li>
-</ul>
-<p><br>
-</p>
-
-<p>See the <a href="nbmdt_test_plan.html#mozTocId338377">test plan linux ethernet section</a>.<br>
-</p><br>
-<h4>wifi</h4>
-<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect the following wifi failures:</p>
-<ul>
-  <li>no carrier</li>
-  <li>interface down by command</li>
-  <li>no connection to access point</li>
-  <li>no access points visible or heard from</li>
-  <li><br>
-  </li>
-</ul>
-
-
-<h3>Network</h3>
-<p>The nbmdt <span style="text-decoration: underline;">shall</span> detect failures on computers that are multi-home (have more than one address).<br>
-</p>
-<h4>IPv4</h4>
-<p><br>
-</p>
-<h4>IPv6</h4>
-<h3>Transport</h3>
-<h4>TCP</h4>
-<p><br>
-</p>
-<h4>UDP</h4>
-<p><br>
-</p>
-<p><br>
-</p>
-
-
-
-<p><br>
-</p>
-
-<p><br>
-</p>
-
-<p><br>
-</p>
-
-<p><br>
-</p>
-
-<hr style="width: 100%; height: 2px;">
-<h1><a name="mozTocId174413" class="mozTocH1"></a>Acronyms<a name="ARP"></a></h1>
-
+<p><b>Python plugins</b>.  The .ini file gives the directory where the python plugins live.  The nbmdt will scan this directory,
+looking for files with .py file types.  Refer to <a href="https://tools.ietf.org/html/rfc2119">RFC 2119</a> for "the meaning of <style class="keyword">must</span>, etc.  Any python file in this directory <style class="keyword">must</span>  have a class with the same name as the filename.
+This class <style class="keyword">may</span>  import or derive from another class in this file or elsewhere.  This class <style class="keyword">must</span>  have a method,
+<code>describe_yourself</code> that returns a directory with the following fields:
 <dl>
-
-  <dt>A</dt>
-  <dd>Add things to this list after here<br>
-  </dd>
-  <dt><a name="AP"></a>AP</dt>
-  <dd>WiFi Access point<br>
-  </dd>
+<dt>level</dt>
+<dd>Which level in the protocol stack it checks.  These levels are described by class <code>OSILevels</code> in file <tt>constants.py</tt>.  If there is no particular device that this class tests, then the nbmdt will do something, <span class="clueless">I just do not know what yet</span>.</dd>
+<dt>object_name</dt>
+<dd>The name of object, or a list of the object names that this class checks</dd>
+<dt>pytest instructions</dt>
+<dd style="clueless">I have not quite figured out how to do this yet.</dd> 
 </dl>
-
-
-<dl>
-
-<dt><a name="ARP"></a>ARP</dt>
-</dl>
-
-<dl>
-
-  <dd>Address Resolution Protocol</dd>
-  <dt><a name="DNS"></a>DNS</dt>
-  <dd>Domain Name Service</dd>
-  <dt><a name="IP"></a>IP</dt>
-  <dd>Internet Protocol</dd>
-  <dt><a name="IPv4"></a>IPv4</dt>
-  <dd>Internet Protocol, version 4</dd>
-  <dt><a name="IPv6"></a>IPv6</dt>
-  <dd>Internet Protocol, version 6</dd>
-  <dt><a name="NDP_"></a>NDP</dt>
-  <dd>Neighbor Discovery Protocol</dd>
-  <dt><a name="SCTP"></a>SCTP</dt>
-  <dd><span style="color: rgb(255, 153, 0);">Something</span> Control Transmission Protocol<br>
-  </dd>
-  <dt><a name="TCP"></a>TCP</dt>
-  <dd>Transmission Control Protocol</dd>
-  <dt><a name="NDP"></a>NDP</dt>
-  <dd>Network Discovery Protocol<br>
-  </dd>
-  <dt><a name="NTP"></a>NTP</dt>
-  <dd>Network Time Protocol</dd>
-  <dt><a name="UDP"></a>UDP</dt>
-  <dd>User Datagram Protocol</dd>
-  <dt><a name="WiFi"></a>WiFi</dt>
-  <dd>Wireless<br>
-  </dd>
-</dl>
-
-</body></html>
+    <p><br>
+    </p>
+    <hr style="width: 100%; height: 2px;">
+    <h1><a name="mozTocId174413" class="mozTocH1"></a>Acronyms<a
+        name="ARP"></a></h1>
+    <dl>
+      <dt>A</dt>
+      <dd>Add things to this list after here</dd>
+      <dt>AD</dt>
+      <dd>Active Directory<br>
+      </dd>
+      <dt><a name="AP"></a>AP</dt>
+      <dd>WiFi Access point<br>
+      </dd>
+    </dl>
+    <dl>
+      <dt><a name="ARP"></a>ARP</dt>
+    </dl>
+    <dl>
+      <dd>Address Resolution Protocol</dd>
+      <dt><a name="DNS"></a>DNS</dt>
+      <dd>Domain Name Service</dd>
+      <dt><a name="IP"></a>IP</dt>
+      <dd>Internet Protocol</dd>
+      <dt><a name="IPv4"></a>IPv4</dt>
+      <dd>Internet Protocol, version 4</dd>
+      <dt><a name="IPv6"></a>IPv6</dt>
+      <dd>Internet Protocol, version 6</dd>
+      <dt><a name="NDP_"></a>NDP</dt>
+      <dd>Neighbor Discovery Protocol</dd>
+      <dt><a name="SCTP"></a>SCTP</dt>
+      <dd>Stream Control Transmission Protocol<br>
+      </dd>
+      <dt><a name="TCP"></a>TCP</dt>
+      <dd>Transmission Control Protocol</dd>
+      <dt><a name="NDP"></a>NDP</dt>
+      <dd>Network Discovery Protocol<br>
+      </dd>
+      <dt><a name="NTP"></a>NTP</dt>
+      <dd>Network Time Protocol</dd>
+      <dt><a name="UDP"></a>UDP</dt>
+      <dd>User Datagram Protocol</dd>
+      <dt><a name="WiFi"></a>WiFi</dt>
+      <dd>Wireless<br>
+      </dd>
+    </dl>
+  </body>
+</html>

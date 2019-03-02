@@ -15,6 +15,7 @@ from pathlib import Path
 import stat
 from termcolor import cprint
 
+IP_COMMAND="/sbin/ip"	# For ubuntu at least.  Should be a configuration item or else an auto-configuration item.
 
 class Configuration(object):
 
