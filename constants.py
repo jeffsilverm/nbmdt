@@ -154,3 +154,4 @@ type_network_dict = typing.Dict[str, "network.Network"]
 type_datalink_dict = typing.Dict[str, "datalink.DataLink"]
 type_interface_dict = typing.Dict[str, "interface.Interface"]   # Issue 25 re-written
 type_physical_dict = typing.Dict[str, "physical.Physical"]  # Issue 29
+
