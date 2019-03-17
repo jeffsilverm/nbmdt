@@ -6,10 +6,11 @@ import socket
 import subprocess
 import sys
 
-IP_COMMAND="/sbin/ip"
+# IP_COMMAND="/sbin/ip"  in network.py
 
-class DNSFailure(Exception):
-    pass
+# Doesn't belong here.
+# class DNSFailure(Exception):
+#    pass
 
 
 class IPv4_address(object):
