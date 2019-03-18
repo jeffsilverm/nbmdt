@@ -7,13 +7,14 @@ import json
 import platform
 import subprocess
 import sys
-from typing import List
+from typing import List, Tuple, Dict
+import os
 
-from constants import OperatingSystems
 from constants import ErrorLevels
 from constants import type_application_dict, type_presentation_dict, type_session_dict, \
-    type_transport_dict, type_network_dict, type_datalink_dict, type_interface_dict, \
+    type_transport_dict, type_network_dict, type_datalink_dict,  \
     type_physical_dict
+import application, presentation, session, transport, routes, datalink, physical
 
 # from nbmdt import SystemDescription
 
@@ -117,11 +118,13 @@ class SystemDescription(object):
         :return: a SystemDescription object.
         """
 
-        applications: typing.Dict = application.Application.discover()
+        applications: Dict = application.Application.discover()
         presentations = presentation.Presentation.discover()
         sessions = session.Session.discover()
         transports = transport.Transport.discover()
-        networks = network.Network.discover()
+        networks_4 = routes.IPv4Route.discover()
+        networks_6 = routes.IPv6Route.discover()
+
         # interfaces = interface.Interface.discover()
         datalinks = datalink.DataLink.discover()
         physicals = physical.Physical.discover()
@@ -132,7 +135,8 @@ class SystemDescription(object):
             presentations=presentations,
             sessions=sessions,
             transports=transports,
-            networks=networks,
+            networks_4=networks_4,
+            networks_6=networks_6,
             datalinks=datalinks,
             physicals=physicals,
             system_name=name
@@ -311,9 +315,9 @@ class OsCliInter(object):
         f"platform.system returned an unknown (not unimplemented, that's different) value: {system}"
 
     @classmethod
-    def run_command(cls, command: List[str]) -> str:
+    def run_command(cls, command: List[str]) -> Tuple[str, str, int]:
         """
-        Run the command on the CLI
+        Run the command on the CLI.  This is here to make it easy to mock
 
         :param command: a list of strings.  Element 0 is the name of the executable. The rest of the list are args to
         the command
@@ -327,8 +331,11 @@ class OsCliInter(object):
                                                                 stdout=subprocess.PIPE, stderr=None, shell=False,
                                                                 timeout=None,
                                                                 check=False)
-        completed_str = completed.stdout.decode('ascii')
-        return completed_str
+        # Issue #36 - return stdout, stderr, and the return status code.
+        stdout_str: str = completed.stdout.decode('ascii')
+        stderr_str: str = completed.stderr.decode('ascii')
+        status: int = completed.returncode
+        return stdout_str, stderr_str, status
 
 
 try:
@@ -340,17 +347,17 @@ except Exception as e:  # if anything goes wrong
 # of class OsCliInter or else the compiler will raise a NameError exception at compile time
 # Access the_os using utilities.the_os  The variable is so named to avoid confusion with the os package name
 os_name: str = OsCliInter.system.lower()
-the_os = OperatingSystems.UNKNOWN
+the_os = constants.OperatingSystems.UNKNOWN
 if 'linux' == os_name:
-    the_os = OperatingSystems.LINUX
+    the_os = constants.OperatingSystems.LINUX
 elif 'windows' == os_name:
-    the_os = OperatingSystems.WINDOWS
+    the_os = constants.OperatingSystems.WINDOWS
 elif 'darwin' == os_name:
-    the_os = OperatingSystems.MAC_OS_X
+    the_os = constants.OperatingSystems.MAC_OS_X
 else:
     raise ValueError(f"System is {os_name} and I don't recognize it")
 
 if "__main__" == __name__:
     print(f"System is {os_name} A.K.A. {the_os}")
-    if OperatingSystems.LINUX == the_os:
+    if constants.OperatingSystems.LINUX == the_os:
         print(f"In linux, the uname -a command output is \n{OsCliInter.run_command(['uname', '-a'])}\n.")

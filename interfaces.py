@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import collections
-import netifaces        # See /usr/lib/python3/dist-packages/netifaces-0.10.4.egg-info/PKG-INFO
+import netifaces       # See /usr/lib/python3/dist-packages/netifaces-0.10.4.egg-info/PKG-INFO
 # netifaces will do everything I need and it is portable!  Actually, it won't do, it won't tell me
 # there is a carrier or if the interface is up.  The ip command will.  But the ip command won't
 # run om windows.
@@ -58,7 +58,6 @@ class PhysicalInterface(object):
         """
 
         links_list:list = netifaces.interfaces()
-
         return links_list
 
     def run_ip_link_command(self, interface=None) -> dict:
