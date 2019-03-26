@@ -1,8 +1,11 @@
-import constants
 import datetime
-import pytest
+import sys
 import time
 import typing
+
+import pytest
+
+import constants
 
 
 class Layer(object):
@@ -42,8 +45,10 @@ class Layer(object):
                 result.__setattr__(at, self.__getattribute__(at) - other.__getattribute__(at))
             except TypeError as t:
                 if type(self.__getattribute__(at)) != type(other.__getattribute__(at)):
-                    raise TypeError(f"The type of self.{at} is {type(self.__getattribute__(at))}" \
+                    raise TypeError(f"The type of self.{at} is {type(self.__getattribute__(at))}"
                                     f"The type of other.{at} is {type(other.__getattribute__(at))}")
+                else:
+                    print(f"handling an unknown type error, {str(t)}", file=sys.stderr)
         # This test protects against the caller doing something stupid
         assert isinstance(result.time, datetime.timedelta), f"result.time should be a datetime.timedelta, is  \
                    {type(result)}"
@@ -63,16 +68,17 @@ class Layer(object):
         return True
 
     @classmethod
-    def discover(self) -> typing.Dict[str, 'Layer'] :
-        """This is an abstract class that all classes that import this class
-        must override.
-        All of the methods must return a dictionary which key'd by the name of the
+    def discover(cls) -> typing.Dict[str, 'Layer']:
+        """
+        Return a dictionary which key'd by the name of the
         object and the value is an an object of that OSI level
+        This is an abstract class that all classes that import this class
+        must override.
         """
         d: typing.Dict[str, 'Layer'] = {}
-        raise NotImplementedError
-
-
+        if "nefarious name" not in d:
+            raise NotImplementedError
+        return d
 
 
 if "__main__" == __name__:
@@ -102,9 +108,9 @@ if "__main__" == __name__:
 
     delta: Layer = mini_me - me
     assert isinstance(delta.time, datetime.timedelta), f"delta.time should be datetime.timedelta is {type(delta.time)}"
-    dt = abs(delta.time)      # abs works as expected for timedelta types
+    dt = abs(delta.time)  # abs works as expected for timedelta types
     assert dt.seconds <= TEST_DELAY * 1.02, \
-        f"delta.time.seconds should be less than { TEST_DELAY * 1.02} but it's {delta.time.seconds}"
+        f"delta.time.seconds should be less than {TEST_DELAY * 1.02} but it's {delta.time.seconds}"
 
     assert delta.e == 2, f"delta.e should be 2, is actually {delta.e}"
     assert delta.q == -11, f"delta.q should be -11, is actually {delta.q}"
