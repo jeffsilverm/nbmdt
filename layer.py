@@ -2,6 +2,7 @@ import constants
 import datetime
 import pytest
 import time
+import typing
 
 
 class Layer(object):
@@ -16,6 +17,7 @@ class Layer(object):
     def __init__(self, name: str) -> None:
         self.time = datetime.datetime.now()
         self.name = name  # name of the entity (NIC, nameserver, route, etc.) being recorded
+        self.error_status = constants.ErrorLevels.UNKNOWN
 
     def get_status(self) -> constants.ErrorLevels:
         return constants.ErrorLevels.NORMAL
@@ -60,6 +62,18 @@ class Layer(object):
                 return False
         return True
 
+    @classmethod
+    def discover(self) -> typing.Dict[str, 'Layer'] :
+        """This is an abstract class that all classes that import this class
+        must override.
+        All of the methods must return a dictionary which key'd by the name of the
+        object and the value is an an object of that OSI level
+        """
+        d: typing.Dict[str, 'Layer'] = {}
+        raise NotImplementedError
+
+
+
 
 if "__main__" == __name__:
     TEST_DELAY = 2.0
@@ -78,7 +92,9 @@ if "__main__" == __name__:
     who = datetime.datetime.now()
 
     with pytest.raises(ValueError):
-        # The other object is not an instance of Layer
+        # The other object is not an instance of Layer.  This tests that if
+        # the minus operator is given something that is not a Layer, it raises
+        # and exception.
         q = it - who  # noqa This is supposed to be two different types
 
     with pytest.raises(ValueError):
