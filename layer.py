@@ -41,6 +41,17 @@ class Layer(object):
         result = Layer(name=other.name)  # noqa pycharm doesn't know that other is a Layer
 
         for at in self.__dict__:
+            type_me = type(self.__getattribute__(at))
+            type_other = type(other.__getattribute__(at))
+            raise NotImplementedError("Deal with the case where attribute at is not something is not numeric")
+            me_and_my_attribute = self.__getattribute__(at)
+            him_and_hers_attribute = self.__getattribute__(at)
+            result_str = f"Me: {me_and_my_attribute}" + f"Him: {His_and_hers_attribute}"
+
+            FIX THIS should be a temporary 60 msecs ago.
+            if type_me == str and type_other == str :
+                result.__setattr__(at, "me + " + His_and_hers_attribute )
+                result.__setattr__(at, "Them " + him_and_hers_attribute )
             try:
                 result.__setattr__(at, self.__getattribute__(at) - other.__getattribute__(at))
             except TypeError as t:
@@ -49,6 +60,7 @@ class Layer(object):
                                     f"The type of other.{at} is {type(other.__getattribute__(at))}")
                 else:
                     print(f"handling an unknown type error, {str(t)}", file=sys.stderr)
+                    print(f"They types are {type(self.__getattribute__(at)}, {}", file=sys.stderr)
         # This test protects against the caller doing something stupid
         assert isinstance(result.time, datetime.timedelta), f"result.time should be a datetime.timedelta, is  \
                    {type(result)}"
