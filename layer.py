@@ -2,6 +2,7 @@ import datetime
 import sys
 import time
 import typing
+import datetime
 
 import pytest
 
@@ -36,6 +37,8 @@ class Layer(object):
         """
         if not isinstance(other, Layer):
             raise ValueError(f"other should be a child of Layer, is actually {type(other)}")
+        if type(self) != type(other):
+            raise ValueError
         if self.name != other.name:
             raise ValueError(f"other.name is {other.name} but my name is {self.name}. Should be the same")
         result = Layer(name=other.name)  # noqa pycharm doesn't know that other is a Layer
@@ -43,24 +46,26 @@ class Layer(object):
         for at in self.__dict__:
             type_me = type(self.__getattribute__(at))
             type_other = type(other.__getattribute__(at))
-            raise NotImplementedError("Deal with the case where attribute at is not something is not numeric")
-            me_and_my_attribute = self.__getattribute__(at)
-            him_and_hers_attribute = self.__getattribute__(at)
-            result_str = f"Me: {me_and_my_attribute}" + f"Him: {His_and_hers_attribute}"
+            assert type_me == type_other, "type_me and type_other should be the same type and are not" \
+                f"type_me is {type_me} while type_other is {type_other}."
 
-            FIX THIS should be a temporary 60 msecs ago.
-            if type_me == str and type_other == str :
-                result.__setattr__(at, "me + " + His_and_hers_attribute )
-                result.__setattr__(at, "Them " + him_and_hers_attribute )
-            try:
-                result.__setattr__(at, self.__getattribute__(at) - other.__getattribute__(at))
-            except TypeError as t:
-                if type(self.__getattribute__(at)) != type(other.__getattribute__(at)):
-                    raise TypeError(f"The type of self.{at} is {type(self.__getattribute__(at))}"
-                                    f"The type of other.{at} is {type(other.__getattribute__(at))}")
-                else:
-                    print(f"handling an unknown type error, {str(t)}", file=sys.stderr)
-                    print(f"They types are {type(self.__getattribute__(at)}, {}", file=sys.stderr)
+            me_and_my_attribute_value = self.__getattribute__(at)
+            him_and_hers_attribute_value = other.__getattribute__(at)
+            if type_me == str and type_other == str:
+                result_str = f"Me: {me_and_my_attribute_value}" + f"Him: {him_and_hers_attribute_value}"
+                result.__setattr__(at, result_str)
+            else:
+                try:
+                    # These might be reversed  - test for that
+                    result.__setattr__(at, me_and_my_attribute_value - him_and_hers_attribute_value)
+                except TypeError as t:
+                    if type(self.__getattribute__(at)) != type(other.__getattribute__(at)):   # noqa
+                        raise TypeError(f"The type of self.{at} is {type(self.__getattribute__(at))}"
+                                        f"The type of other.{at} is {type(other.__getattribute__(at))}")
+                    else:
+                        print(f"handling an unknown type error, {str(t)}", file=sys.stderr)
+                        print(f"The types are {type(self.__getattribute__(at))}, " 
+                              f"{type(other.__getattribute__(at))}", file=sys.stderr)
         # This test protects against the caller doing something stupid
         assert isinstance(result.time, datetime.timedelta), f"result.time should be a datetime.timedelta, is  \
                    {type(result)}"
@@ -93,11 +98,24 @@ class Layer(object):
         return d
 
 
+    def dict_from_class(self) -> typing.Dict[str, dict]:
+        """
+        Converts all of the attributes of this object into a dictionary
+        This is needed because JSON wants bools, ints, floats, lists or dicts
+        :return:
+        """
+        return dict(
+            (key, value) for (key, value) in self.__dict__.items()
+            if not callable(value))
+
+
 if "__main__" == __name__:
     TEST_DELAY = 2.0
-    me = Layer("ennie")
+    me: Layer = Layer("ennie")
     me.e = 4
     me.q = 17
+    assert callable(me.discover), "discover is a method and should be callable"
+    assert not callable(me.e), "e should NOT be callable, and it is"
     time.sleep(TEST_DELAY)
     mini_me = Layer("ennie")
     mini_me.e = 6
@@ -107,7 +125,7 @@ if "__main__" == __name__:
     dup.q = me.q
 
     it = Layer("meenie")
-    who = datetime.datetime.now()
+    who: datetime = datetime.datetime.now()
 
     with pytest.raises(ValueError):
         # The other object is not an instance of Layer.  This tests that if
@@ -129,3 +147,9 @@ if "__main__" == __name__:
 
     assert me != mini_me, "me should be different than mini_me"
     assert me == dup, "me should be the same as mini_me"
+
+    dict_from_layer: dict = me.dict_from_class()
+    assert isinstance(dict_from_layer, dict), \
+        "dict_from_layer isn't a dict, it's a {0}".format(str(type(me)))
+    assert 'e' in dict_from_layer, "There should be a key, 'e', in me and there isn't"
+    assert dict_from_layer['e'] == 4, f"me.e should be 4, but it really is {me['e']}"
