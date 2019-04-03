@@ -1,16 +1,17 @@
 #! /usr/bin/python3
 #
 # This file contains constants for the NBMDT
-#
+
 # Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
 import typing
-from enum import IntEnum, Enum, auto
+import enum
+
 
 port = 8722  # Default port that the server listens on.  Provides a RESTful
 # interface
 
 
-class Modes(IntEnum):
+class Modes(enum.IntEnum):
     BOOT = 1
     MONITOR = 2
     DIAGNOSE = 3
@@ -18,7 +19,7 @@ class Modes(IntEnum):
     NOMINAL = 5
 
 
-class OperatingSystems(IntEnum):
+class OperatingSystems(enum.IntEnum):
     LINUX = 1
     MAC_OS_X = 2
     WINDOWS = 3
@@ -45,7 +46,7 @@ class OperatingSystems(IntEnum):
     """
 
 
-class OSILevels(Enum):
+class OSILevels(enum.Enum):
     PHYSICAL = 1
     MEDIAACCESSCONTROL = 2
     NETWORK = 3
@@ -55,7 +56,7 @@ class OSILevels(Enum):
     APPLICATION = 7
 
 
-class Protocols(Enum):
+class Protocols(enum.Enum):
     # These values are from /etc/protocols
     IP = 0  # IPv4.
     TCP = 6
@@ -65,7 +66,7 @@ class Protocols(Enum):
     IPv6_frag = 44  # is ipv6-frag in /etc/protocols
 
 
-class Layers(IntEnum):
+class Layers(enum.IntEnum):
     # This is from the nbmdt_user_manual
     #  ethernet, wifi, ipv4, ipv6, neighbors, dhcp4, dhcp6, router,
     # nameserver,  local_ports, isp_routing, remote_ports.
@@ -83,10 +84,10 @@ class Layers(IntEnum):
     REMOTE_PORTS = 12
 
 
-class Descriptions(Enum):
-    CURRENT = auto()
-    NOMINAL = auto()
-    NAMED = auto()
+class Descriptions(enum.Enum):
+    CURRENT = enum.Enum.auto()
+    NOMINAL = enum.Enum.auto()
+    NAMED = enum.Enum.auto()
 
     def is_current(self, description) -> bool:
         return description == self.CURRENT
@@ -98,7 +99,7 @@ class Descriptions(Enum):
         return description == self.NAMED
 
 
-class ErrorLevels(IntEnum):
+class ErrorLevels(enum.IntEnum):
     """
     From The_Network_Boot_Monitor_Diagnostic_Tool.html
 
@@ -180,7 +181,7 @@ type_application_dict = typing.Dict[str, "application.Application"]
 type_presentation_dict = typing.Dict[str, "presentation.Presentation"]
 type_session_dict = typing.Dict[str, "session.Session"]
 type_transport_dict = typing.Dict[str, "transport.Transport"]
-type_network_dict = typing.Dict[str, "network.Network"]
+type_network_dict: dict = typing.Dict[str, "network.Network"]
 type_datalink_dict = typing.Dict[str, "datalink.DataLink"]
 type_interface_dict = typing.Dict[
     str, "interface.Interface"]  # Issue 25 re-written

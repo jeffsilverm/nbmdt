@@ -5,35 +5,41 @@
 import socket
 import subprocess
 import sys
+import ipaddress
+from layer import Layer
+from utilities import OsCliInter
+import configuration
+import application
 
-IP_COMMAND="/sbin/ip"
 
-class DNSFailure(Exception):
-    pass
+# IP_COMMAND="/sbin/ip"  in network.py
+
+# Doesn't belong here.
+# class DNSFailure(Exception):
+#    pass
 
 
-class IPv4_address(object):
+class IPv4Address(object):
     """
     This object has an IPv4 object.  It has two attributes: name and ipv4_address.
     If the name has not been specified, then it is None
     """
 
-    def __init__(self, name : str =None, ipv4_address : [str, bytes] = None):
+    def __init__(self, name: str = None, ipv4_address: [str, bytes] = None):
         if name is not None:
             self.name = name
             if ipv4_address is None:
-                # This may raise a socket.gaierror error if gethostbyname fails.  The error will propogate back to the caller
+                # This may raise a socket.gaierror error if gethostbyname fails. The error will propogate to the caller
                 ipv4_address = socket.gethostbyname(name)
         if ipv4_address is not None:
             if isinstance(ipv4_address, str):
                 # https://docs.python.org/3/library/socket.html#socket.inet_pton
                 self.ipv4_address = socket.inet_pton(socket.AF_INET, ipv4_address)
-            elif isinstance(ipv4_address, bytes) and len(ipv4_address) == 4 :
+            elif isinstance(ipv4_address, bytes) and len(ipv4_address) == 4:
                 self.ipv4_address = ipv4_address
             else:
-                raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"\
+                raise ValueError(f"ipv4_address is of type {type(ipv4_address)}"
                                  "should be bytes or str")
-
 
     def __str__(self):
         # https://docs.python.org/3/library/socket.html#socket.inet_ntop
@@ -51,27 +57,36 @@ class IPv4_address(object):
         A future version will return a tuple with the package loss percentage, statistics about delay, etc.
         """
 
-        completed = subprocess.run(['ping', self.ipv4_address])
+        completed = OsCliInter.run_command(['ping', self.ipv4_address])
         # return status = 0 if everything is okay
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
-        if completed.returncode == 2:
-            raise DNSFailure
-        return completed.returncode == True
+        return completed.returncode
 
 
-
-
-class IPv6_address(object):
-    def __init__(self, name : str = None, ipv6_address : [str, ] = None ):
+# Issue 5 renamed from IPv6_address to IPv6Address, i.e. CamelCase
+class IPv6Address(object):
+    def __init__(self, name: str = None, ipv6_address: [str, ] = None):
         if name is not None:
             self.name = name
         # Needs work
         self.ipv6_address = ipv6_address
 
+    @classmethod
+    def discover(cls):
+        """This method finds all of the IPv6 routes by examining the output of the ip route command, and
+        returns a list of IPV6_routes.  This is a class method because all route objects have the same
+         default gateway
+
+         This implementation is not very good, there is the netifaces interface which is socket based and avoids
+         forking a subprocess.
+         """
+        raise NotImplemented
 
 
-class IPv4Route(object):
+
+############ deprecate this class in favor of the ipaddress module in the standard library
+class IPv4Route(ipaddress, Layer):
     """
     A description of an IPv4 route
 
@@ -93,27 +108,33 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     
     """
 
-    def __init__(self, route ):
+    def __init__(self, route):
         """This returns an IPv4Route object.  """
 
- # Use caution: these are strings, not length 4 bytes
-        self.ipv4_destination = route['ipv4_destination']  # Destination must be present
+        destination = route['ipv4_destination']
+        Layer.__init__(name=destination)
+        assert hasattr(self, 'time')  # A test that my call to the super class is sane, this can be removed later
+        # Use caution: routes values are strings, not length 4 bytes
+        self.ipv4_destination = ipaddress.ip_network(destination)  # Destination must be present
         self.ipv4_dev = route['dev']
-        self.ipv4_gateway = route.get('via', None)
+        self.ipv4_gateway = ipaddress.ip_address(route.get('via', None))
         self.ipv4_proto = route.get('proto', None)
-        self.ipv4_scope = route.get('scope', None )
-        self.ipv4_metric = route.get('metric', 0 )
-        self.ip4v_src = route.get('src', None )
-        self.ipv4_linkdown  = route.get('linkdown', False )
-        assert isinstance( self.ipv4_linkdown, bool ),\
+        self.ipv4_scope = route.get('scope', None)
+        self.ipv4_metric = route.get('metric', 0)
+        self.ip4v_src = route.get('src', None)
+        self.ipv4_linkdown = route.get('linkdown', False)
+        assert isinstance(self.ipv4_linkdown, bool), \
             "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
 
-
     @classmethod
-    def find_ipv4_routes(cls):
+    def discover(cls):
         """This method finds all of the IPv4 routes by examining the output of the ip route command, and
         returns a list of IPV4_routes.  This is a class method because all route objects have the same
-         default gateway"""
+         default gateway
+
+         This implementation is not very good, there is the netifaces interface which is socket based and avoids
+         forking a subprocess.
+         """
 
         def translate_destination(destination: str) -> str:
             """
@@ -128,29 +149,18 @@ This method translates destination from a dotted quad IPv4 address to a name if 
                     # /etc/hosts.  Now, should I print the message, even though I expect it?
                     # says that it can so I have to handle it
                     print("socket.gethostbyaddr raised a socket.herror "
-                          "exception on %s, continuing" % destination, str(h), file=sys.stderr )
+                          "exception on %s, continuing" % destination, str(h), file=sys.stderr)
                 except socket.gaierror as g:
                     print("socket.gethostbyaddr raised a socket.gaierror "
                           "exception on %s, continuing" % destination, str(g),
-                          file=sys.stderr )
+                          file=sys.stderr)
                 else:
                     pass
                 name = destination
             return name
 
-
-
         # https://docs.python.org/3/library/subprocess.html
-        cpi = subprocess.run(args=[IP_COMMAND, '-4', 'route', 'list'],
-                             stdin=None,
-                             input=None,
-                             stdout=subprocess.PIPE, stderr=None,
-                             shell=False, timeout=None,
-                             check=False, encoding="utf-8", errors=None)
-        if cpi.returncode != 0:
-            raise subprocess.CalledProcessError
-        # Because subprocess.run was called with encoding=utf-8, output will be a string
-        results = cpi.stdout
+        results: str = OsCliInter.run_command(command=[configuration.IP_COMMAND, '-4', 'route', 'list'], )
         lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
         """
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
@@ -164,19 +174,19 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         """
 
         route_list = list()
-        for line in lines:      # lines is the output of the ip route list
+        for line in lines:  # lines is the output of the ip route list
             # command
             fields = line.split()
             destination = translate_destination(fields[0])
 
-            route=dict()
+            route = dict()
             route['ipv4_destination'] = destination
             for i in range(1, len(fields), 2):
                 if fields[i] == 'linkdown':
                     route['linkdown'] = True
                     break
-                route[fields[i]] = fields[i+1]
-            ipv4_route = IPv4Route( route=route )
+                route[fields[i]] = fields[i + 1]
+            ipv4_route = IPv4Route(route=route)
             if destination == "default" or destination == "0.0.0.0":
                 cls.default_gateway = ipv4_route
             route_list.append(ipv4_route)
@@ -196,10 +206,10 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
     def __str__(self):
         """This method produces a nice string representation of a IPv4_route object"""
         return f"dest={self.ipv4_destination} gateway={self.ipv4_gateway} " \
-               f"dev={self.ipv4_dev} " \
-               f"metric={self.ipv4_metric} proto={self.ipv4_proto} "\
-               f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
-               ( "linkdown" if self.ipv4_linkdown else "linkUP" )
+                   f"dev={self.ipv4_dev} " \
+                   f"metric={self.ipv4_metric} proto={self.ipv4_proto} " \
+                   f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
+               ("linkdown" if self.ipv4_linkdown else "linkUP")
 
     @classmethod
     def get_default_gateway(cls):
@@ -273,9 +283,7 @@ if __name__ in "__main__":
     print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_gateway()}")
     ipv4_route_lst = IPv4Route.find_ipv4_routes()
     print(f"The default gateway is {IPv4Route.default_gateway}")
-    print(40*"=")
+    print(40 * "=")
     for r in ipv4_route_lst:
-        print(r.__str__() )
+        print(r.__str__())
         print(f"The gateway is {r.ipv4_gateway}\n")
-
-

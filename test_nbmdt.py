@@ -6,13 +6,15 @@
 
 import unittest
 import nbmdt
+import routes
+import interfaces
 
 
 class TestIPv4Route (unittest.TestCase ):
 
     def setUP(self):
-        self.route_list = nbmdt.IPv4_route.find_ipv4_routes()
-        self.interface_list = nbmdt.Interfaces.find_interfaces()
+        self.route_list = routes.ipv4_route_lst()
+        self.interface_list = interfaces.get_interface_list()
 
 
     def test_all_are_routes(self):
