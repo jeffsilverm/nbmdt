@@ -24,6 +24,35 @@ class IPv4Route(object):
 
         :type ipv4_use: object
         
+
+
+    
+    """
+
+    def __init__(self, destination, route_dict: dict ) -> None:
+        """This returns an IPv4Route object.  The object can come from one of two sources: this constructor can
+        query the system using the ip command or it can go to the configuration file"""
+
+        assert isinstance(destination, ipaddress.IPv4Address), \
+            "destination should be an instance of IPv4Address, but is actually {type(destination)}"
+        self.ipv4_destination = destination
+        for key in route_dict.keys():
+            assert key in ["dev", "via", "proto", "scope", "src", "metric", "linkdown"], \
+            setatttr(self, key, route_dict[key])
+
+
+    @staticmethod
+    def find_ipv4_routes(self):
+        """This method finds all of the IPv4 routes by examining the output of the ip route command, and
+        returns a list of IPV4_routes """
+        # https://docs.python.org/3/library/subprocess.html
+        # Issue 39 
+        cpi = subprocess.run(['ip', '-4', 'route', 'list'], stdin=None, input=None, stdout=subprocess.PIPE, stderr=None,
+                             shell=False, timeout=None,
+                             check=False, encoding="utf-8", errors=None)
+        if cpi.returncode != 0:
+            raise subprocess.CalledProcessError
+        """
 jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ ip -4 route list
 default via 192.168.0.1 dev eno1 
 10.0.3.0/24 dev lxcbr0  proto kernel  scope link  src 10.0.3.1 linkdown 
@@ -32,60 +61,27 @@ default via 192.168.0.1 dev eno1
 192.168.0.0/22 dev br-ext  proto kernel  scope link  src 192.168.3.50  metric 425 linkdown 
 192.168.122.0/24 dev virbr0  proto kernel  scope link  src 192.168.122.1 linkdown 
 jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ 
-        
-
-
-    
-    """
-
-    def __init__(self, source ):
-        """This returns an IPv4Route object.  The object can come from one of two sources: this constructor can
-        query the system using the ip command or it can go to the configuration file"""
-
-
-        if source ==
-
-        self.name = name
-        self.ipv4_destination = ipv4_destination
-        self.ipv4_gateway = ipv4_gateway
-        self.ipv4_mask = ipv4_mask
-        self.ipv4_flags = ipv4_flags
-        self.ipv4_metric = ipv4_metric
-        self.ipv4_ref = ipv4_ref
-        self.ip4v_use = ipv4_use
-        self.ipv4_interface = ipv4_interface
-
-
-
-    @staticmethod
-
-    def find_ipv4_routes(self):
-        """This method finds all of the IPv4 routes by examining the output of the ip route command, and
-        returns a list of IPV4_routes """
-        # https://docs.python.org/3/library/subprocess.html
-        cpi = subprocess.run(['route', '-4', '-n'], stdin=None, input=None, stdout=subprocess.PIPE, stderr=None,
-                             shell=False, timeout=None,
-                             check=False, encoding="utf-8", errors=None)
-        if cpi.returncode != 0:
-            raise subprocess.CalledProcessError
+        """
         # Because subprocess.run was called with encoding=utf-8, output will be a string
         routes = cpi.stdout.decode('utf-8')
         route_records = routes.split('\n')
         route_list = list()
-        for r_rec in route_records[2:]:
-            (ipv4_destination, ipv4_gateway, ipv4_mask, ipv4_flags, ipv4_metric, ipv4_ref, ipv4_use, \
-             ipv4_interface) = r_rec.split()
-            if ipv4_destination == "0.0.0.0":
-                name = "default"
-            else:
-                try:
-                    name = socket.gethostbyaddr(ipv4_destination)
-                except socket.herror as h:
-                    # This shouldn't happen, but the documentation says that it can so I have to handle it
-                    print("socket.gethostbyaddr")
-                    name = ipv4_destination
-            route_list.append(IPv4_route(name, ipv4_destination, ipv4_gateway, ipv4_mask, ipv4_flags, ipv4_metric, \
-                                         ipv4_ref, ipv4_use, ipv4_interface))
+        for r_rec in route_records:
+            route_dict = Dict()
+            words = r_rec.split()
+            if "default" == word[0] :
+                word[0] == "0.0.0.0/32"
+            ipv4_destination = ipaddress.IPv4Network(word[0])
+            for i in range(1, len(words), 2):
+                word = words[i]
+                if "linkdown" == word:
+                    route_dict[word] = True
+                else:
+                    route_dict[word]=words[i+1]
+            if "linkdown" not in words:
+                route_dict["linkdown"] = False
+            route_list.append(IPv4_route(name, ipv4_destination, route_dict))
+                                         
         return route_list
 
     def __str__(self):
@@ -95,9 +91,10 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
             self.ipv4_metric, self.ipv4_ref, self.ip4v_use, self.ipv4_interface)
 
 
-class IPv6_route(object):
+class IPv6Route(object):
     def __init__(self, name, ipv6_destination, ipv6_next_hop, ipv6_flags, ipv6_metric, ipv6_ref, ipv6_use, \
                  ipv6_interface):
+        raise AssertionError("Needs to be rewritten as IPv4Route is written")
         self.name = name
         self.ipv6_destination = ipv6_destination
         self.ipv6_next_hop = ipv6_next_hop

@@ -11,8 +11,8 @@ import subprocess
 import socket
 import collections
 import routes
-from routes import IPv4_route as IPv4_route
-from routes import IPv6_route as IPv6_route
+from routes import IPv4Route as IPv4_route
+from routes import IPv6Route as IPv6_route
 import interfaces
 
 
@@ -47,8 +47,9 @@ class SystemDescription(object):
         self.interfaces = interfaces.Interfaces()
         self.ipv4_routes = addresses.Ipv4Routes()
         self.ipv6_routes = addresses.Ipv6Routes()
-        self.name_servers =
-        self.applications = applications
+        print("name servers not implemented yet")
+        # self.name_servers =
+        # self.applications = applications
         # To find all IPv4 machines on an ethernet, use arp -a     See ipv4_neighbors.txt
 
         # To find all IPv6 machines on an ethernet, use ip -6 neigh show
