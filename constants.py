@@ -5,6 +5,7 @@
 # Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
 import typing
 import enum
+from enum import auto
 
 
 port = 8722  # Default port that the server listens on.  Provides a RESTful
@@ -85,9 +86,9 @@ class Layers(enum.IntEnum):
 
 
 class Descriptions(enum.Enum):
-    CURRENT = enum.Enum.auto()
-    NOMINAL = enum.Enum.auto()
-    NAMED = enum.Enum.auto()
+    CURRENT = auto()
+    NOMINAL = auto()
+    NAMED = auto()
 
     def is_current(self, description) -> bool:
         return description == self.CURRENT
