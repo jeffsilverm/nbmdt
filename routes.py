@@ -5,9 +5,10 @@
 import socket
 import subprocess
 import sys
-import ipaddress
+# import ipaddress
 from layer import Layer
-from utilities import OsCliInter
+# from utilities import OsCliInter
+import utilities
 import configuration
 import application
 
@@ -57,7 +58,7 @@ class IPv4Address(object):
         A future version will return a tuple with the package loss percentage, statistics about delay, etc.
         """
 
-        completed = OsCliInter.run_command(['ping', self.ipv4_address])
+        completed = utilities.OsCliInter.run_command(['ping', self.ipv4_address])
         # return status = 0 if everything is okay
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
@@ -85,8 +86,7 @@ class IPv6Address(object):
 
 
 
-############ deprecate this class in favor of the ipaddress module in the standard library
-class IPv4Route(ipaddress, Layer):
+class IPv4Route(Layer):
     """
     A description of an IPv4 route
 
@@ -100,7 +100,8 @@ default via 192.168.0.1 dev eno1
 192.168.0.0/22 dev br-ext  proto kernel  scope link  src 192.168.3.50  metric 425 linkdown 
 192.168.122.0/24 dev virbr0  proto kernel  scope link  src 192.168.122.1 linkdown 
 jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ 
-        
+
+Class IPv4Route is a layer, but it uses the standard library ipaddress module
 
 # Another way to do it would be to look at /proc/*/route and /proc/*/ipv6_route
 # notes_2018-12.html#mozTocId983008
@@ -139,28 +140,11 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
         def translate_destination(destination: str) -> str:
             """
 This method translates destination from a dotted quad IPv4 address to a name if it can"""
-            if destination == "0.0.0.0" or destination == "default":
-                name = "default"
-            else:
-                try:
-                    name = socket.gethostbyaddr(destination)
-                except socket.herror as h:
-                    # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
-                    # /etc/hosts.  Now, should I print the message, even though I expect it?
-                    # says that it can so I have to handle it
-                    print("socket.gethostbyaddr raised a socket.herror "
-                          "exception on %s, continuing" % destination, str(h), file=sys.stderr)
-                except socket.gaierror as g:
-                    print("socket.gethostbyaddr raised a socket.gaierror "
-                          "exception on %s, continuing" % destination, str(g),
-                          file=sys.stderr)
-                else:
-                    pass
-                name = destination
-            return name
+            if destination == "0.0.0.0":
+                destination = "default"
 
         # https://docs.python.org/3/library/subprocess.html
-        results: str = OsCliInter.run_command(command=[configuration.IP_COMMAND, '-4', 'route', 'list'], )
+        results: str = utilities.OsCliInter.run_command(command=[configuration.IP_COMMAND, '-4', 'route', 'list'], )
         lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
         """
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
