@@ -111,6 +111,13 @@ class SystemDescription(object):
             system_name=so.system_name
         )
 
+    # Method discover has to be moved out of utilities and put somewhere
+    # else because discover depends on classes Application, Presentation,
+    # Session, Transport, Routes, Interfaces, Datalink, and Physical.
+    # But these classes all depend on module utilities, so there are
+    # circular dependencies.
+    print("Log the above comment as a bug", file=sys.stderr)
+
     @classmethod
     def discover(cls) -> object:
         """

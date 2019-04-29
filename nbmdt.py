@@ -8,16 +8,21 @@ import sys
 from typing import Tuple, List
 
 import constants
+from constants import OSILevels
 import utilities
 
+
+
+
 # from physical import Physical
-# import interface  # OSI layer 2: ethernet, WiFi       # issue 25
-# import datalink  # OSI layer 2: # Media Access Control: arp, ndp
-# import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
-# import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
-# import presentation  # OSI layer 6:
-# import session  # OSI layer 5:
-# import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
+import interface  # OSI layer 2: ethernet, WiFi       # issue 25
+import datalink  # OSI layer 2: # Media Access Control: arp, ndp
+import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
+import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import session  # OSI layer 5: SSL is the only thing I can think of
+import presentation  # OSI layer 6: JSON, HTML, XML, SOAP, CSV other MIME types
+import application   # OSI layer 7:
 
 DEBUG = True
 try:
@@ -52,6 +57,46 @@ Lev	Device type 	OSI layer   	TCP/IP original	TCP/IP New	Protocols	PDU       Mod
 options = None
 mode = None
 
+print("See the comment about method discover in utilities.py and log a bug", file=sys.stderr)
+
+def discover(cls) -> dict:
+    """
+
+    :return: a SystemDescription object which is actually a dictionary.
+    """
+    sys_descrp = dict()
+    sys_descrp[APPLICATIONS]: dict = application.Application.discover()
+    sys_descrp[PRESENTATION]: dict = presentation.Presentation.discover()
+    sys_descrp[SESSION]: dict = session.Session.discover()
+    sys_descrp[TRANSPORT]: dict = transport.Transport.discover()
+    sys_descrp[NETWORK4]: dict = routes.IPv4Route.discover()
+    sys_descrp[NETWORK6]: dict = routes.IPv6Route.discover()
+    sys_descrp[DATALINK]: dict = datalink.DataLink.discover()
+    sys_descrp[PHYSICAL]: dict = physical.Physical.discover()
+    sys_descrp[NAME]: str = platform.node()
+
+    return sys_descrp
+
+def file_from_system_description(sys_descrp: dict, filename: str) -> None:
+    """Write a system description to a file
+    :param  filename
+    :return:
+    """
+    # In the future, detect if a configuration file already exists, and if so, create
+    # a new version.
+    with open(filename, "w") as f:
+        json.dump(sys_descrp, f)
+
+def file_to_system_description(filename: str) -> dict:
+    """Read a system description from a file
+    :param: filename str
+    :return: A system description, in the form of a dict
+    """
+    with open(filename, "r") as f:
+        sys_descript = json.load(f)
+
+    return sys_descript
+
 
 def main(args: List[str] = None):
     """
@@ -76,31 +121,33 @@ def main(args: List[str] = None):
         print(f"The debug option was set.  Mode is {str(mode)} coded as {mode}", file=sys.stderr)
     # Get what the system currently actually is
     # Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
-    current_system: utilities.SystemDescription = utilities.SystemDescription.discover()
+    print("Revisit Issue 29". file=sys.stderr)
+    
     if options.debug and current_system.applications["applications"] != "Mocked":
         print("""WARNING: debugging and current_system.applications["applications"] != "Mocked" """, file=sys.stderr)
     try:
         if mode == constants.Modes.BOOT:
-            current_system.boot()
+            boot()
         elif mode == constants.Modes.DIAGNOSE:
             # This is the case where we want to compare the current state against the nominal state
             if not hasattr(options, 'configuration_filename') or options.configuration_filename is None:
                 raise ValueError(
                     "You did not specify a configuration filename when you asked nbmdt to diagnose a system")
-            current_system.diagnose(options.configuration_filename)
+            diagnose(options.configuration_filename)
         elif mode == constants.Modes.NOMINAL:
-            current_system.nominal(options.configuration_filename)
+            nominal(options.configuration_filename)
         elif mode == constants.Modes.TEST:
-            current_system.test(options.test_specification)
+            test(options.test_specification)
         elif mode == constants.Modes.MONITOR:
-            current_system.monitor(options.monitor_port)
+            monitor(options.monitor_port)
         else:
             raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
     except NotImplementedError as n:
         print(f"The mode you selected {str(mode)} isn't implemented yet {str(n)}", file=sys.stderr)
 
 
-"""
+    
+
         # We want to find out what the current state of the system is and record it in a file if
         # in NOMINAL mode or else display it if in BOOT mode
         applications: application.Application = application.Application()
@@ -253,3 +300,277 @@ def arg_parser(args) -> Tuple:
 
 if __name__ == "__main__":
     main()
+
+
+))))))))))))))))))))))))))))))))))))))))))))))
+
+#!
+
+# This file has utility functions that will be generally useful
+
+
+import json
+import platform
+import subprocess
+import sys
+from typing import List, Tuple, Dict
+import os
+
+from constants import ErrorLevels
+from constants import type_application_dict, type_presentation_dict, type_session_dict, \
+    type_transport_dict, type_network_dict, type_datalink_dict,  \
+    type_physical_dict
+import application, presentation, session, transport, routes, datalink, physical
+
+# from nbmdt import SystemDescription
+
+
+"""
+>>> platform.system()
+'Linux'
+>>> 
+>>> platform.linux_distribution()
+('Ubuntu', '18.04', 'bionic')
+>>> platform.dist()
+('Ubuntu', '18.04', 'bionic')
+>>> 
+
+>>> platform.mac_ver()
+('', ('', '', ''), '')
+>>> 
+>>> platform.win32_ver()
+('', '', '', '')
+>>> 
+>>> platform.mac_ver()
+('', ('', '', ''), '')
+>>> 
+
+
+"""
+
+
+class SystemDescription(object):
+    """Refer to the OSI stack, for example, at https://en.wikipedia.org/wiki/OSI_model.  Objects of this class describe
+     the system, including devices, datalinks, IPv4 and IPv6 addresses and routes, TCP and UDP, sessions,
+     presentations, applications.  Each of these objects have a test associated with them"""
+
+    # Issue 13
+    #    CURRENT = None
+
+    def __init__(self, applications: type_application_dict = None,
+                 presentations: type_presentation_dict = None,
+                 sessions: type_session_dict = None,
+                 transports: type_transport_dict = None,
+                 networks: type_network_dict = None,
+                 # interfaces: type_interface_dict = None,          # Issue 25
+                 datalinks: type_datalink_dict = None,
+                 physicals: type_physical_dict = None,
+                 # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
+                 configuration_filename: str = None,
+                 system_name: str = platform.node()
+                 ) -> None:
+        """
+        Populate a description of the system.  Note that this method is
+        a constructor, and all it does is create a SystemDescription object.
+
+        :param applications:
+        :param presentations:
+        :param sessions:
+        :param transports:
+        :param networks:
+        :param datalinks:
+        :param configuration_filename:
+        :param system_name: str The name of this computer
+        """
+        self.applications = applications
+        self.presentations = presentations
+        self.sessions = sessions
+        self.transports = transports  # TCP, UDP
+        self.networks = networks  # IPv4, IPv6
+        self.datalinks = datalinks  # MAC address
+        self.physicals = physicals
+        self.configuration_filename: str = configuration_filename
+        self.system_name = system_name
+
+    @classmethod
+    def system_description_from_file(cls, filename: str) -> 'SystemDescription':
+        """
+        Read a system description from a file and create a SystemDescription object.
+        I couldn't figure out how to return a SystemDescription object, so I return an object
+        :param filename:
+        :return:
+        """
+        if not os.path.isfile(filename):
+            raise FileNotFoundError(f"The file {filename} does not exist")
+        with open(filename, "r") as f:
+            so = json.load(f)
+
+        return SystemDescription(
+            applications=so.applications,
+            presentations=so.presentations,
+            sessions=so.presentations,
+            transports=so.transports,
+            networks=so.networks,
+            datalinks=so.datalinks,
+            physicals=so.physicals,
+            configuration_filename=filename,
+            system_name=so.system_name
+        )
+
+    """
+        @staticmethod
+        def describe_current_state():
+            "This method goes through a system that is nominally configured and operating and records the configuration
+            "
+
+            #        applications = Applications.find_applications()
+            #        applications = None
+            #        ipv4_routes = IPv4_route.find_ipv4_routes()
+            #        ipv6_routes = IPv6_route.find_ipv6_routes()
+            #        ipv6_addresses = interfaces.LogicalInterface.find_ipv6_addresses()
+            #        ipv4_addresses = interfaces.LogicalInterface.find_ipv4_addresses()
+            #        networks = Networks.find_networks()
+            #        networks = None
+
+            # nominal = SystemDescription.describe_current_state()
+            pass
+
+        #        return (applications, ipv4_routes, ipv6_routes, ipv4_addresses, ipv6_addresses, networks)
+    """
+
+    @property
+    def __str__(self):
+        """This generates a nicely formatted report of the state of this system
+        This method is probably most useful in BOOT mode.
+
+        The classes should be re-written with __str__ methods which are sensitive to the mode
+        """
+        result = "{0}\n{1}\n{2}\n{3}\n{4}\n{5}".format(str(self.applications), str(self.presentations),
+                                                       str(self.sessions), str(self.transports), str(self.networks),
+                                                       str(self.datalinks))
+        return result
+
+    def nominal(self, filename) -> None:
+        print(f"The nominal configuration file is going to be {filename}", file=sys.stderr)
+        system_description: dict = discover()
+        file_from_system_description(system_description, filename)
+
+    def boot(self) -> ErrorLevels:
+        print("Going to test in boot mode", file=sys.stderr)
+        raise NotImplementedError
+
+    def monitor(self, port) -> None:
+        print(f"going to monitor on port {port}", file=sys.stderr)
+        raise NotImplementedError
+
+    def diagnose(self, filename) -> ErrorLevels:
+        print(f"In diagnostic mode, nomminal filename is {filename}", file=sys.stderr)
+        nominal_system_description: dict = file_to_system_description(filename)
+        actual_system_description: dict = discover()
+        sys_descrip_diff: dict  = nominal_system_description..diff( actual_system_description )
+        return ErrorLevels.UNKNOWN
+
+    def test(self, test_specification) -> ErrorLevels:
+        print(f"The test_specification is {test_specification}", file=sys.stderr)
+        raise NotImplementedError
+        return ErrorLevels.UNKNOWN
+
+
+class SystemDescriptionFile(SystemDescription):
+    """This class handles interfacing between the program and the configuration file.  Thus, when the system is in its
+    'nominal' state, then that's a good time to write the configuration file.  When the state of the system is
+    questionable, then that's a good time to read the configuration file"""
+
+    def __init__(self, configuration_filename):
+        """Create a SystemDescription object which has all of the information in a system configuration file"""
+
+        with open(configuration_filename, "r") as json_fp:
+            c_dict = json.load(json_fp)  # Configuration dictionary
+        # Issue 31 Instead of raising a KeyError exception, just use None
+        super(SystemDescriptionFile, self).__init__(applications=c_dict.get("applications"),
+                                                    presentations=c_dict.get("presentations"),
+                                                    sessions=c_dict.get("sessions"),
+                                                    transports=c_dict.get("networks"),
+                                                    datalinks=c_dict.get("datalinks"),
+                                                    physicals=c_dict.get("physicals"),
+                                                    configuration_filename=configuration_filename,
+                                                    system_name=None  # for now.
+                                                    )
+        self.version = c_dict['version']
+        self.timestamp = c_dict['timestamp']
+
+    def save_state(self, filename):
+        with open(filename, "w") as json_fp:
+            json.dump(self, json_fp, ensure_ascii=False)
+
+    def compare_state(self, the_other):
+        """This method compares the 'nominal' state, which is in self, with another state, 'the_other'.  The output is
+    a dictionary which is keyed by field.  The values of the dictionary are a dictionary with three keys:
+    Comparison.NOMINAL, Comparison.OTHER.  The values of these dictonaries will be objects
+    appropriate for what is being compared.  If something is not in Comparison.NOMINAL and not in Comparison.DIFFERENT,
+     then there is no change.  
+    
+        """
+        pass
+
+
+class OsCliInter(object):
+    """
+    A collection of methods for running CLI commands.
+    """
+
+    # Since the system is going to be the same across the entire program, populate it when the OsCliInter object is
+    # imported for the first time and then make it available to any object in class OsCliInter (which should not need
+    # to be instantiated.  See https://docs.python.org/3/library/platform.html
+    # possible values are: 'Linux', 'Windows', or 'Java'  (what about Mac?)
+    system: str = platform.system().lower()
+    assert "linux" == system or "windows" == system or "java" == system, \
+        f"platform.system returned an unknown (not unimplemented, that's different) value: {system}"
+
+    @classmethod
+    def run_command(cls, command: List[str]) -> Tuple[str, str, int]:
+        """
+        Run the command on the CLI.  This is here to make it easy to mock
+
+        :param command: a list of strings.  Element 0 is the name of the executable. The rest of the list are args to
+        the command
+        :return: A string which is the output of the program in ASCII
+        """
+
+        assert isinstance(command, list), f"command should be a list of strings but is actually a string {command}"
+        completed: subprocess.CompletedProcess = subprocess.run(command,
+                                                                stdin=None,
+                                                                input=None,
+                                                                stdout=subprocess.PIPE, stderr=None, shell=False,
+                                                                timeout=None,
+                                                                check=False)
+        # Issue #36 - return stdout, stderr, and the return status code.
+        stdout_str: str = completed.stdout.decode('ascii')
+        stderr_str: str = completed.stderr.decode('ascii')
+        status: int = completed.returncode
+        return stdout_str, stderr_str, status
+
+
+try:
+    print("Testing the __file__ special variable: " + __file__, file=sys.stderr)
+except Exception as e:  # if anything goes wrong
+    print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
+
+# Globally note the operating system name.  Note that this section of the code *must* follow the definition
+# of class OsCliInter or else the compiler will raise a NameError exception at compile time
+# Access the_os using utilities.the_os  The variable is so named to avoid confusion with the os package name
+os_name: str = OsCliInter.system.lower()
+the_os = constants.OperatingSystems.UNKNOWN
+if 'linux' == os_name:
+    the_os = constants.OperatingSystems.LINUX
+elif 'windows' == os_name:
+    the_os = constants.OperatingSystems.WINDOWS
+elif 'darwin' == os_name:
+    the_os = constants.OperatingSystems.MAC_OS_X
+else:
+    raise ValueError(f"System is {os_name} and I don't recognize it")
+
+if "__main__" == __name__:
+    print(f"System is {os_name} A.K.A. {the_os}")
+    if constants.OperatingSystems.LINUX == the_os:
+        print(f"In linux, the uname -a command output is \n{OsCliInter.run_command(['uname', '-a'])}\n.")

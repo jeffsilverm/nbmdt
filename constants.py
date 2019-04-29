@@ -48,13 +48,16 @@ class OperatingSystems(enum.IntEnum):
 
 
 class OSILevels(enum.Enum):
-    PHYSICAL = 1
-    MEDIAACCESSCONTROL = 2
-    NETWORK = 3
-    TRANSPORT = 4
-    SESSION = 5
-    PRESENTATION = 6
-    APPLICATION = 7
+    print("Enter an issue that I changed the values of the constants from
+    integers to strings for reliability", file=sys.stderr)
+    PHYSICAL = "PHYSICAL"
+    DATALINK = "DATALINK"
+    NETWORK4 = "NETWORK4"
+    NETWORK6 = "NETWORK6"
+    TRANSPORT = "TRANSPORT"
+    SESSION = "SESSION"
+    PRESENTATION = "PRESENTATION"
+    APPLICATION = "APPLICATION"
 
 
 class Protocols(enum.Enum):
