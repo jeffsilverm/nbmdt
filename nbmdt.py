@@ -5,24 +5,20 @@
 #
 import argparse
 import sys
-from typing import Tuple, List
+from typing import List
+import platform
 
-import constants
-from constants import OSILevels
-import utilities
-
-
-
-
+import application  # OSI layer 7:
+import datalink  # OSI layer 2: # Media Access Control: arp, ndp
 # from physical import Physical
 import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
-import interface  # OSI layer 2: ethernet, WiFi       # issue 25
-import datalink  # OSI layer 2: # Media Access Control: arp, ndp
-import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
-import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
-import session  # OSI layer 5: SSL is the only thing I can think of
 import presentation  # OSI layer 6: JSON, HTML, XML, SOAP, CSV other MIME types
-import application   # OSI layer 7:
+import routes  # OSI layer 3: IPv4, IPv6 should be called network, routing
+import session  # OSI layer 5: SSL is the only thing I can think of
+import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
+import utilities
+from constants import OSILevels
+
 
 DEBUG = True
 try:
@@ -65,15 +61,15 @@ def discover(cls) -> dict:
     :return: a SystemDescription object which is actually a dictionary.
     """
     sys_descrp = dict()
-    sys_descrp[APPLICATIONS]: dict = application.Application.discover()
-    sys_descrp[PRESENTATION]: dict = presentation.Presentation.discover()
-    sys_descrp[SESSION]: dict = session.Session.discover()
-    sys_descrp[TRANSPORT]: dict = transport.Transport.discover()
-    sys_descrp[NETWORK4]: dict = routes.IPv4Route.discover()
-    sys_descrp[NETWORK6]: dict = routes.IPv6Route.discover()
-    sys_descrp[DATALINK]: dict = datalink.DataLink.discover()
-    sys_descrp[PHYSICAL]: dict = physical.Physical.discover()
-    sys_descrp[NAME]: str = platform.node()
+    sys_descrp[OSILevels.APPLICATION]: dict = application.Application.discover()
+    sys_descrp[OSILevels.PRESENTATION]: dict = presentation.Presentation.discover()
+    sys_descrp[OSILevels.SESSION]: dict = session.Session.discover()
+    sys_descrp[OSILevels.TRANSPORT]: dict = transport.Transport.discover()
+    sys_descrp[OSILevels.NETWORK4]: dict = routes.IPv4Route.discover()
+    sys_descrp[OSILevels.NETWORK6]: dict = routes.IPv6Route.discover()
+    sys_descrp[OSILevels.DATALINK]: dict = datalink.DataLink.discover()
+    sys_descrp[OSILevels.PHYSICAL]: dict = physical.Physical.discover()
+    sys_descrp[OSILevels.NAME]: str = platform.node()
 
     return sys_descrp
 
@@ -395,7 +391,7 @@ class SystemDescription(object):
     @classmethod
     def system_description_from_file(cls, filename: str) -> 'SystemDescription':
         """
-        Read a system description from a file and create a SystemDescription object.
+        Read a system description and create a SystemDescription object.
         I couldn't figure out how to return a SystemDescription object, so I return an object
         :param filename:
         :return:

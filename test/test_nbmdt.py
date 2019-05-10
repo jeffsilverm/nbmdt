@@ -3,13 +3,14 @@
 #
 # The Network Boot Monitor Diagnostic tool testing
 #
-from mock import patch
+from unittest.mock import patch
 import argparse
 import os
 import pprint
 import subprocess
 import sys
 from typing import List, Tuple
+from constants import type_application_dict
 
 import constants
 import nbmdt

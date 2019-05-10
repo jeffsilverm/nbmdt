@@ -5,12 +5,13 @@
 import socket
 import subprocess
 import sys
-# import ipaddress
+import ipaddress                # https://docs.python.org/3/library/ipaddress.html?highlight=ipaddress#module-ipaddress
 from layer import Layer
 # from utilities import OsCliInter
 import utilities
 import configuration
 import application
+import typing
 
 
 # IP_COMMAND="/sbin/ip"  in network.py
@@ -72,18 +73,6 @@ class IPv6Address(object):
             self.name = name
         # Needs work
         self.ipv6_address = ipv6_address
-
-    @classmethod
-    def discover(cls):
-        """This method finds all of the IPv6 routes by examining the output of the ip route command, and
-        returns a list of IPV6_routes.  This is a class method because all route objects have the same
-         default gateway
-
-         This implementation is not very good, there is the netifaces interface which is socket based and avoids
-         forking a subprocess.
-         """
-        raise NotImplemented
-
 
 
 class IPv4Route(Layer):
@@ -205,7 +194,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         return cls.default_gateway
 
 
-class IPv6Route(object):
+class IPv6Route(IPRoute):
     def __init__(self, name, ipv6_destination, ipv6_next_hop, ipv6_flags, ipv6_metric, ipv6_ref, ipv6_use, \
                  ipv6_interface):
         self.name = name
@@ -216,6 +205,17 @@ class IPv6Route(object):
         self.ipv6_ref = ipv6_ref
         self.ipv6_use = ipv6_use
         self.ipv6_interface = ipv6_interface
+
+    @classmethod
+    def discover(cls):      # in class IPv6Route
+        """This method finds all of the IPv6 routes by examining the output of the ip route command, and
+        returns a list of IPV6_routes.  This is a class method because all route objects have the same
+         default gateway
+
+         This implementation is not very good, there is the netifaces interface which is socket based and avoids
+         forking a subprocess.
+         """
+        raise NotImplemented
 
     def find_ipv6_routes(self):
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
@@ -254,13 +254,45 @@ class IPv6Route(object):
         #       >> >
         #
 
-        # This is the recommend approach for python 3.5 and later  From https://docs.python.org/3/library/subprocess.html
-        completed = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None, \
+        completed = IPRroute.find_routes(family="inet6")
+
+    class IPRoute(Layer):
+
+        def find_routes(self, family: str) -> typing.List :
+            """find_routes returns a list of routes, for either IPv4 or IPv6.  Each route is a dictionary keyed by
+            fields from the ip command"""
+
+            assert isinstance(family, str), f"family is type {type(family)}, should be str"
+            assert family == "inet" or family == "inet6", f"family is {family}, should be 'inet' or 'inet6'"
+
+            # This is the recommened approach for running an external command in python 3.5 and later.
+            # From https://docs.python.org/3/library/subprocess.html
+            completed = subprocess.run(["/sbin/ip", "--family", family, "route", "show"], stdin=None, input=None, \
                                    stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None,
                                    errors=None)
-        route_list = []
-        for r in completed:
-            (ipv6_destination, _dev_, ipv6_interface,) = r.split()
+            output_str: str = completed.stdout
+            """
+none fe80::eddb:a28c:fbb8:b02 dev eth6  proto none  metric 0
+none ff00::/8 dev eth6  proto none  metric 0
+none fe80::/64 dev eth7  proto none  metric 0
+none fe80::3d3e:604d:bd3f:5e90 dev eth7  proto none  metric 0
+none ff00::/8 dev eth7  proto none  metric 0
+
+none 169.254.0.0/16 dev eth6  proto none  metric 0
+none 169.254.11.2 dev eth6  proto none  metric 0
+none 255.255.255.255 dev eth7  proto none  metric 0
+none 224.0.0.0/4 dev eth7  proto none  metric 0
+none 192.168.44.159 dev eth7  proto none  metric 0
+none 192.168.44.144/28 dev eth7  proto none  metric 0
+none 192.168.44.145 dev eth7  proto none  metric 0
+            """
+
+            route_list = []
+            for r in output_str:
+                (_none_, destination, _dev_, dev, _proto_, proto, _metric_, metric ) = r.split()
+                assert _none_ == "noon", f"_none_ is {_none_}, should be 'none'"
+                assert _dev_ == "dev", f"_dev_ is {_dev_}, should be 'dev'"
+
 
 
 if __name__ in "__main__":
