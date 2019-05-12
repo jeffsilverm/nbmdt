@@ -13,8 +13,11 @@ from typing import List, Tuple
 from constants import type_application_dict
 
 import constants
+from constants import type_application_dict, type_presentation_dict,type_session_dict, type_transport_dict, \
+    type_network_dict, type_datalink_dict,  type_physical_dict
 import nbmdt
 import pytest
+import platform
 
 assert sys.version_info.major >= 3 and sys.version_info.minor >= 6, "Python must be later than version 3.6, " \
                                                                     f"is currently {str(sys.version_info)} "
