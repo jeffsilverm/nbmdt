@@ -12,8 +12,10 @@
     def discover(cls) -> typing.Dict[str, 'Layer']:
     def dict_from_class(self) -> typing.Dict[str, dict]:
 """
+import pytest
 
 if "__main__" == __name__:
+    print("Testing class layer.Layer in test/test_layer.py", file=sys.stderr)
     TEST_DELAY = 2.0
     me: Layer = Layer("ennie")
     me.e = 4
@@ -31,16 +33,18 @@ if "__main__" == __name__:
     it = Layer("meenie")
     who: datetime = datetime.datetime.now()
 
-    with pytest.raises(ValueError):
-        # The other object is not an instance of Layer.  This tests that if
-        # the minus operator is given something that is not a Layer, it raises
-        # and exception.
-        q = it - who  # noqa This is supposed to be two different types
+    def test___sub__( it, who ):
+        print("In test_layer.test___sub___", file=sys.stderr)
+        with pytest.raises(ValueError):
+            # The other object is not an instance of Layer.  This tests that if
+            # the minus operator is given something that is not a Layer, it raises
+            # and exception.
+            q = it - who  # noqa This is supposed to be two different types
 
-    with pytest.raises(ValueError):
-        # This should raise a ValueError exception because me has two
-        # attributes, e and q, that are not in it.
-        q7 = me - it
+        with pytest.raises(ValueError):
+            # This should raise a ValueError exception because me has two
+            # attributes, e and q, that are not in it.
+            q7 = me - it
 
     delta: Layer = mini_me - me
     # The time attribute is the time when the object was instantiated

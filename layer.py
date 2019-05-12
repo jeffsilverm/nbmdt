@@ -91,10 +91,11 @@ class Layer(object):
         object and the value is an an object of that OSI level
         This is an abstract class that all classes that import this class
         must override.
+        The discover method is invoked by every layer that has to figure
+        out what components it has.
         """
         d: typing.Dict[str, 'Layer'] = {}
-        if "nefarious name" not in d:
-            raise NotImplementedError
+        raise NotImplementedError
         return d
 
 
@@ -102,54 +103,15 @@ class Layer(object):
         """
         Converts all of the attributes of this object into a dictionary
         This is needed because JSON wants bools, ints, floats, lists or dicts
-        :return:
+        :return: A dictionary which is all of the elements of the class
         """
         return dict(
-            (key, value) for (key, value) in self.__dict__.items()
-            if not callable(value))
+                # All objects have an obfuscated attribute, __dict__, which
+                # is a dictionary of all of the attributes in that object
+                # However, I don't want to include the callables (methods)
+                # in that dictionary
+                # This is a Generator, not a list comprehension
+            ( (key, value) for (key, value) in self.__dict__.items()
+                if not callable(value) ) )
 
 
-if "__main__" == __name__:
-    TEST_DELAY = 2.0
-    me: Layer = Layer("ennie")
-    me.e = 4
-    me.q = 17
-    assert callable(me.discover), "discover is a method and should be callable"
-    assert not callable(me.e), "e should NOT be callable, and it is"
-    time.sleep(TEST_DELAY)
-    mini_me = Layer("ennie")
-    mini_me.e = 6
-    mini_me.q = 6
-    dup = Layer("ennie")
-    dup.e = me.e
-    dup.q = me.q
-
-    it = Layer("meenie")
-    who: datetime = datetime.datetime.now()
-
-    with pytest.raises(ValueError):
-        # The other object is not an instance of Layer.  This tests that if
-        # the minus operator is given something that is not a Layer, it raises
-        # and exception.
-        q = it - who  # noqa This is supposed to be two different types
-
-    with pytest.raises(ValueError):
-        q7 = me - it
-
-    delta: Layer = mini_me - me
-    assert isinstance(delta.time, datetime.timedelta), f"delta.time should be datetime.timedelta is {type(delta.time)}"
-    dt = abs(delta.time)  # abs works as expected for timedelta types
-    assert dt.seconds <= TEST_DELAY * 1.02, \
-        f"delta.time.seconds should be less than {TEST_DELAY * 1.02} but it's {delta.time.seconds}"
-
-    assert delta.e == 2, f"delta.e should be 2, is actually {delta.e}"
-    assert delta.q == -11, f"delta.q should be -11, is actually {delta.q}"
-
-    assert me != mini_me, "me should be different than mini_me"
-    assert me == dup, "me should be the same as mini_me"
-
-    dict_from_layer: dict = me.dict_from_class()
-    assert isinstance(dict_from_layer, dict), \
-        "dict_from_layer isn't a dict, it's a {0}".format(str(type(me)))
-    assert 'e' in dict_from_layer, "There should be a key, 'e', in me and there isn't"
-    assert dict_from_layer['e'] == 4, f"me.e should be 4, but it really is {me['e']}"
