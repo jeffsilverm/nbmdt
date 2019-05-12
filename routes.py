@@ -20,11 +20,63 @@ import typing
 # class DNSFailure(Exception):
 #    pass
 
+class IPRoute(Layer):
+    """
+    A lot of functionality between IPv4 and IPv6 is the same.  So the version agnostic code goes here, and the
+    version not-so-agnostic code goes in classes that inherit from this class.
+    """
+
+    def discover(self, family: str) -> typing.List :        # IPRoute
+        """discover returns a list of routes, for either IPv4 or IPv6.  Each route is a dictionary keyed by
+        fields from the ip command.
+        There is a standard module, ipaddress, and I should have used that instead of "rolling my own"
+        """
+
+        assert isinstance(family, str), f"family is type {type(family)}, should be str"
+        assert family == "inet" or family == "inet6", f"family is {family}, should be 'inet' or 'inet6'"
+
+        # This is the recommened approach for running an external command in python 3.5 and later.
+        # From https://docs.python.org/3/library/subprocess.html
+        completed = subprocess.run(["/sbin/ip", "--family", family, "route", "show"], stdin=None, input=None, \
+                               stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None,
+                               errors=None)
+        output_str: str = completed.stdout
+        """
+none fe80::eddb:a28c:fbb8:b02 dev eth6  proto none  metric 0
+none ff00::/8 dev eth6  proto none  metric 0
+none fe80::/64 dev eth7  proto none  metric 0
+none fe80::3d3e:604d:bd3f:5e90 dev eth7  proto none  metric 0
+none ff00::/8 dev eth7  proto none  metric 0
+
+none 169.254.0.0/16 dev eth6  proto none  metric 0
+none 169.254.11.2 dev eth6  proto none  metric 0
+none 255.255.255.255 dev eth7  proto none  metric 0
+none 224.0.0.0/4 dev eth7  proto none  metric 0
+none 192.168.44.159 dev eth7  proto none  metric 0
+none 192.168.44.144/28 dev eth7  proto none  metric 0
+none 192.168.44.145 dev eth7  proto none  metric 0
+        """
+
+        route_list = []
+        for r in output_str:
+            (_none_, destination, _dev_, dev, _proto_, proto, _metric_, metric ) = r.split()
+            # I'm concerned that the ip command might change, so a little paranoia
+            assert _none_ == "noon", f"_none_ is {_none_}, should be 'none'"
+            assert _dev_ == "dev", f"_dev_ is {_dev_}, should be 'dev'"
+            assert _proto_ == "proto", f"_proto_ is {_proto_}, should be 'proto'"
+            assert _metric_ == "metric", f"_metric_ is {_metric_}, should be 'metric'"
+            # From https://stackoverflow.com/questions/10259266/what-does-proto-kernel-means-in-unix-routing-table
+            # allowed values of proto are redirect, kernel, boot, static, and ra
+            d = {"destination": destination, "dev": dev, "proto": proto, "metric": metric, "family": family }
+            route_list.append(d)
+
+
 
 class IPv4Address(object):
     """
     This object has an IPv4 object.  It has two attributes: name and ipv4_address.
     If the name has not been specified, then it is None
+    There is a module,
     """
 
     def __init__(self, name: str = None, ipv4_address: [str, bytes] = None):
@@ -75,7 +127,7 @@ class IPv6Address(object):
         self.ipv6_address = ipv6_address
 
 
-class IPv4Route(Layer):
+class IPv4Route(IPRoute):
     """
     A description of an IPv4 route
 
@@ -102,7 +154,7 @@ Class IPv4Route is a layer, but it uses the standard library ipaddress module
         """This returns an IPv4Route object.  """
 
         destination = route['ipv4_destination']
-        Layer.__init__(name=destination)
+        super.__init__(name=destination)
         assert hasattr(self, 'time')  # A test that my call to the super class is sane, this can be removed later
         # Use caution: routes values are strings, not length 4 bytes
         self.ipv4_destination = ipaddress.ip_network(destination)  # Destination must be present
@@ -130,7 +182,8 @@ Class IPv4Route is a layer, but it uses the standard library ipaddress module
             """
 This method translates destination from a dotted quad IPv4 address to a name if it can"""
             if destination == "0.0.0.0":
-                destination = "default"
+                destination: str = "default"
+            return destination
 
         # https://docs.python.org/3/library/subprocess.html
         results: str = utilities.OsCliInter.run_command(command=[configuration.IP_COMMAND, '-4', 'route', 'list'], )
@@ -207,17 +260,7 @@ class IPv6Route(IPRoute):
         self.ipv6_interface = ipv6_interface
 
     @classmethod
-    def discover(cls):      # in class IPv6Route
-        """This method finds all of the IPv6 routes by examining the output of the ip route command, and
-        returns a list of IPV6_routes.  This is a class method because all route objects have the same
-         default gateway
-
-         This implementation is not very good, there is the netifaces interface which is socket based and avoids
-         forking a subprocess.
-         """
-        raise NotImplemented
-
-    def find_ipv6_routes(self):
+    def discover(cls) -> typing.List:      # in class IPv6Route c
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
 
@@ -254,44 +297,10 @@ class IPv6Route(IPRoute):
         #       >> >
         #
 
-        completed = IPRroute.find_routes(family="inet6")
+        ipv6_routes: typing.List = IPRoute.discover(family="inet6")
+        return ipv6_routes
 
-    class IPRoute(Layer):
 
-        def find_routes(self, family: str) -> typing.List :
-            """find_routes returns a list of routes, for either IPv4 or IPv6.  Each route is a dictionary keyed by
-            fields from the ip command"""
-
-            assert isinstance(family, str), f"family is type {type(family)}, should be str"
-            assert family == "inet" or family == "inet6", f"family is {family}, should be 'inet' or 'inet6'"
-
-            # This is the recommened approach for running an external command in python 3.5 and later.
-            # From https://docs.python.org/3/library/subprocess.html
-            completed = subprocess.run(["/sbin/ip", "--family", family, "route", "show"], stdin=None, input=None, \
-                                   stdout=None, stderr=None, shell=False, timeout=None, check=False, encoding=None,
-                                   errors=None)
-            output_str: str = completed.stdout
-            """
-none fe80::eddb:a28c:fbb8:b02 dev eth6  proto none  metric 0
-none ff00::/8 dev eth6  proto none  metric 0
-none fe80::/64 dev eth7  proto none  metric 0
-none fe80::3d3e:604d:bd3f:5e90 dev eth7  proto none  metric 0
-none ff00::/8 dev eth7  proto none  metric 0
-
-none 169.254.0.0/16 dev eth6  proto none  metric 0
-none 169.254.11.2 dev eth6  proto none  metric 0
-none 255.255.255.255 dev eth7  proto none  metric 0
-none 224.0.0.0/4 dev eth7  proto none  metric 0
-none 192.168.44.159 dev eth7  proto none  metric 0
-none 192.168.44.144/28 dev eth7  proto none  metric 0
-none 192.168.44.145 dev eth7  proto none  metric 0
-            """
-
-            route_list = []
-            for r in output_str:
-                (_none_, destination, _dev_, dev, _proto_, proto, _metric_, metric ) = r.split()
-                assert _none_ == "noon", f"_none_ is {_none_}, should be 'none'"
-                assert _dev_ == "dev", f"_dev_ is {_dev_}, should be 'dev'"
 
 
 
