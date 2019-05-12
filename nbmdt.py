@@ -117,49 +117,45 @@ def main(args: List[str] = None):
         print(f"The debug option was set.  Mode is {str(mode)} coded as {mode}", file=sys.stderr)
     # Get what the system currently actually is
     # Issue 29 https://github.com/jeffsilverm/nbmdt/issues/29
-    print("Revisit Issue 29". file=sys.stderr)
+    print("Revisit Issue 29", file=sys.stderr)
     
     if options.debug and current_system.applications["applications"] != "Mocked":
         print("""WARNING: debugging and current_system.applications["applications"] != "Mocked" """, file=sys.stderr)
     try:
         if mode == constants.Modes.BOOT:
             boot()
+        elif mode == constants.Modes.MONITOR:
+            monitor(options.monitor_port)
         elif mode == constants.Modes.DIAGNOSE:
             # This is the case where we want to compare the current state against the nominal state
             if not hasattr(options, 'configuration_filename') or options.configuration_filename is None:
                 raise ValueError(
                     "You did not specify a configuration filename when you asked nbmdt to diagnose a system")
             diagnose(options.configuration_filename)
-        elif mode == constants.Modes.NOMINAL:
-            nominal(options.configuration_filename)
         elif mode == constants.Modes.TEST:
             test(options.test_specification)
-        elif mode == constants.Modes.MONITOR:
-            monitor(options.monitor_port)
+        elif mode == constants.Modes.NOMINAL:
+            nominal(options.configuration_filename)
         else:
             raise ValueError(f"Mode is {mode} but should be one of the constants in constants.Modes")
     except NotImplementedError as n:
         print(f"The mode you selected {str(mode)} isn't implemented yet {str(n)}", file=sys.stderr)
+        sys.exit(1)
 
+    # We want to find out what the current state of the system is and record it in a file if
+    # in NOMINAL mode or else display it if in BOOT mode
+    applications: application.Application = application.Application()
+    presentations = presentation.Presentation()
+    sessions = session.Session()
+    transports = transport.Transport()
+    networks = network.Network()
+    # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
+    interfaces_dict = interface.Interface.discover()
 
-    
-
-        # We want to find out what the current state of the system is and record it in a file if
-        # in NOMINAL mode or else display it if in BOOT mode
-        applications: application.Application = application.Application()
-        presentations = presentation.Presentation()
-        sessions = session.Session()
-        transports = transport.Transport()
-        networks = network.Network()
-        # Interface.discover() returns a dictionary keyed by device name and value is the MAC address
-        interfaces_dict = interface.Interface.discover()
-
-        # Compare the current configuration against a "nominal" configuration in the file and
-        # note any changes
-        (applications, presentations, sessions, transports, networks, interfaces) = \
-            self.read_configuration(configuration_filename)
-    elif mode != constants.Modes.NOMINAL:
-        raise ValueError(f"mode is {str(mode)} but should be one of BOOT, CURRENT, NAMED, NOMINAL, or TEST")
+    # Compare the current configuration against a "nominal" configuration in the file and
+    # note any changes
+    (applications, presentations, sessions, transports, networks, interfaces) = \
+        self.read_configuration(configuration_filename)
 
     current_system = utilities.SystemDescription(mode=mode)
     if mode == constants.Modes.BOOT:
@@ -204,7 +200,6 @@ def main(args: List[str] = None):
         test ( nominal_system_description, current_system_description )
     
     
-"""
 
 
 def arg_parser(args) -> Tuple:
@@ -298,7 +293,6 @@ if __name__ == "__main__":
     main()
 
 
-))))))))))))))))))))))))))))))))))))))))))))))
 
 #!
 
@@ -463,7 +457,7 @@ class SystemDescription(object):
         print(f"In diagnostic mode, nomminal filename is {filename}", file=sys.stderr)
         nominal_system_description: dict = file_to_system_description(filename)
         actual_system_description: dict = discover()
-        sys_descrip_diff: dict  = nominal_system_description..diff( actual_system_description )
+        sys_descrip_diff: dict  = nominal_system_description.diff( actual_system_description )
         return ErrorLevels.UNKNOWN
 
     def test(self, test_specification) -> ErrorLevels:

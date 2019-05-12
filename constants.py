@@ -6,6 +6,7 @@
 import typing
 import enum
 from enum import auto
+import sys
 
 
 port = 8722  # Default port that the server listens on.  Provides a RESTful
