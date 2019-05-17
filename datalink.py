@@ -11,14 +11,14 @@ import sys
 from typing import Dict, List
 
 import constants
-from interface import Interface
+from interfaces import PhysicalInterface
 from utilities import OsCliInter, os_name, the_os
 
 
-class DataLink(Interface):
+class DataLink(PhysicalInterface):
     # Create a command, suitable for executing by subprocess, that lists all of the datalinks on this system.
     if constants.OperatingSystems.LINUX == the_os:
-        DISCOVER_ALL_DATALINKS_COMMAND = [Interface.IP_COMMAND, "--oneline", "link", "list"]
+        DISCOVER_ALL_DATALINKS_COMMAND = [PhysicalInterface.IP_COMMAND, "--oneline", "link", "list"]
     else:
         raise NotImplemented(
             f"The DISCOVER_ALL_DATALINKS_COMMAND can't be filled in yet because {os_name} isn't implemented yet")
@@ -143,12 +143,12 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
             lower_up: bool = "LOWER_UP" in flags
             carrier: bool = "NO-CARRIER" not in flags
 
-            mtu: int = int(Interface.get_value_from_list(fields, "mtu"))
-            qdisc: str = Interface.get_value_from_list(fields, "qdisc")
-            state: str = Interface.get_value_from_list(fields, "state")
-            mode: str = Interface.get_value_from_list(fields, "mode")
-            group: str = Interface.get_value_from_list(fields, "group")
-            qlen_str: str = Interface.get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
+            mtu: int = int(PhysicalInterface.get_value_from_list(fields, "mtu"))
+            qdisc: str = PhysicalInterface.get_value_from_list(fields, "qdisc")
+            state: str = PhysicalInterface.get_value_from_list(fields, "state")
+            mode: str = PhysicalInterface.get_value_from_list(fields, "mode")
+            group: str = PhysicalInterface.get_value_from_list(fields, "group")
+            qlen_str: str = PhysicalInterface.get_value_from_list(fields, "qlen")  # The qlen_str may have a trailing \
             if qlen_str[-1:] == """\\""":
                 qlen_str = qlen_str[:-1]
             try:
@@ -158,12 +158,12 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development)
                 print(f"if_str is {if_str}\n", file=sys.stderr)
                 qlen = 0  # moving on
             if name == "lo:":
-                link_addr: str = Interface.get_value_from_list(fields, "link/loopback")
+                link_addr: str = PhysicalInterface.get_value_from_list(fields, "link/loopback")
             else:
-                link_addr: str = Interface.get_value_from_list(fields, "link/ether")
+                link_addr: str = PhysicalInterface.get_value_from_list(fields, "link/ether")
             assert len(link_addr) > 0, "link_addr has length 0.  " \
                                        f"get_value_from_list failed. fields is {fields}"
-            broadcast_addr: str = Interface.get_value_from_list(fields, "brd")
+            broadcast_addr: str = PhysicalInterface.get_value_from_list(fields, "brd")
         else:
             raise NotImplemented(f"{OsCliInter.system} is not implemented yet in DataLink")
         link_obj = DataLink(name=name,
