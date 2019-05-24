@@ -9,8 +9,7 @@ from enum import auto
 import sys
 
 
-port = 8722  # Default port that the server listens on.  Provides a RESTful
-# interface
+PORT: int = 8722  # Default PORT that the server listens on.  Provides a RESTful interface
 
 
 class Modes(enum.IntEnum):
@@ -49,8 +48,8 @@ class OperatingSystems(enum.IntEnum):
 
 
 class OSILevels(enum.Enum):
-    print("Enter an issue that I changed the values of the constants from \
-    integers to strings for reliability", file=sys.stderr)
+    print("Enter an issue that I changed the values of the constants from "
+          "integers to strings for reliability", file=sys.stderr)
     PHYSICAL = "PHYSICAL"
     DATALINK = "DATALINK"
     NETWORK4 = "NETWORK4"
