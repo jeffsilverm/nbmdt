@@ -262,7 +262,8 @@ class IPv6Route(IPRoute):
     @classmethod
     def discover(cls) -> typing.List:      # in class IPv6Route c
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
-        scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
+        scrapping the output.  A future version will query the routing table through the /sys pseudo file system
+        :rtype: """
 
         # jeffs@jeff-desktop:~ $ ip --family inet6 route show
         # 2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 1583sec pref medium

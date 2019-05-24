@@ -185,7 +185,7 @@ type_application_dict = typing.Dict[str, "application.Application"]
 type_presentation_dict = typing.Dict[str, "presentation.Presentation"]
 type_session_dict = typing.Dict[str, "session.Session"]
 type_transport_dict = typing.Dict[str, "transport.Transport"]
-type_network_dict: dict = typing.Dict[str, "network.Network"]
+type_network_dict: dict = typing.Dict[str, "route.IPv4Route"]
 type_datalink_dict = typing.Dict[str, "datalink.DataLink"]
 type_interface_dict = typing.Dict[
     str, "interface.Interface"]  # Issue 25 re-written

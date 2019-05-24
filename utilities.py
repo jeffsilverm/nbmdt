@@ -6,6 +6,7 @@
 import json
 import platform
 import subprocess
+import constants
 import sys
 from typing import List, Tuple, Dict
 import os
@@ -14,7 +15,8 @@ from constants import ErrorLevels
 from constants import type_application_dict, type_presentation_dict, type_session_dict, \
     type_transport_dict, type_network_dict, type_datalink_dict,  \
     type_physical_dict
-import application, presentation, session, transport, routes, datalink, physical
+from constants import OperatingSystems
+# import application, presentation, session, transport, routes, datalink, physical
 
 # from nbmdt import SystemDescription
 
@@ -55,7 +57,8 @@ class SystemDescription(object):
                  presentations: type_presentation_dict = None,
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
-                 networks: type_network_dict = None,
+                 networks_4: type_network_dict = None,
+                 networks_6: type_network_dict = None,
                  # interfaces: type_interface_dict = None,          # Issue 25
                  datalinks: type_datalink_dict = None,
                  physicals: type_physical_dict = None,
@@ -80,11 +83,54 @@ class SystemDescription(object):
         self.presentations = presentations
         self.sessions = sessions
         self.transports = transports  # TCP, UDP
-        self.networks = networks  # IPv4, IPv6
+        self.networks_4 = networks_4  # IPv4
+        self.networks_6 = networks_6    # IPv6
         self.datalinks = datalinks  # MAC address
         self.physicals = physicals
         self.configuration_filename: str = configuration_filename
         self.system_name = system_name
+
+
+    @classmethod
+    def discover(cls) -> 'SystemDescription':
+        """
+        :return: SystemDescription  this method returns a SystemDescription object based on examining the
+        current system
+        """
+        import application
+        import presentation
+        import session
+        import routes
+
+        applications : type_application_dict = application.Application.discover()
+        presentations : type_presentation_dict = presentation.Presentation.discover()
+        sessions : type_session_dict = session.Session.discover()
+        networks_4 : type_network_4_dict = routes.IPv4Route.discover()
+        applications : type_application_dict = application.Application.discover()
+        applications : type_application_dict = application.Application.discover()
+
+
+
+        cls.__init__ (session
+                    applications = applications,
+                    presentations = presentations,
+                    sessions = sessions,
+                    transports = transports,
+                                                                              transports: type_transport_dict = None,
+                                                                                                                networks_4: type_network_dict = None,
+                                                                                                                                                networks_6: type_network_dict = None,
+                                                                                                                                                                                # interfaces: type_interface_dict = None,          # Issue 25
+                                                                                                                                                                                datalinks: type_datalink_dict = None,
+                                                                                                                                                                                                                physicals: type_physical_dict = None,
+                                                                                                                                                                                                                                                # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
+                                                                                                                                                                                                                                                configuration_filename: str = None,
+
+
+                       )
+
+
+
+
 
     @classmethod
     def system_description_from_file(cls, filename: str) -> 'SystemDescription':
@@ -98,6 +144,9 @@ class SystemDescription(object):
             raise FileNotFoundError(f"The file {filename} does not exist")
         with open(filename, "r") as f:
             so = json.load(f)
+
+        # There might be an issue some day because the output from the json.load is going to be a dictionary of
+        # dictionaries
 
         return SystemDescription(
             applications=so.applications,
@@ -118,37 +167,7 @@ class SystemDescription(object):
     # circular dependencies.
     print("Log the above comment as a bug", file=sys.stderr)
 
-    @classmethod
-    def discover(cls) -> object:
-        """
-
-        :return: a SystemDescription object.
-        """
-
-        applications: Dict = application.Application.discover()
-        presentations = presentation.Presentation.discover()
-        sessions = session.Session.discover()
-        transports = transport.Transport.discover()
-        networks_4 = routes.IPv4Route.discover()
-        networks_6 = routes.IPv6Route.discover()
-
-        # interfaces = interface.Interface.discover()
-        datalinks = datalink.DataLink.discover()
-        physicals = physical.Physical.discover()
-        name: str = platform.node()
-
-        my_system: object = SystemDescription(
-            applications=applications,
-            presentations=presentations,
-            sessions=sessions,
-            transports=transports,
-            networks_4=networks_4,
-            networks_6=networks_6,
-            datalinks=datalinks,
-            physicals=physicals,
-            system_name=name
-        )
-        return my_system
+    # method discover was here, but is now moved to nbmdt.py
 
     def file_from_system_description(self, filename: str) -> None:
         """Write a system description to a file
@@ -366,5 +385,7 @@ else:
 
 if "__main__" == __name__:
     print(f"System is {os_name} A.K.A. {the_os}")
-    if constants.OperatingSystems.LINUX == the_os:
+    if OperatingSystems.LINUX == the_os:
         print(f"In linux, the uname -a command output is \n{OsCliInter.run_command(['uname', '-a'])}\n.")
+    else:
+        raise NotImplemented("This program ONLY runs on linux at this time")
