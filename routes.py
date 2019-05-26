@@ -26,7 +26,7 @@ class IPRoute(Layer):
     version not-so-agnostic code goes in classes that inherit from this class.
     """
 
-    def discover(self, family: str) -> typing.List :        # IPRoute
+    def discover(self, family: str) -> typing.Dict :        # IPRoute
         """discover returns a list of routes, for either IPv4 or IPv6.  Each route is a dictionary keyed by
         fields from the ip command.
         There is a standard module, ipaddress, and I should have used that instead of "rolling my own"
@@ -169,13 +169,14 @@ Class IPv4Route is a layer, but it uses the standard library ipaddress module
             "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
 
     @classmethod
-    def discover(cls):
+    def discover(cls) -> typing.Dict:
         """This method finds all of the IPv4 routes by examining the output of the ip route command, and
         returns a list of IPV4_routes.  This is a class method because all route objects have the same
          default gateway
 
          This implementation is not very good, there is the netifaces interface which is socket based and avoids
          forking a subprocess.
+         :rtype: object
          """
 
         def translate_destination(destination: str) -> str:
@@ -260,7 +261,7 @@ class IPv6Route(IPRoute):
         self.ipv6_interface = ipv6_interface
 
     @classmethod
-    def discover(cls) -> typing.List:      # in class IPv6Route c
+    def discover(cls) -> typing.Dict:      # in class IPv6Route c
         """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
         scrapping the output.  A future version will query the routing table through the /sys pseudo file system
         :rtype: """
@@ -298,7 +299,7 @@ class IPv6Route(IPRoute):
         #       >> >
         #
 
-        ipv6_routes: typing.List = IPRoute.discover(family="inet6")
+        ipv6_routes: typing.Dict = IPRoute.discover(family="inet6")
         return ipv6_routes
 
 

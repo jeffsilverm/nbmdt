@@ -181,12 +181,14 @@ LAYERS_LIST = "ethernet,wifi,ipv4,ipv6,neighbors,dhcp4,dhcp6,router," \
 
 # Moved here from nbmdt.py Issue 29
 # https://github.com/jeffsilverm/nbmdt/issues/29
-type_application_dict = typing.Dict[str, "application.Application"]
-type_presentation_dict = typing.Dict[str, "presentation.Presentation"]
-type_session_dict = typing.Dict[str, "session.Session"]
-type_transport_dict = typing.Dict[str, "transport.Transport"]
-type_network_dict: dict = typing.Dict[str, "route.IPv4Route"]
-type_datalink_dict = typing.Dict[str, "datalink.DataLink"]
-type_interface_dict = typing.Dict[
+type_application_dict: dict = typing.Dict[str, "application.Application"]
+type_presentation_dict: dict = typing.Dict[str, "presentation.Presentation"]
+type_session_dict: dict = typing.Dict[str, "session.Session"]
+type_transport_dict: dict = typing.Dict[str, "transport.Transport"]
+type_network_4_dict: dict = typing.Dict[str, "route.IPv4Route"]
+type_network_6_dict: dict = typing.Dict[str, "route.IPv6Route"]
+type_network_dict: dict = typing.Dict[str, "route.IPvRoute"]
+type_datalink_dict: dict = typing.Dict[str, "datalink.DataLink"]
+type_interface_dict:dict = typing.Dict[
     str, "interface.Interface"]  # Issue 25 re-written
-type_physical_dict = typing.Dict[str, "physical.Physical"]  # Issue 29
+type_physical_dict:dict = typing.Dict[str, "physical.Physical"]  # Issue 29

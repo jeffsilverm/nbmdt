@@ -35,6 +35,7 @@ class Application(object):
         Use an operating system command to build a dictionary of applications.  The operating system is key'd by
         PID (which wouldn't work if there was an OS that didn't have PIDs).  The value of the the dictionary is an
         Application object.  The interior of an application is OS dependent
+        :rtype:
         :return:
         """
         d: Dict[str, cls] = {}

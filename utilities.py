@@ -4,19 +4,26 @@
 
 
 import json
+import os
 import platform
 import subprocess
-import constants
 import sys
-from typing import List, Tuple, Dict
-import os
+from typing import List, Tuple, Type
 
-from constants import ErrorLevels
-from constants import type_application_dict, type_presentation_dict, type_session_dict, \
-    type_transport_dict, type_network_dict, type_datalink_dict,  \
-    type_physical_dict
-from constants import OperatingSystems
 # import application, presentation, session, transport, routes, datalink, physical
+import application
+import constants
+import datalink
+import physical
+import presentation
+import routes
+import session
+import transport
+from constants import ErrorLevels
+from constants import OperatingSystems
+from constants import type_application_dict, type_presentation_dict, type_session_dict, \
+    type_transport_dict, type_network_4_dict, type_network_6_dict, type_datalink_dict, \
+    type_physical_dict
 
 # from nbmdt import SystemDescription
 
@@ -57,8 +64,8 @@ class SystemDescription(object):
                  presentations: type_presentation_dict = None,
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
-                 networks_4: type_network_dict = None,
-                 networks_6: type_network_dict = None,
+                 networks_4: type_network_4_dict = None,
+                 networks_6: type_network_6_dict = None,
                  # interfaces: type_interface_dict = None,          # Issue 25
                  datalinks: type_datalink_dict = None,
                  physicals: type_physical_dict = None,
@@ -70,11 +77,13 @@ class SystemDescription(object):
         Populate a description of the system.  Note that this method is
         a constructor, and all it does is create a SystemDescription object.
 
+        :rtype: None:   Constructors don't return anything
         :param applications:
         :param presentations:
         :param sessions:
         :param transports:
-        :param networks:
+        :param networks_4:  IPv4 networks
+        :param networks_6:  IPv6 networks
         :param datalinks:
         :param configuration_filename:
         :param system_name: str The name of this computer
@@ -84,53 +93,43 @@ class SystemDescription(object):
         self.sessions = sessions
         self.transports = transports  # TCP, UDP
         self.networks_4 = networks_4  # IPv4
-        self.networks_6 = networks_6    # IPv6
+        self.networks_6 = networks_6  # IPv6
         self.datalinks = datalinks  # MAC address
         self.physicals = physicals
         self.configuration_filename: str = configuration_filename
-        self.system_name = system_name
-
+        self.system_name: str = system_name
 
     @classmethod
-    def discover(cls) -> 'SystemDescription':
+    def discover(cls) :
         """
         :return: SystemDescription  this method returns a SystemDescription object based on examining the
         current system
         """
-        import application
-        import presentation
-        import session
-        import routes
+        print(f"In {cls.__name__}, the type of cls is {type(cls)}.", file=sys.stderr)
 
-        applications : type_application_dict = application.Application.discover()
-        presentations : type_presentation_dict = presentation.Presentation.discover()
-        sessions : type_session_dict = session.Session.discover()
-        networks_4 : type_network_4_dict = routes.IPv4Route.discover()
-        applications : type_application_dict = application.Application.discover()
-        applications : type_application_dict = application.Application.discover()
+        # Examine each layer in the protocol stack and discover what's in it
+        applications: type_application_dict = application.Application.discover()
+        presentations: type_presentation_dict = presentation.Presentation.discover()
+        sessions: type_session_dict = session.Session.discover()
+        transports: constants.type_transport_dict = transport.Transport.discover()
+        networks_4: constants.type_network_4_dict = routes.IPv4Route.discover()
+        networks_6: type_network_6_dict = routes.IPv6Route.discover()
+        datalinks: constants.type_datalink_dict = datalink.DataLink.discover()
+        physicals: constants.type_physical_dict = physical.Physical.discover()
 
+        # cls.__init__(cls,
 
+        sd: SystemDescription = SystemDescription (
+                     sessions=sessions,
+                     applications=applications,
+                     presentations=presentations,
+                     transports=transports,
+                     networks_4=networks_4,
+                     networks_6=networks_6,
+                     datalinks=datalinks,
+                     physicals=physicals)
 
-        cls.__init__ (session
-                    applications = applications,
-                    presentations = presentations,
-                    sessions = sessions,
-                    transports = transports,
-                                                                              transports: type_transport_dict = None,
-                                                                                                                networks_4: type_network_dict = None,
-                                                                                                                                                networks_6: type_network_dict = None,
-                                                                                                                                                                                # interfaces: type_interface_dict = None,          # Issue 25
-                                                                                                                                                                                datalinks: type_datalink_dict = None,
-                                                                                                                                                                                                                physicals: type_physical_dict = None,
-                                                                                                                                                                                                                                                # Removed mode - it's not part of the system description, it's how nbmdt processes a system description
-                                                                                                                                                                                                                                                configuration_filename: str = None,
-
-
-                       )
-
-
-
-
+        return sd
 
     @classmethod
     def system_description_from_file(cls, filename: str) -> 'SystemDescription':
@@ -153,7 +152,8 @@ class SystemDescription(object):
             presentations=so.presentations,
             sessions=so.presentations,
             transports=so.transports,
-            networks=so.networks,
+            networks_4=so.networks_4,
+            networks_6=so.networks_6,
             datalinks=so.datalinks,
             physicals=so.physicals,
             configuration_filename=filename,
