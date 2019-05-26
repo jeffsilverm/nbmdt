@@ -4,23 +4,20 @@
 # The Network Boot Monitor Diagnostic tool
 #
 import argparse
+import platform
 import sys
+from typing import Dict
 from typing import Tuple, List
 
+import application
 import constants
+import datalink
+import physical
+import presentation
+import routes
+import session
+import transport
 import utilities
-from typing import Dict
-import application, presentation, session, transport, routes, datalink, physical, platform
-
-
-# from physical import Physical
-# import interface  # OSI layer 2: ethernet, WiFi       # issue 25
-# import datalink  # OSI layer 2: # Media Access Control: arp, ndp
-# import network  # OSI layer 3: IPv4, IPv6 should be called network, routing
-# import physical  # OSI layer 1: Hardware: ethernet, WiFi, RS-232, etc.
-# import presentation  # OSI layer 6:
-# import session  # OSI layer 5:
-# import transport  # OSI layer 4: TCP, UDP (and SCTP if it were a thing)
 
 DEBUG = True
 try:
@@ -29,7 +26,7 @@ except Exception as e:  # if anything goes wrong
     print("Testing the __file__ special variable FAILED, exception is " + str(e), file=sys.stderr)
 # Issue 29 moved the definitions of
 # type_application_dict, type_presentation_dict, type_session_dict
-# type_transport_dict, type_network_dict, type_datalink_dict, type_interface_dict
+# type_transport_dict, type_network_4_dict, type_datalink_dict, type_interface_dict
 # To constants.py  Re-write Issue 25 to reflect this change
 #
 # try:
@@ -207,7 +204,7 @@ def arg_parser(args) -> Tuple:
         # Hail Mary - no matter how bad the argument list is butchered, boot mode should still work
         parsed_options.boot = constants.Modes.BOOT
     except SystemExit as s:
-        print(f"parser.parse_args raised a SystemExit error. Before I die, args is {args}" 
+        print(f"parser.parse_args raised a SystemExit error. Before I die, args is {args}"
               f"and the exception information is {str(s)}")
         raise SystemExit(s)
 
@@ -251,39 +248,39 @@ def arg_parser(args) -> Tuple:
 
     return parsed_options, mode_
 
-    # As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
-    # This method was moved from constants.py
-    def discover(cls) -> utilities.SystemDescription:
-        """
+# As of 2018-07-29, there is a bug: the --debug option is not handled at all
 
-        :return: a utilities.SystemDescription object.
-        """
+# This method was moved from constants.py
+def discover() -> utilities.SystemDescription:
+    """
 
-        applications: Dict = application.Application.discover()
-        presentations = presentation.Presentation.discover()
-        sessions = session.Session.discover()
-        transports = transport.Transport.discover()
-        networks_4 = routes.IPv4Route.discover()
-        networks_6 = routes.IPv6Route.discover()
+    :return: a utilities.SystemDescription object.
+    """
 
-        # interfaces = interface.Interface.discover()
-        datalinks = datalink.DataLink.discover()
-        physicals = physical.Physical.discover()
-        name: str = platform.node()
+    applications: Dict = application.Application.discover()
+    presentations = presentation.Presentation.discover()
+    sessions = session.Session.discover()
+    transports = transport.Transport.discover()
+    networks_4 = routes.IPv4Route.discover()
+    networks_6 = routes.IPv6Route.discover()
+    datalinks = datalink.DataLink.discover()
+    physicals = physical.Physical.discover()
+    name: str = platform.node()
 
-        my_system: object = utilities.SystemDescription(
-            applications=applications,
-            presentations=presentations,
-            sessions=sessions,
-            transports=transports,
-            networks_6=networks_6,
-            networks_4=networks_4,
-            datalinks=datalinks,
-            physicals=physicals,
-            system_name=name
-        )
-        return my_system
+    my_system: utilities.SystemDescription = utilities.SystemDescription(
+        applications=applications,
+        presentations=presentations,
+        sessions=sessions,
+        transports=transports,
+        networks_6=networks_6,
+        networks_4=networks_4,
+        datalinks=datalinks,
+        physicals=physicals,
+        system_name=name
+    )
+    return my_system
+
 
 if __name__ == "__main__":
     main()
