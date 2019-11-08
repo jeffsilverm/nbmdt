@@ -1,15 +1,17 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import collections
-import netifaces       # See /usr/lib/python3/dist-packages/netifaces-0.10.4.egg-info/PKG-INFO
+
 # netifaces will do everything I need and it is portable!  Actually, it won't do, it won't tell me
 # there is a carrier or if the interface is up.  The ip command will.  But the ip command won't
-# run om windows.
+# run oN windows.
 import subprocess
 import sys
 from os import path as path
 from pathlib import Path
+
+import netifaces  # See /usr/lib/python3/dist-packages/netifaces-0.10.4.egg-info/PKG-INFO
+
 from configuration import IP_COMMAND
 
 # This should be a configuration file item - on ubuntu, the IP_COMMAND is
@@ -52,12 +54,12 @@ class PhysicalInterface(object):
         return s
 
     @classmethod
-    def get_all_physical_interfaces(cls) -> list:
+    def get_all_physical_interfaces(cls) -> list:  # class PhysicalInterface
         """
         This method returns a list of interfaces as known by the netifaces package
         """
 
-        links_list:list = netifaces.interfaces()
+        links_list: list = netifaces.interfaces()
         return links_list
 
     def run_ip_link_command(self, interface=None) -> dict:
@@ -88,7 +90,7 @@ class PhysicalInterface(object):
                 check=False)
         completed_str = completed.stdout.decode('ascii')
         # The output of the ip link command looks like:
-        """
+        r"""
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip --oneline --detail link list
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    
 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 
@@ -129,7 +131,7 @@ mcast_startup_query_count 2 mcast_last_member_interval 100 mcast_membership_inte
 nf_call_iptables 0 nf_call_ip6tables 0 nf_call_arptables 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 
 65536 gso_max_segs 65535 
         """
-        """
+        r"""
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $ ip --oneline --detail link list eno1
 3: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\   
  link/ether 00:22:4d:7c:4d:d9 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 1 numrxqueues 1 
@@ -142,31 +144,27 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
         lines_lst = completed_str.split()
         for line in lines_lst:
             link_fields = line.split()
-            #skip the line number, link_fields[0]
+            # skip the line number, link_fields[0]
             interface_name = link_fields[1]
             # According to https://pypi.org/project/ifparser/ , the possible values
             # of interface_flags include:
-            # BROADCAST, LOOPBACK, MULTICAST, RUNNING, UP, DYNAMIC, NOARP, PROMISC, POINTOPOINT, SIMPLEX, SMART, MASTER, SLAVE
+            # BROADCAST, LOOPBACK, MULTICAST, RUNNING, UP, DYNAMIC, NOARP, PROMISC, POINTOPOINT, SIMPLEX, SMART,
+            # MASTER, SLAVE
             # How do they know that?
 
             interface_flags = link_fields[2]
             property_dict = {}
             for field_idx in range(2, len(link_fields), 2):
                 property_name = link_fields[field_idx]
-                property_value = link_fields[field_idx+1]
+                property_value = link_fields[field_idx + 1]
                 property_dict[property_name] = property_value
-            for if_flag in ["BROADCAST", "LOOPBACK", "MULTICAST", "RUNNING", \
-                "UP", "DYNAMIC", "NOARP", "PROMISC", "POINTOPOINT", "SIMPLEX",\
-                "SMART", "MASTER", "SLAVE" ]:
+            for if_flag in ["BROADCAST", "LOOPBACK", "MULTICAST", "RUNNING",
+                            "UP", "DYNAMIC", "NOARP", "PROMISC", "POINTOPOINT", "SIMPLEX",
+                            "SMART", "MASTER", "SLAVE"]:
                 property_dict[if_flag] = if_flag in interface_flags
-            interface_obj = self.__init__(interface_name, property_dict )
+            interface_obj = self.__init__(interface_name, property_dict)
             interfaces_dict[interface_name] = interface_obj
-
-
-
-
-
-
+        return interfaces_dict
 
     @staticmethod
     def link_properties(ifname: str) -> dict:
@@ -188,8 +186,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
         dev_properties_path = NET_DEVS_PATH / ifname
         if not path.exists(str(dev_properties_path)):
             print(
-                f"The device path {str(dev_properties_path)} does not exist.  " \
-                f"It likely that the directory for the interface named {ifname} does not exist.\n", \
+                f"The device path {str(dev_properties_path)} does not exist.  " 
+                f"It likely that the directory for the interface named {ifname} does not exist.\n",
                 "The devices that are known are:", file=sys.stderr)
             for f in dev_properties_path.glob("*"):
                 print(f, file=sys.stderr)
@@ -199,17 +197,21 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
             if d.is_dir():
                 continue
             gh = str(d)
-            property = gh[gh.rindex("/") + 1:]
+            prop = gh[gh.rindex("/") + 1:]
             with open(gh, "rb") as fp:
-                contents = None     # Fallback value if fp.readlines raises an error
+                contents = None  # Fallback value if fp.readlines raises an error
                 try:
                     contents = fp.readlines()
                 except OSError as o:
-                    print(f"Property {prop} cannot be known due to OSError", file=sys.stderr)
+                    print(f"Property {prop} cannot be known due to OSError {str(o)}", file=sys.stderr)
                     continue
                 except UnicodeDecodeError as u:
-                    print(f"Property {prop} in {gh} raised a UnicodeDecodeError", file=sys.stderr)
-                properties[property] = contents
+                    print(f"Property {prop} in {gh} raised a UnicodeDecodeError {str(u)}", file=sys.stderr)
+                properties[prop] = contents
         return properties
 
 
+if "__main__" == __name__:
+    all_interfaces = PhysicalInterface.get_all_physical_interfaces()
+    for i_f in all_interfaces:
+        print(i_f)
