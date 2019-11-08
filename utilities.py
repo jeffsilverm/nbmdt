@@ -8,7 +8,7 @@ import os
 import platform
 import subprocess
 import sys
-from typing import List, Tuple, Type
+from typing import List, Tuple
 
 # import application, presentation, session, transport, routes, datalink, physical
 import application
@@ -100,7 +100,7 @@ class SystemDescription(object):
         self.system_name: str = system_name
 
     @classmethod
-    def discover(cls) :
+    def discover(cls):              # class SystemDescription
         """
         :return: SystemDescription  this method returns a SystemDescription object based on examining the
         current system
@@ -260,16 +260,21 @@ class SystemDescription(object):
 
         The classes should be re-written with __str__ methods which are sensitive to the mode
         """
-        result = "{0}\n{1}\n{2}\n{3}\n{4}\n{5}".format(str(self.applications), str(self.presentations),
-                                                       str(self.sessions), str(self.transports), str(self.networks),
-                                                       str(self.datalinks))
+        result = "{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}".format(str(self.applications),
+                                                       str(self.presentations),
+                                                       str(self.sessions),
+                                                       str(self.transports),
+                                                       str(self.networks_4), str(self.networks_6),
+                                                       str(self.datalinks),
+                                                       str(self.physicals) )
         return result
 
-    def nominal(self, filename) -> None:
+    def nominal(self, filename) -> ErrorLevels:
         print(f"The nominal configuration file is going to be {filename}", file=sys.stderr)
         self.file_from_system_description(filename)
+        return ErrorLevels.NORMAL
 
-    def boot(self) -> ErrorLevels:
+    def boot(self) -> None:
         print("Going to test in boot mode", file=sys.stderr)
         raise NotImplementedError
 
@@ -280,13 +285,12 @@ class SystemDescription(object):
     def diagnose(self, filename) -> ErrorLevels:
         print(f"In diagnostic mode, nomminal filename is {filename}", file=sys.stderr)
         nominal_system: SystemDescription = SystemDescription.system_description_from_file(filename)
-        raise NotImplementedError
-        return ErrorLevels.UNKNOWN
+        print(nominal_system)
+        return ErrorLevels.NORMAL
 
-    def test(self, test_specification) -> ErrorLevels:
+    def test(self, test_specification) -> None:
         print(f"The test_specification is {test_specification}", file=sys.stderr)
         raise NotImplementedError
-        return ErrorLevels.UNKNOWN
 
 
 class SystemDescriptionFile(SystemDescription):
@@ -296,7 +300,7 @@ class SystemDescriptionFile(SystemDescription):
 
     def __init__(self, configuration_filename):
         """Create a SystemDescription object which has all of the information in a system configuration file"""
-
+        system_name="FAKE_NAME"
         with open(configuration_filename, "r") as json_fp:
             c_dict = json.load(json_fp)  # Configuration dictionary
         # Issue 31 Instead of raising a KeyError exception, just use None
@@ -307,7 +311,7 @@ class SystemDescriptionFile(SystemDescription):
                                                     datalinks=c_dict.get("datalinks"),
                                                     physicals=c_dict.get("physicals"),
                                                     configuration_filename=configuration_filename,
-                                                    system_name=None  # for now.
+                                                    system_name=system_name  # for now.
                                                     )
         self.version = c_dict['version']
         self.timestamp = c_dict['timestamp']
