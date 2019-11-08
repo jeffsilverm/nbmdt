@@ -86,6 +86,10 @@ class Physical(Layer):
     # Not implemented yet
     @classmethod
     def discover(cls)-> dict:
+        """
+
+        :rtype:
+        """
         return {}
 
 
