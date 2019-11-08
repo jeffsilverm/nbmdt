@@ -8,7 +8,6 @@ import enum
 from enum import auto
 import sys
 
-
 PORT: int = 8722  # Default PORT that the server listens on.  Provides a RESTful interface
 
 
