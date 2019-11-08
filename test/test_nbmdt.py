@@ -14,7 +14,7 @@ from constants import type_application_dict
 
 import constants
 from constants import type_application_dict, type_presentation_dict,type_session_dict, type_transport_dict, \
-    type_network_dict, type_datalink_dict,  type_physical_dict
+    type_network_4_dict, type_datalink_dict,  type_physical_dict
 import nbmdt
 import pytest
 import platform
@@ -35,7 +35,7 @@ class testSystemDescription():
                  presentations: type_presentation_dict = None,
                  sessions: type_session_dict = None,
                  transports: type_transport_dict = None,
-                 networks: type_network_dict = None,
+                 networks: type_network_4_dict = None,
                  # interfaces: type_interface_dict = None,          # Issue 25
                  datalinks: type_datalink_dict = None,
                  physicals: type_physical_dict = None,
