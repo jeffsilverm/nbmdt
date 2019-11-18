@@ -89,13 +89,28 @@ class ErrorLevels(IntEnum):
     # run yet or conditions are such that the test cannot be run correctly.
 
 
+
 # If termcolor isn't good enough (it has only 8 colors), try colored (which has 256),
 # https://pypi.python.org/pypi/colored/1.3.3.  Do not confuse the colored package with
 # termcolor.colored
-colors = {ErrorLevels.NORMAL: ['black', 'on_green'], ErrorLevels.SLOW: ['black', 'on_yellow'],
-          ErrorLevels.DEGRADED: ['black', 'on_magenta'], ErrorLevels.DOWN: ['black', 'on_red'],
-          ErrorLevels.DOWN_DEPENDENCY: ['black', 'on_cyan'], ErrorLevels.DOWN_ACKNOWLEDGED: ['black', 'on_magenta'],
-          ErrorLevels.CHANGED: ['white', 'on_black'], ErrorLevels.OTHER: ['black', 'on_grey']}
+# https://pypi.org/project/termcolor/
+colors = {ErrorLevels.NORMAL: ['grey', 'on_green'], ErrorLevels.SLOW: ['grey', 'on_yellow'],
+          ErrorLevels.DEGRADED: ['grey', 'on_magenta'], ErrorLevels.DOWN: ['white', 'on_red'],
+          ErrorLevels.DOWN_DEPENDENCY: ['grey', 'on_cyan'], ErrorLevels.DOWN_ACKNOWLEDGED: ['white', 'on_magenta'],
+          ErrorLevels.CHANGED: ['grey', 'on_blue'], ErrorLevels.OTHER: ['grey', 'on_white'],
+          ErrorLevels.UNKNOWN: ['white', 'on_grey']}
+
+"""
+Test code:
+
+import termcolor
+from constants import ErrorLevels as ELs
+from constants import colors
+for e in ELs:
+  termcolor.cprint(str(e) + str(colors[e]), colors[e][0], colors[e][1] )
+
+"""
+
 # on is down
 # it as
 MAXINT=4294967296
