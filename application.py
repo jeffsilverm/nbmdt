@@ -3,16 +3,18 @@
 #
 # Contains a class for applications and a class for DNS, which is an application
 
-from termcolor import cprint as cprint
 import sys
-# dnspython DNS toolkit see http://www.dnspython.org/
-from dns import resolver, rdatatype  # rdataclass,
-from layer import Layer
-from constants import ErrorLevels
-import utilities
-from typing import List, Dict
 import typing
+from typing import List, Dict
 
+import dns.rdatatype  # rdataclass,
+# dnspython DNS toolkit see http://www.dnspython.org/
+import dns.resolver
+from termcolor import cprint as cprint
+
+import utilities
+from constants import ErrorLevels
+from layer import Layer
 
 
 class Application(object):
@@ -36,7 +38,7 @@ class Application(object):
         4 tty1     S      0:00 -bash
       866 tty1     R      0:00 ps -ax
             '''
-            apps_list: str = apps_str.split("\n")
+            apps_list: List[str] = apps_str.split("\n")
             for app in apps_list:
                 if "PID" in app:
                     continue
@@ -56,8 +58,7 @@ class Application(object):
         self.time = time
         self.command = command
 
-
-    def get_status(self)  -> ErrorLevels:
+    def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
     def __str__(self):
@@ -66,23 +67,9 @@ class Application(object):
 
 # DNS sits at the application layer in the OSI model, according to
 # https://en.wikipedia.org/wiki/List_of_network_protocols_(OSI_model)
-
-class DNSFailure(Exception):
-
-    # Eventually, I'd like a DNSFailure exception to include the name being looked
-    # up and the kind of query being made.
-    # Issue 12
-    def __init__(self, name: str = None, query_type: str = 'A', *args) -> None:
-        """
-        :param name: str  The subject of the query
-        :param query_type: str  The type of query.  Default is 'A', an IPv4 name query
-        :param args:
-        :param kwargs:
-        """
-
-        cprint(f"DNSFailure was raised querying {name} using query type {query_type}", 'red', file=sys.stderr)
-        Exception.__init__(self, *args)
-
+# But since DNS is useful at many different levels in the stack, I am moving
+# the DNSFailure exception class from here to utilities.py
+# https://github.com/jeffsilverm/nbmdt/issues/40
 class DNS(object):
 
     def __init__(self):
@@ -105,19 +92,8 @@ class DNS(object):
             self.resolvers = []
         self.resolvers = resolvers
 
-    def query_specific_nameserver(self, server_list: list, qname: str, rdatatype: str):
-        """
-
-        :param server_list: A list of servers (possibly length 1) to query
-        :param qname:   The thing to query for
-        :param rdatatype:   The kind of queries to make
-        :return: A list of answers
-        """
-
-        self.resolver.nameservers = server_list
-        answer: list = dns.resolver.query(qname, rdatatype)
-        answer.sort()
-        return answer
+    # Issue 40 https://github.com/jeffsilverm/nbmdt/issues/40
+    # The method query_specific_nameserver was here, now moved to utilities.py
 
 
 class web(object):
@@ -128,50 +104,5 @@ class web(object):
 
 
 if __name__ == "__main__":
-
-    def resolver_tst():
-        answer = dns.query_specific_nameserver(resolver, rdatatype)
-        for rr in answer:
-            print(f"  {rr}")
-            if rr not in ['172.217.3.46']:
-                pass
-
-        okay = True
-        answer = dns.query_specific_nameserver(server_list=[resolver],
-                                               qname="google.com",
-                                               rdatatype=rdatatype.AAAA)
-        for rr in answer:
-            print(f"  {rr}")
-            if rr not in ["2607:f8b0:4008:80d::200e",
-                          '2607:f8b0:4004:811::200e']:
-                cprint(
-                        f"server {resolver} returned unanticipated IPv6 answer rr",
-                        'yellow')
-                okay = False
-        return okay
-
-
-    dns = DNS()
-    cprint(f"Testing local DNS resolvers from /etc/resolv.conf", "blue", file=sys.stderr)
-    local_resolvers = dns.get_resolvers()
-    print(local_resolvers)
-    failed_resolver_list = []
-    for resolver in local_resolvers + ['8.8.8.8']:
-        print(40 * '=' + '\n' + f"Working on resolver {resolver}")
-        okay = resolver_tst(resolver=resolver, qname="google.com", rdatatype=rdatatype.A)
-        if not okay:
-            failed_resolver_list.append(resolver)
-            cprint(f"Resolver {resolver} failed the IPv4 test.", 'red')
-        all_okay = all_okay and okay
-        okay = resolver_tst(resolver=resolver, qname="google.com", rdatatype=rdatatype.AAAA)
-        if not okay:
-            failed_resolver_list.append(resolver)
-            cprint(f"Resolver {resolver} failed the IPv6 test.", 'red')
-        all_okay = all_okay and okay
-    if len(failed_resolver_list) == 0:
-        cprint("All resolvers pass IPv4 checks", 'green')
-    else:
-        cprint(f"Some resolvers failed.  They are:{failed_resolver_list}", 'red')
-
-    cprint(f"Testing a non-existant resolver", 'blue', file=sys.stderr)
-    okay = resolver_tst(resolver=['192.168.0.143'], qname="google.com", rdatatype=rdatatype.A)
+    # Issue 40
+    pass
