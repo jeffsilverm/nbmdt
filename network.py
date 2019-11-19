@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # This module is responsible for representing the routing tables.  There are at least 2: one for IPv4 and one for IPv6
+import collections
 import re
 import socket
 import subprocess
@@ -10,11 +11,10 @@ from typing import Union
 
 from termcolor import cprint
 
-from application import DNSFailure
+import utilities
 from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
-
 
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
@@ -36,8 +36,13 @@ class NotPingable(Exception):
 class Network(Layer):
 
     @classmethod
-    def discover(cls):
-        pass
+    def get_routes(cls, family: socket.AddressFamily):
+        if family == socket.AF_INET:
+            return IPv4Address.get_routes()
+        elif family == socket.AF_INET6:
+            return IPv4Address.get_routes()
+        else:
+            raise ValueError("Impossible value for family was passed to Network.get_routes")
 
     def __init__(self):
         self.layer = Layer()
@@ -233,7 +238,7 @@ True
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
         if cpi.returncode == 2:
-            raise DNSFailure(name=name, query_type='A')
+            raise utilities.DNSFailure(name=name, query_type='A')
         elif cpi.returncode != 0 and cpi.returncode != 1:
             cprint(
                 f"About to raise a subprocess.CalledProcessError exception. name={name} cpi={cpi} returncode is "
@@ -551,13 +556,16 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
                 raise ValueError(f"fields[{start}] should be 'dev' but is actually {fields[start]}.\nLine is {r}")
             ipv6_interface = fields[start + 1]
             if fields[start + 2] != "proto":
-                raise ValueError(f"field[{start+2}] should be 'proto' but is actually {fields[start+2]}.\nLine is {r}")
+                raise ValueError(
+                    f"field[{start + 2}] should be 'proto' but is actually {fields[start + 2]}.\nLine is {r}")
             ipv6_proto = fields[start + 3]
             if fields[start + 4] != "metric":
-                raise ValueError(f"field[{start+4}] should be 'metric' but is actually {fields[start+4]}.\nLine is {r}")
+                raise ValueError(
+                    f"field[{start + 4}] should be 'metric' but is actually {fields[start + 4]}.\nLine is {r}")
             ipv6_metric = fields[start + 5]
             if fields[start + 6] != "pref":
-                raise ValueError(f"field[{start+7}] should be 'pref' but is actually {fields[start+6]}.\nLine is {r}")
+                raise ValueError(
+                    f"field[{start + 7}] should be 'pref' but is actually {fields[start + 6]}.\nLine is {r}")
             route_table_entry = IPv6Route(ipv6_destination=ipv6_destination,
                                           ipv6_next_hop=ipv6_next_hop,
                                           ipv6_proto=ipv6_proto,
@@ -588,8 +596,6 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
             "should have returned a network.IPv6Address"
 
         return cls.default_ipv6_gateway
-
-
 
 
 ############################## Cut and pasted out of interfaces.py   2018-06-24  ****************
@@ -721,6 +727,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $
 
     # *********************
 
+
 if __name__ in "__main__":
 
     print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
@@ -776,7 +783,7 @@ b'\xd0a\xbd\x1d'
     assert IPv4Address(name='google.com').ping4(production=False)[0], "google.com is not pingable and it should be"
     try:
         answer = IPv4Address(name='spurious.spurious').ping4(production=False)[0]
-    except (DNSFailure)  as d:
+    except (utilities.DNSFailure)  as d:
         cprint("Detected a DNSFailure as expected", "green", file=sys.stderr)
     except socket.gaierror as s:
         cprint("Detected a socket.gaierror as expected", "green", file=sys.stderr)

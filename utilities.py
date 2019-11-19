@@ -10,8 +10,6 @@ import sys
 from enum import Enum
 from typing import List
 
-import termcolor
-
 from constants import ErrorLevels, colors
 
 """
@@ -143,6 +141,12 @@ def report(condition: str, severity: ErrorLevels):
 
 if "__main__" == __name__:
     import dns.resolver
+
+    import termcolor
+    from constants import ErrorLevels as ELs
+
+    for e in ELs:
+        report(f"ErrorLevel {e.name}", severity=e)
 
     report("All's well", severity=ErrorLevels.NORMAL)
 
