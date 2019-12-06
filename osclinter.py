@@ -10,12 +10,12 @@ import subprocess
 import sys
 from typing import List, Tuple
 
+import constants
 from constants import ErrorLevels
 from constants import OperatingSystems
 from constants import type_application_dict, type_presentation_dict, type_session_dict, \
     type_transport_dict, type_network_4_dict, type_network_6_dict, type_datalink_dict, \
     type_physical_dict
-
 
 class OsCliInter(object):
     """
@@ -48,8 +48,10 @@ class OsCliInter(object):
                                                                 timeout=None,
                                                                 check=False)
         # Issue #36 - return stdout, stderr, and the return status code.
-        stdout_str: str = completed.stdout.decode('ascii')
-        stderr_str: str = completed.stderr.decode('ascii')
+        stdout_str: stdout_str = completed.stdout.decode('ascii')
+        # Why the following isn't the default behavior, I'll never know
+        stderr_str str = ( "" if completed.stderr is Null else \
+                completed.stderr.decode('ascii') )
         status: int = completed.returncode
         return stdout_str, stderr_str, status
 
@@ -62,8 +64,8 @@ except Exception as e:  # if anything goes wrong
 # Globally note the operating system name.  Note that this section of the code *must* follow the definition
 # of class OsCliInter or else the compiler will raise a NameError exception at compile time
 # Access the_os using utilities.the_os  The variable is so named to avoid confusion with the os package name
-print("About to import osCliInter", file="sys.stderr")
-os_name: str = self.OsCliInter.system.lower()
+print("About to import osCliInter", file=sys.stderr)
+os_name: str = OsCliInter.system.lower()
 the_os = constants.OperatingSystems.UNKNOWN
 if 'linux' == os_name:
     the_os = constants.OperatingSystems.LINUX
