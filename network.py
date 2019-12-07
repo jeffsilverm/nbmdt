@@ -7,7 +7,7 @@ import re
 import socket
 import subprocess
 import sys
-from typing import Union
+from typing import Union, List
 
 from termcolor import cprint
 
@@ -45,6 +45,11 @@ class Network(Layer):
             raise ValueError("Impossible value for family was passed to Network.get_routes")
 
     def __init__(self):
+        """
+
+        :rtype: Network: This is something of a placeholder, so if I write
+        something common to both IPv4 and IPv6, it can go here.
+        """
         self.layer = Layer()
 
     def get_status(self) -> ErrorLevels:
@@ -340,8 +345,6 @@ jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $
     
     """
 
-    default_ipv4_gateway = None
-
     def __init__(self, route):
         """This returns an IPv4Route object.  """
 
@@ -408,7 +411,8 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
         """
 
         route_list = list()
-        cls.default_ipv4_gateway = None
+        # It is possible, but unlikely, that there is more than one default gateway
+        cls.default_ipv4_gateway = []
         for line in lines:  # lines is the output of the ip route list
             # command
             fields = line.split()
@@ -436,7 +440,7 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                 route[fields[i]] = fields[i + 1]
             ipv4_route = IPv4Route(route=route)
             if destination == "default" or destination == "0.0.0.0":
-                cls.default_ipv4_gateway = IPv4Address(ipv4_route.ipv4_gateway)
+                cls.default_ipv4_gateway.append(IPv4Address(ipv4_route.ipv4_gateway))
             route_list.append(ipv4_route)
 
         return route_list
@@ -450,14 +454,12 @@ jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$
                ("linkdown" if self.ipv4_linkdown else "linkUP")
 
     @classmethod
-    def get_default_ipv4_gateway(cls) -> IPv4Address:
+    def get_default_ipv4_gateway(cls) -> List[IPv4Address]:
         """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
         invoke find_ipv4_routes, which will define the default gateway"""
-        if not hasattr(cls, "default_ipv4_gateway") or cls.default_ipv4_gateway is None:
+        if not hasattr(cls, "default_ipv4_gateway") or len(cls.default_ipv4_gateway) == 0:
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv4_routes()
-        assert cls.default_ipv4_gateway is not None, 'The default IPv4 gateway is not defined at the end of ' \
-                                                     'get_default_ipv4_gateway'
         return cls.default_ipv4_gateway
 
 
@@ -579,14 +581,21 @@ jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $
         if not hasattr(cls, "default_ipv6_gateway"):
             # Have to think about this - what action should be taken if there is no
             # default gateway?
-            cls.default_ipv6_gateway = None
+            # Leave that to higher level software.  There could be no default
+            # gateways: that's a misconfiguration.  There could be more than one
+            # default gateways: that's a misconfiguration as well.  Do those
+            # misconfigurations rise to the level where an exception should be raised?
+            #
+            cls.default_ipv6_gateway = []
 
         return route_list
 
     @classmethod
     def get_default_ipv6_gateway(cls):
         """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
-        invoke find_ipv6_routes, which will define the default gateway"""
+        invoke find_ipv6_routes, which will define the default gateway
+        :return: List[network.IPv4Address]  A list of default gateways.
+            Should be just 1.  More than 1 is bad, 0 is awful"""
         if not hasattr(cls, "default_ipv6_gateway"):
             # This has some overhead, and ought to be cached somehow.  Deal with that later.
             cls.find_ipv6_routes()
