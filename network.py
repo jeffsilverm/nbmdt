@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 #
 # This module is responsible for representing the routing tables.  There are at least 2: one for IPv4 and one for IPv6
-import collections
 import re
 import socket
 import subprocess
 import sys
-from typing import Union, List
+from typing import List, Dict, Tuple
 
 from termcolor import cprint
 
@@ -19,6 +18,7 @@ from layer import Layer
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
 # Text highlights: on_grey, on_red, on_green, on_yellow, on_blue, on_magenta, on_cyan, on_white
+
 
 IP_COMMAND = Configuration.find_executable('ip')
 PING_COMMAND = Configuration.find_executable('ping')
@@ -35,190 +35,122 @@ class NotPingable(Exception):
 
 class Network(Layer):
 
-    @classmethod
-    def get_routes(cls, family: socket.AddressFamily):
-        if family == socket.AF_INET:
-            return IPv4Address.get_routes()
-        elif family == socket.AF_INET6:
-            return IPv4Address.get_routes()
-        else:
-            raise ValueError("Impossible value for family was passed to Network.get_routes")
-
-    def __init__(self):
+    def __init__(self, family):
         """
 
         :rtype: Network: This is something of a placeholder, so if I write
         something common to both IPv4 and IPv6, it can go here.
         """
+
+        super().__init__()
+        if socket.AF_INET == family:
+            self.family_flag = "-4"
+        elif socket.AF_INET6 == family:
+            self.family_flag = "-6"
+        else:
+            raise ValueError(
+                f"family should be either {socket.AF_INET} (socket.AF_INET) or {socket.AF_INET6} (socket.AF_INET6"
+                f"But it's actually {family}")
+        self.family = family
         self.layer = Layer()
+        rt: Tuple[List[Dict[str, str]], List] = self.parse_ip_route_list_cmd()
+        (self.routing_table, self.default_gateway) = rt
+
+    @property
+    def get_default_gateway(self):
+        return self.routing_table[1]
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
     pass
 
-
-# Issue 5 renamed IPv4_address to IPv4Address.   Reflecting what PEP-8 says
-class IPv4Address(Network):
-    """
-    This object has an IPv4 object.  It has two attributes: name and ipv4_address.
-    If the name has not been specified, then it is None
-    """
-
-    def __init__(self, name: str = None, ipv4_address: Union[str, bytes] = None) -> None:
+    def parse_ip_route_list_cmd(self) -> Tuple[List[Dict[str, str]], List]:
         """
-        :param name:    str remote computer name
-        :param ipv4_address: str remote computer name as a dotted quad (e.g. 192.168.0.1) or as a 4 bytes
-        :raises ValueError
+        This method runs the ip route list command and parses the output
+        It's here because the output of the ip -4 route list command and the
+        ip -6 route list command are very similar
+        :return a list of routes.  Each route is a dictionary of the fields of a route
+                            in the routing table
         """
 
-        def raise_value_error(name, ipv4_address):
-            raise ValueError("Create an IPv4Address object with either a name or an IPv4 address but not both " \
-                             f"{name} and {ipv4_address} .")
-
-        self.ipv4_subnet_mask = 0  # This is the default unless the name is a dotted quad IPv4 address with a
-        # subnet mask length
-        if name is not None:
-            if name == "default":
-                # I think is the true resolution of Issue 10
-                """
-    >>> addr2=sk.inet_aton( "0.0.0.0")
-    >>> addr2
-    b'\x00\x00\x00\x00'
-    >>> 
-                """
-                self.name = "0.0.0.0"
-            elif "/" in name:
-                parts = name.split("/")
-                self.name = parts[0]
-                # This is the only case where the ipv4_subnet_mask might be other than 0
-                self.ipv4_subnet_mask = int(parts[1])
-            elif isinstance(name, tuple):
-                if len(name) == 3 and isinstance(name[0], str) and isinstance(name[2], list):
-                    # This looks strange.  However, in some cases, the name is actually a 3-tuple where element 0 is
-                    # the name
-                    # as a Unicode string, element 1 is an empty list (Why?  I ought to know), and element 2 is a
-                    # list of
-                    # length 1 which has the IPv4 address of the host
-                    self.name = name[0]
-                    self.ipv4_address = socket.inet_aton(name[2][0])
+        # https://docs.python.org/3/library/subprocess.html
+        cpi = subprocess.run(args=[IP_COMMAND, self.family_flag, 'route', 'list'],
+                             stdin=None,
+                             input=None,
+                             stdout=subprocess.PIPE, stderr=None,
+                             shell=False, timeout=None,
+                             check=False, encoding="utf-8", errors=None)
+        if cpi.returncode != 0:
+            raise subprocess.CalledProcessError
+        # Because subprocess.run was called with encoding=utf-8, output will be a string
+        results = cpi.stdout
+        lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
+        """
+jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
+default via 192.168.0.1 dev eno1 proto static metric 100 
+10.0.3.0/24 dev lxcbr0 proto kernel scope link src 10.0.3.1 linkdown 
+169.254.0.0/16 dev eno1 scope link metric 1000 
+192.168.0.0/24 dev eno1 proto kernel scope link src 192.168.0.16 metric 100 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 linkdown 
+jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ 
+"""
+        """
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $ ip -6 route list
+::1 dev lo proto kernel metric 256 pref medium
+2601:602:8500:145::/64 via fe80::c256:27ff:feca:724 dev wlx000e8e06e1a7 proto ra metric 600 pref high
+fdda:cfd2:28e3::/64 dev enp3s0 proto kernel metric 100 pref medium
+fe80::/64 dev enp3s0 proto kernel metric 100 pref medium
+fe80::/64 dev flannel.1 proto kernel metric 256 pref medium
+fe80::/64 dev wlx000e8e06e1a7 proto kernel metric 600 pref medium
+default via fdda:cfd2:28e3::1 dev enp3s0 proto static metric 20100 pref medium
+default via fe80::c256:27ff:feca:724 dev wlx000e8e06e1a7 proto ra metric 20600 pref medium
+jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $ 
+        """
+        route_list = list()
+        # It is possible, but unlikely, that there is more than one default gateway
+        # That would be a misconfiguration
+        default_gateway = []
+        for line in lines:  # lines is the output of the ip route list command
+            fields = line.split()
+            route = dict()  # route is a description of a route.  It is keyed by the name of a field in the output
+            # of the ip route.  The first field is an address/subnet mask combination, so handle it
+            # specially
+            if fields[0] == "default":
+                if self.family == socket.AF_INET:
+                    (network, mask) = ("0.0.0.0", "0")
                 else:
-                    raise ValueError("Tried to create an IPV4Address object " \
-                                     "with a name that was a tuple but was either not length 3, the first element was "
-                                     "not a string," \
-                                     " or the third element was not a list")
+                    (network, mask) = ("::", "0")
+                default_gateway.append(fields[2])
             else:
-                self.name = name
-                # This might raise a socket.gaierror exception, but at this point, there's not much that can be done.
-                self.ipv4_address = socket.inet_aton(socket.gethostbyname(name))
-            if ipv4_address is None:
-                # The exception described by Issue 10 starts here.  Just because gethostbyname fails, doesn't mean we
-                # work with the name.  It might have an IPv4 address in it in dotted quad format.
-                # For example:
-                """
-Python 3.6.1 (default, Sep  7 2017, 16:36:03) 
-[GCC 6.3.0 20170406] on linux
-Type "help", "copyright", "credits" or "license" for more information.
->>> name="f5.com"
->>> import socket as sk
->>> addr=sk.inet_aton( sk.gethostbyname(name) )
->>> addr
-b'h\xdbn\xa8'
->>> addr2=sk.inet_aton( "104.219.110.168" )
->>> addr2
-b'h\xdbn\xa8'
->>> addr == addr2
-True
->>>
-                """
                 try:
-                    self.ipv4_address = socket.inet_aton(socket.gethostbyname(self.name))
-                except socket.gaierror as g:
-                    # Now, if this call to inet_aton fails, then it's hopeless
-                    self.ipv4_address = socket.inet_aton(name)
+                    (network, mask) = fields[0].split("/")
+                except ValueError:
+                    print(f"fields[0] is {fields[0]} and does not contain a '/'", file=sys.stderr)
+                    (network, mask) = (fields[0], None)
+            route['destination'] = (network, mask)
 
+            # fields[1] is a special case
+            if fields[1] == "via":
+                route["gateway"] = fields[2]
+            elif fields[1] == "dev":
+                route["device"] = fields[2]
             else:
-                raise_value_error(name, ipv4_address)
-        elif ipv4_address is not None:  # and name is None
-            # Because we're here, we know that we have to populate the self.ipv4_address and self.name attributes from
-            # the ipv4_address we were given.
-            # socket.inet_aton(ip_string) will create a packed IPv4 address from a dotted quad string
-            # socket.gethostbyaddr(ip_string) must have a dotted quad string
-            # If we were given a packed IPv4 address, then it must be converted to dotted quad string before we can
-            # call gethostbyaddr.
-            # https://docs.python.org/3/library/socket.html#socket.inet_pton
-            # if ipv4 is malformed, then inet_pton will raise an error
-            s = isinstance(ipv4_address, str)
-            b = isinstance(ipv4_address, bytes) and (len(ipv4_address) == 4)
-            if not (s or b):
-                raise ValueError(
-                    f"ipv4_address is {ipv4_address}, type {type(ipv4_address)} of length {len(ipv4_address)} " \
-                    " but should be either str or 4 byte array")
-            try:
-                if b:
-                    # It is a packed IPv4 address, so use it, but unpack it
-                    self.ipv4_address = ipv4_address
-                    ipv4_address = socket.inet_ntoa(ipv4_address)
-                if s:
-                    self.ipv4_address = socket.inet_aton(ipv4_address)
-                self.name = socket.gethostbyaddr(ipv4_address)
-            # At this point, self.ipv4_address must be populated, but self.name might not be if the gethostbyaddr
-            # call failed
-            # Also, at this point, ipv4_address is a dotted quad string
-            except (socket.herror, socket.gaierror)  as e:
-                cprint("socket.gethostbyaddr raised an "
-                       "exception on %s, continuing" % ipv4_address, 'yellow',
-                       file=sys.stderr)
-                self.name = ipv4_address
+                raise AssertionError(f"fields[1] can be 'via' or 'dev' but it's actually {fields[1]}")
 
-        else:
-            # Both name and ipv4_address are None
-            raise_value_error(name, ipv4_address)
-        # Now, fix up a little wrinkle from gethostbyaddr.  self.name should be a string, but depending on how it was
-        # created, it might be a string or, from
-        # https://docs.python.org/3/library/socket.html?highlight=socket%20inet_pton#socket.gethostbyaddr,
-        # it might be a tuple of the (hostname, aliaslist, ipaddrlist) where hostname is the primary host name
-        # corresponding to the given
-        # ip_address, aliaslist is a(possibly empty) list of alternative host names for the same address,
-        # and ipaddrlist is a list of
-        # IPv4 / v6 addresses for the same interface on the same host (most likely containing only a single address).
-        if isinstance(self.name, tuple) and len(self.name) == 3 and isinstance(self.name[1], list) and isinstance(
-                self.name[2], list):
-            self.name = self.name[0]
-        elif not isinstance(self.name, str):
-            raise AssertionError(
-                f"self.name should be either a 3-tuple or a string, but its really a {type(self.name)}.  " \
-                f"It's {self.name}.  In the IPv4Address constructor with name={name} and ipv4_address={ipv4_address}")
-        else:
-            pass  # already a string
-        # Some sanity checks to make sure I haven't introduced any bugs
-        assert hasattr(self, 'ipv4_address'), \
-            f'At the end of the IPv4Address constructor with {self.name}, ' \
-            f'there is no ipv4_address attribute. name={name}, ipv4_address={ipv4_address}'
-        assert hasattr(self, 'name'), \
-            f'At the end of the IPv4Address constructor with {self.ipv4_address}, ' \
-            f'there is no name attribute. name={name}, ipv4_address={ipv4_address}'
-        assert isinstance(self.name, str), \
-            f'At the end of the IPv4Address constructor, self.name is type {type(self.name)}' \
-            f'should be str.  name={name}, ipv4_address={ipv4_address}'
-        assert isinstance(self.ipv4_address, bytes), \
-            f'At the end of the IPv4Address constructor, self.ipv4_address is type {type(self.ipv4_address)}' \
-            f'should be str.  name={name}, ipv4_address={ipv4_address}'
-        # This is a constructor, so don't return anything or return None
+            for i in range(3, len(fields) - 1, 2):
+                if fields[i] == "linkdown":
+                    route["linkdown"] = True
+                    # linkdown is a flag, not the title of a field.  No value follows it
+                    break
+                route[fields[i]] = fields[i + 1]
+            route_list.append(route)
+        return route_list, default_gateway
 
-    def validate(self) -> str:
+    def ping(self, address, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> tuple:
         """
-        :return:    Either False or None if this IPv4Address object is valid or else a diagnostic string
-        """
-
-    def __str__(self):
-        # https://docs.python.org/3/library/socket.html#socket.inet_ntop
-        ipv4_addr_str = socket.inet_ntop(socket.AF_INET, self.ipv4_address)
-        return ipv4_addr_str
-
-    def ping4(self, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> tuple:
-        """This does a ping test of the machine with this IPv4 address
-        :param  self            the remote machine to ping
+        This does a ping test of the machine with this IPv4 or IPv6 address
+        :param  address            the remote machine to ping
         :param  min_for_good     The minimum number of successful pings required for the machine to be up
         :param  count           number of packets to be sent, default is 10
         :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
@@ -228,12 +160,11 @@ True
         :return     Returns a 2-tuple.  This first element is True if pingable, number of good pings >= min_for_good
                                 The second element is True if the average response time (milliseconds) is >= slow_ms
         """
+        assert isinstance(address, str), f"address should be a string, is actually a {type(address)}."
 
-        SLOW_MS = 100.0  # milliseconds.  This should be a configuration file option
-        name = str(self)
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
         # -c is for linux, use -n for windows.
-        cpi = subprocess.run(args=[PING_COMMAND, '-c', count, name],
+        cpi = subprocess.run(args=[PING_COMMAND, '-c', count, address],
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
@@ -243,15 +174,15 @@ True
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
         if cpi.returncode == 2:
-            raise utilities.DNSFailure(name=name, query_type='A')
+            raise utilities.DNSFailure(name=address, query_type=('A' if self.family == socket.AF_INET else 'AAAA'))
         elif cpi.returncode != 0 and cpi.returncode != 1:
             cprint(
-                f"About to raise a subprocess.CalledProcessError exception. name={name} cpi={cpi} returncode is "
+                f"About to raise a subprocess.CalledProcessError exception. name={address} cpi={cpi} returncode is "
                 f"{cpi.returncode}",
                 'red', file=sys.stderr)
             raise subprocess.CalledProcessError
         elif cpi.returncode == 1 and production:
-            raise NotPingable(name=name)
+            raise NotPingable(name=address)
         else:
             # Because subprocess.run was called with encoding=utf-8, output will be a string
             results = cpi.stdout
@@ -278,8 +209,8 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                 if "transmitted" in line:
                     # re.findall returns a list of length 1 because there is 1 match to the RE
                     packet_counters = \
-                        re.findall("(\d+).*?(\d+).*received.*(\d+).*()", line)[0]
-                    packets_xmit = packet_counters[0]
+                        re.findall("""(\d+).*?(\d+).*received.*(\d+).*(\d+)""", line)[0]   # noqa
+                    # packets_xmit = packet_counters[0]
                     packets_rcvd = packet_counters[1]
                     # If at least one packet was received, then the remote machine
                     # is pingable and the NotPingable exception will not be raised
@@ -289,515 +220,46 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                     # ['23.326', '29.399', '46.300', '9.762']
                     # >>>
                     # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
-                    numbers = re.findall("\d+\.\d+", line)
+                    numbers = re.findall("""\d+\.\d+""", line)      # noqa
                     slow = float(numbers[1]) > slow_ms
                 else:
                     pass
-            cprint(f"About to exit from ping4 up={up} slow={slow}", 'yellow')
-            return (up, slow)
+            cprint(f"About to exit from ping up={up} slow={slow}", 'yellow')
+            return up, slow
 
-
-# Issue 5 renamed IPv6_address to IPv6Address
-class IPv6Address(Network):
-    def __init__(self, name: str = None, ipv6_address: Union[str, bytes] = None) -> None:
-        """
-        :param name:    str remote computer name
-        :param ipv6_address: str remote computer name or byte string
-        :raises ValueError
-        """
-
-        if name is not None:
-            self.name = name
-        # Needs work
-        self.ipv6_address = ipv6_address
-
-    def ping6(self, count: int = 10, min_for_good: int = 8, slow_ms: float = 100.0):
-        """This does a ping test of the machine remote_ipv6.
-        :param  self          the remote machine to ping
-        :param  min_for_good     The minimum number of successful pings required for the machine to be up
-        :param  count           number of packets to be sent, default is 10
-        :param  min_for_good    the number of packets that must be returned in order to consider the remote machine "up"
-        :param  slow            The maximum amount of time, in milliseconds, that is allowed to transpire before the
-                                remote machine will be considered "slow"
-
-        """
-        cprint("ping6 isn't implemented yet", "yellow")
-        return True
-
-
-class IPv4Route(object):
-    """
-    A description of an IPv4 route
-
-        :type ipv4_use: object
-        
-jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ ip -4 route list
-default via 192.168.0.1 dev eno1 
-10.0.3.0/24 dev lxcbr0  proto kernel  scope link  src 10.0.3.1 linkdown 
-169.254.0.0/16 dev br-ext  proto static  scope link  metric 425 linkdown 
-192.168.0.0/24 dev eno1  proto kernel  scope link  src 192.168.0.7 
-192.168.0.0/22 dev br-ext  proto kernel  scope link  src 192.168.3.50  metric 425 linkdown 
-192.168.122.0/24 dev virbr0  proto kernel  scope link  src 192.168.122.1 linkdown 
-jeffs@jeff-desktop:~/Downloads/pycharm-community-2017.1.2 $ 
-        
-
-
-    
-    """
-
-    def __init__(self, route):
-        """This returns an IPv4Route object.  """
-
-        # Use caution: these are strings, not length 4 bytes
-        self.ipv4_destination = route['ipv4_destination']  # Destination must be present
-        self.ipv4_subnet_mask = 0  # This is the default
-        self.ipv4_dev = route['dev']
-        self.ipv4_gateway = route.get('via', None)
-        self.ipv4_proto = route.get('proto', None)
-        self.ipv4_scope = route.get('scope', None)
-        self.ipv4_metric = route.get('metric', 0)
-        self.ip4v_src = route.get('src', None)
-        self.ipv4_linkdown = route.get('linkdown', False)
-        assert isinstance(self.ipv4_linkdown, bool), \
-            "linkdown is not a boolean, its %s" % type(self.ipv4_linkdown)
-
-    @classmethod
-    def find_ipv4_routes(cls):
-        """This method finds all of the IPv4 routes by examining the output of the ip route command, and
-        returns a list of IPV4_routes.  This is a class method because all route objects have the same
-         default gateway"""
-
-        def translate_destination(destination: str) -> str:
-            """
-This method translates destination from a dotted quad IPv4 address to a name if it can"""
-            if destination == "0.0.0.0" or destination == "default":
-                name = "default"
-            else:
-                try:
-                    name = socket.gethostbyaddr(destination)[0]
-                except (socket.herror, socket.gaierror) as h:
-                    # This exception will happen, because the IPv4 addresses in the LAN are probably not in DNS or in
-                    # /etc/hosts.  Now, should I print the message, even though I expect it?
-                    # says that it can so I have to handle it
-                    cprint("socket.gethostbyaddr raised an "
-                           "exception on %s, continuing" % destination, 'yellow',
-                           file=sys.stderr)
-                    name = destination
-                else:
-                    pass
-            return name
-
-        # https://docs.python.org/3/library/subprocess.html
-        cpi = subprocess.run(args=[IP_COMMAND, '-4', 'route', 'list'],
-                             stdin=None,
-                             input=None,
-                             stdout=subprocess.PIPE, stderr=None,
-                             shell=False, timeout=None,
-                             check=False, encoding="utf-8", errors=None)
-        if cpi.returncode != 0:
-            raise subprocess.CalledProcessError
-        # Because subprocess.run was called with encoding=utf-8, output will be a string
-        results = cpi.stdout
-        lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
-        """
-jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
-default via 192.168.0.1 dev eno1 proto static metric 100 
-10.0.3.0/24 dev lxcbr0 proto kernel scope link src 10.0.3.1 linkdown 
-169.254.0.0/16 dev eno1 scope link metric 1000 
-192.168.0.0/24 dev eno1 proto kernel scope link src 192.168.0.16 metric 100 
-192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 linkdown 
-jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ 
-
-        """
-
-        route_list = list()
-        # It is possible, but unlikely, that there is more than one default gateway
-        cls.default_ipv4_gateway = []
-        for line in lines:  # lines is the output of the ip route list
-            # command
-            fields = line.split()
-            destination: str = translate_destination(fields[0])
-
-            route = dict()  # route is a description of a route.  It is keyed by the name of a field in the output
-            # of the ip route.  The first field is an address/subnet mask combination, so handle it
-            # specially
-            try:
-                route['ipv4_destination'] = IPv4Address(destination)
-            except socket.gaierror as g:
-                cprint(
-                    f"Tried to add the destination {destination} to a route, and a socket.gaierror exception was "
-                    f"raised",
-                    'red', file=sys.stderr)
-            except OSError as o:
-                cprint(f"Tried to add the destination {destination} to a route, and an OSError exception was raised",
-                       'red', file=sys.stderr)
-
-            for i in range(1, len(fields) - 1, 2):
-                if fields[i] == 'linkdown':
-                    route['linkdown'] = True
-                    break  # linkdown is a flag, not the title of a field.
-                # A string that identifies the value that follows it.
-                route[fields[i]] = fields[i + 1]
-            ipv4_route = IPv4Route(route=route)
-            if destination == "default" or destination == "0.0.0.0":
-                cls.default_ipv4_gateway.append(IPv4Address(ipv4_route.ipv4_gateway))
-            route_list.append(ipv4_route)
-
-        return route_list
-
+    @property
     def __str__(self):
-        """This method produces a nice string representation of a IPv4_route object"""
-        return f"dest={self.ipv4_destination} mask={self.ipv4_subnet_mask}, gateway={self.ipv4_gateway} " \
-               f"dev={self.ipv4_dev} " \
-               f"metric={self.ipv4_metric} proto={self.ipv4_proto} " \
-               f"src={self.ip4v_src} scope={self.ipv4_scope} " + \
-               ("linkdown" if self.ipv4_linkdown else "linkUP")
-
-    @classmethod
-    def get_default_ipv4_gateway(cls) -> List[IPv4Address]:
-        """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
-        invoke find_ipv4_routes, which will define the default gateway"""
-        if not hasattr(cls, "default_ipv4_gateway") or len(cls.default_ipv4_gateway) == 0:
-            # This has some overhead, and ought to be cached somehow.  Deal with that later.
-            cls.find_ipv4_routes()
-        return cls.default_ipv4_gateway
-
-
-class IPv6Route(object):
-    def __init__(self, ipv6_destination, ipv6_next_hop, ipv6_proto, ipv6_interface, ipv6_metric):
-
-        self.ipv6_destination = ipv6_destination
-        self.ipv6_next_hop = ipv6_next_hop
-        self.ipv6_metric = ipv6_metric
-        self.ipv6_interface = ipv6_interface
-        self.ipv6_proto = ipv6_proto
-
-    def __str__(self):
-        """This method produces a nice string representation of a IPv4_route object"""
-        return f"dest={self.ipv6_destination} gateway={self.ipv6_next_hop} " \
-               f"dev={self.ipv6_interface} " \
-               f"metric={self.ipv6_metric} proto={self.ipv6_proto} "
-
-    @classmethod
-    def find_ipv6_routes(cls):
-        """This method returns an IPv6 routing table.  In version 1, this is done by running the route command and
-        scrapping the output.  A future version will query the routing table through the /sys pseudo file system"""
-
-        # jeffs@jeff-desktop:~ $ ip --family inet6 route show
-        # 2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 1583sec pref medium
-        # 2601:602:9802:93a8::/64 dev enp3s0  proto kernel  metric 256  expires 1583sec pref medium
-        # fe80::/64 dev eno1  proto kernel  metric 256  pref medium
-        # fe80::/64 dev enp3s0  proto kernel  metric 256  pref medium
-        # default via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1317sec hoplimit 64 pref low
-        # default via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1317sec hoplimit 64 pref low
-        # jeffs@jeff-desktop:~ $
-
-        #        jeffs @ jeff - desktop: ~ $ python3
-        #        Python
-        #        3.5
-        #        .2(default, Nov
-        #        17
-        #        2016, 17: 05:23)
-        #        [GCC 5.4.0 20160609]
-        #        on
-        ###        linux
-        #        Type
-        #        "help", "copyright", "credits" or "license"
-        #        for more information.
-        #            >> > import subprocess
-        #        >> > c = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show", "all"], stdin=None,
-        # input=None,
-        #                                stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
-        #        >> > c.stdout.decode('utf-8')
-        #        'default via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires 1653sec hoplimit 64
-        # pref low\ndefault via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024  expires 1653sec hoplimit
-        #  64 pref low\n'
-        #        >> > c = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None,
-        #                                stdout=subprocess.PIPE, stderr=None, shell=False, timeout=None, check=False)
-        #        >> > c.stdout.decode('utf-8')
-        #        '2601:602:9802:93a8::/64 dev eno1  proto kernel  metric 256  expires 2086sec pref
-        # medium\n2601:602:9802:93a8::/64 dev enp3s0  proto kernel  metric 256  expires 2086sec pref
-        # medium\nfe80::/64 dev eno1  proto kernel  metric 256  pref medium\nfe80::/64 dev enp3s0  proto kernel
-        # metric 256  pref medium\ndefault via fe80::2e30:33ff:fe55:ca5f dev eno1  proto ra  metric 1024  expires
-        # 1680sec hoplimit 64 pref low\ndefault via fe80::2e30:33ff:fe55:ca5f dev enp3s0  proto ra  metric 1024
-        # expires 1680sec hoplimit 64 pref low\n'
-        #       >> >
-        #
-
-        # This is the recommend approach for python 3.5 and later  From
-        # https://docs.python.org/3/library/subprocess.html
-        completed = subprocess.run(["/sbin/ip", "--family", "inet6", "route", "show"], stdin=None, input=None, \
-                                   stdout=subprocess.PIPE, stderr=None,
-                                   shell=False, timeout=None, check=False,
-                                   encoding="ascii",
-                                   errors=None)
-        """
-        jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $ /sbin/ip --family inet6 route show
-2602:61:7e44:2b00::/64 via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto ra metric 100  pref medium
-fd00::/64 via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto ra metric 100  pref medium
-fe80::6bf:6dff:fed9:8ab4 dev eno1 proto static metric 100  pref medium
-fe80::/64 dev eno1 proto kernel metric 256  pref medium
-default via fe80::6bf:6dff:fed9:8ab4 dev eno1 proto static metric 100  pref medium
-jeffs@jeffs-desktop:/home/jeffs/logbooks/work  (master) *  $ 
-        """
-        route_list = []
-        for r in completed.stdout.split('\n'):
-            if len(r) <= 0:  # There may be an empty line at the end
-                break
-            fields: list = r.split()
-            ipv6_destination = fields[0]
-            if fields[1] == "via":
-                ipv6_next_hop = fields[2]
-                start = 3
-            elif fields[1] == "dev":
-                ipv6_next_hop = None
-                start = 1
-            else:
-                raise ValueError(f"fields[1] has a bad value {fields[1]} should be either 'via' or 'dev'.\nLine is {r}")
-            if fields[start] != "dev":
-                raise ValueError(f"fields[{start}] should be 'dev' but is actually {fields[start]}.\nLine is {r}")
-            ipv6_interface = fields[start + 1]
-            if fields[start + 2] != "proto":
-                raise ValueError(
-                    f"field[{start + 2}] should be 'proto' but is actually {fields[start + 2]}.\nLine is {r}")
-            ipv6_proto = fields[start + 3]
-            if fields[start + 4] != "metric":
-                raise ValueError(
-                    f"field[{start + 4}] should be 'metric' but is actually {fields[start + 4]}.\nLine is {r}")
-            ipv6_metric = fields[start + 5]
-            if fields[start + 6] != "pref":
-                raise ValueError(
-                    f"field[{start + 7}] should be 'pref' but is actually {fields[start + 6]}.\nLine is {r}")
-            route_table_entry = IPv6Route(ipv6_destination=ipv6_destination,
-                                          ipv6_next_hop=ipv6_next_hop,
-                                          ipv6_proto=ipv6_proto,
-                                          ipv6_interface=ipv6_interface,
-                                          ipv6_metric=ipv6_metric
-                                          )
-            route_list.append(route_table_entry)
-            if ipv6_destination == "default":
-                cls.default_ipv6_gateway = ipv6_destination
-
-        if not hasattr(cls, "default_ipv6_gateway"):
-            # Have to think about this - what action should be taken if there is no
-            # default gateway?
-            # Leave that to higher level software.  There could be no default
-            # gateways: that's a misconfiguration.  There could be more than one
-            # default gateways: that's a misconfiguration as well.  Do those
-            # misconfigurations rise to the level where an exception should be raised?
-            #
-            cls.default_ipv6_gateway = []
-
-        return route_list
-
-    @classmethod
-    def get_default_ipv6_gateway(cls):
-        """Returns the default gateway.  If the default gateway attribute does not exist, then this method ought to
-        invoke find_ipv6_routes, which will define the default gateway
-        :return: List[network.IPv4Address]  A list of default gateways.
-            Should be just 1.  More than 1 is bad, 0 is awful"""
-        if not hasattr(cls, "default_ipv6_gateway"):
-            # This has some overhead, and ought to be cached somehow.  Deal with that later.
-            cls.find_ipv6_routes()
-        # Issue 14
-        assert isinstance(cls.default_ipv6_gateway, cls.IPv6Address), \
-            f"In network.IPv6Route.get_default_ipv6_gateway will return a {type(cls.default_ipv6_gateway)}, " \
-            "should have returned a network.IPv6Address"
-
-        return cls.default_ipv6_gateway
-
-
-############################## Cut and pasted out of interfaces.py   2018-06-24  ****************
-
-# Move this class to network.py
-class LogicalInterface(object):
-    """Logical links have IPv4 and IPv6 addresses associated with them as known by the ip addr list command
-
-    """
-
-    logical_link_db: dict = dict()
-
-    # Re-write this as PhysicalInterface does it, with the addr_name as a field and then a description which is a
-    # dictionary.
-    def __init__(self, addr_name, addr_family, addr_addr, addr_descr):
-        """This creates a logical interface object.
-        :param  addr_name   The name of this logical interface
-        :param  addr_family "inet" or "inet6"
-        :param  addr_addr   The IPv4 address if addr_family is "inet" or the IPv6 address if addr_family is "inet6"
-        :param  addr_descr  The rest of the description of this logical address.
-        """
-        """
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 77480sec preferred_lft 
-77480sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
-preferred_lft forever
-3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
-forever
-6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-desktop:/home/jeffs  $ 
-"""
-        self.addr_name = addr_name
-        if addr_family != "inet" and addr_family != "inet6":
-            raise ValueError(
-                "misunderstood value of addr_family: {}".format(addr_family))
-        self.addr_family = addr_family
-        self.addr_addr = addr_addr
-        # For IPv4, scope is either host or global
-        # For IPv6, scope is either host, link, or global.  However, the wikipedia
-        # article on IPv6 doesn't mention host scope.  ULAs are global.
-        self.scope = addr_descr["scope"]
-        for key in addr_descr.keys():
-            setattr(self, key, addr_descr[key])
-        if not hasattr(self, 'broadcast'):
-            self.broadcast = None
-
-    """def __str__(self):
-        s = "name: " + self.addr_name + '\t'
-        s += "family:" + self.addr_family + '\t'
-        s += "address: " + self.addr_addr + '\t'
-        if self.addr_family == "inet6":
-            s += ("scope: " + none_if_None(self.scope) + "\t")
-        else:
-            s += ("broadcast: " + none_if_None(self.broadcast) + "\t")
-        return s"""
-
-    @classmethod
-    def get_all_logical_interfaces(self):
-        """This method returns a dictionary, keyed by name, of logical interfaces as known by the ip address list
-        command.  Note that if a physical link does not an IPv4 address or an IPv6 address, then the ip command doesn't
-        show it.  If a physical link has an IPv4 address and an IPv6 address, then there will be 2 entries"""
-        IP_COMMAND = "/usr/bin/ip"
-        completed = subprocess.run([self.IP_COMMAND, "--oneline", "address", "list"],
-                                   stdin=None, input=None,
-                                   stdout=subprocess.PIPE, stderr=None,
-                                   shell=False, timeout=None, check=False)
-        completed_str = completed.stdout.decode('ascii')
-        """
-        jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ ip --oneline address list
-1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
-1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
-3: eno1    inet 192.168.0.16/24 brd 192.168.0.255 scope global dynamic eno1\       valid_lft 63655sec preferred_lft 
-63655sec
-3: eno1    inet6 2602:61:7e44:2b00:da69:ad33:274d:7a08/64 scope global noprefixroute \       valid_lft forever 
-preferred_lft forever
-3: eno1    inet6 fd00::f46d:ccdd:58aa:b371/64 scope global noprefixroute \       valid_lft forever preferred_lft forever
-3: eno1    inet6 fe80::a231:e482:ec02:f75e/64 scope link \       valid_lft forever preferred_lft forever
-4: virbr0    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0\       valid_lft forever preferred_lft 
-forever
-6: lxcbr0    inet 10.0.3.1/24 scope global lxcbr0\       valid_lft forever preferred_lft forever
-jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (development) *  $ 
-
-        """
-        # addrs_list is really a list of logical interfaces
-        addrs_list = completed_str.split('\n')
-        addr_db = dict()
-        for addr in addrs_list:
-            # addrs_list usually but not always has an empty element at the end
-            if len(addr) == 0:
-                break
-            # https://docs.python.org/3/library/collections.html#collections.OrderedDict
-            # ad is an attribute dictionary.  The string returned by the ip command will look like:
-            # 3: wlp12s0    inet 10.5.66.10/20 brd 10.5.79.255 scope global dynamic wlp12s0\       valid_lft 85452sec
-            #  preferred_lft 85452sec
-            # addr_desc is a further description of an an address
-            addr_desc = collections.OrderedDict()
-            fields = addr.split()
-            addr_name = fields[1]  # Field 0 is a number, skip it
-            addr_family = fields[2]  # Either inet or inet6
-            assert addr_family == "inet" or addr_family == "inet6"
-            addr_addr = fields[3]  # Either IPv4 or IPv6 address
-            # All of the rest of strings in the ip addr list command are in the
-            # of key value pairs, delimited by spaces
-            for idx in range(4, len(fields) - 1, 2):
-                # Because addr_desc is an ordered dictionary, the results will always be output in the same order
-                addr_desc[fields[idx]] = fields[idx + 1]
-            # A single logical interface can have several addresses and several families
-            # so the logical interface name is a key to a value which is a list
-            # of addresses.
-            if addr_name not in addr_db:
-                # addr_name, addr_family, addr_addr, scope=None, broadcast=None, remainder=None
-                """
-                    def __init__(self, addr_name, addr_family, addr_addr, addr_descr ):
-                """
-                addr_db[addr_name] = [LogicalInterface(addr_name=addr_name,
-                                                       addr_family=addr_family,
-                                                       addr_addr=addr_addr,
-                                                       addr_descr=addr_desc)]
-            else:
-                addr_db[addr_name].append(LogicalInterface(addr_name=addr_name,
-                                                           addr_family=addr_family,
-                                                           addr_addr=addr_addr,
-                                                           addr_descr=addr_desc))
-        return addr_db
-
-    # *********************
+        """This method produces a nice string representation of a routing table"""
+        for w in self.routing_table:
+            return f"dest={w.get('destination')} {w.get('gateway')} " \
+                   f"dev={w.get('dev')} " \
+                   f"metric={w.get('metric')} proto={w.get('proto')} " \
+                   f"src={w.get('src')} scope={w.get('scope')} " + \
+                   ("linkdown" if w.get('linkdown', True) else "linkUP")
 
 
 if __name__ in "__main__":
 
-    print(f"Before instantiating IPv4Route, the default gateway is {IPv4Route.get_default_ipv4_gateway()}")
-    ipv4_route_lst = IPv4Route.find_ipv4_routes()
+    ipv4_routing_table = Network(socket.AF_INET)
+    ipv6_routing_table = Network(socket.AF_INET6)
     print(40 * "=")
-    for r in ipv4_route_lst:
+    for r in ipv4_routing_table.routing_table:
         print(r.__str__())
-        print(f"The gateway is {r.ipv4_gateway}\n")
-    # Commercialventvac.com's canonical name
-    COMMERCIALVENTVAC = "ps558161.dreamhost.com"
-    COMMERCIALVENTVAC_ADDR = "208.97.189.29"
-    """
->>> socket.inet_pton(socket.AF_INET,"208.97.189.29")
-b'\xd0a\xbd\x1d'
->>> 
-    """
-    COMMERCIALVENTVAC_BYTES = b'\xd0a\xbd\x1d'
-    cvv_ip_v4 = IPv4Address(name=COMMERCIALVENTVAC)
-    assert str(cvv_ip_v4) == COMMERCIALVENTVAC or str(cvv_ip_v4) == COMMERCIALVENTVAC_ADDR, \
-        f"commercialventvac by name should be {COMMERCIALVENTVAC} but is actually {str(cvv_ip_v4)}"
-    cvv_ip_v4_by_addr = IPv4Address(ipv4_address=COMMERCIALVENTVAC_ADDR)
-    assert str(cvv_ip_v4_by_addr) == COMMERCIALVENTVAC or \
-           str(cvv_ip_v4_by_addr) == COMMERCIALVENTVAC_ADDR, \
-        f"commercialventvac by addr should be {COMMERCIALVENTVAC} but is actually {str(cvv_ip_v4)}"
-    assert cvv_ip_v4.ipv4_address == COMMERCIALVENTVAC_BYTES, \
-        f"cvv_ip_v4.ipv4_address should be b'\xd0a\xbd\x1d' but is actually " \
-        f"{cvv_ip_v4.ipv4_address}"
-    assert cvv_ip_v4_by_addr.ipv4_address == COMMERCIALVENTVAC_BYTES, \
-        f"cvv_ip_v4_by_addr.ipv4_address should be b'\xd0a\xbd\x1d' but is actually " \
-        f"{cvv_ip_v4_by_addr.ipv4_address}"
-
-    cprint("Running ping tests, plz be patient"
-           "", "green", file=sys.stderr)
-    up, slow = cvv_ip_v4_by_addr.ping4()
-    if up:
-        cprint(f"{cvv_ip_v4_by_addr.name} is  pingable", 'green')
-    else:
-        cprint(f"{cvv_ip_v4_by_addr.name} is NOT pingable", "red")
-
-    production = False  # Do NOT raise the exception
-    answer = IPv4Address(name='192.168.0.143').ping4(production=production)
-    assert not answer[0], f"192.168.0.143 is pingable and it should NOT be. " \
-                          f" Answer is {answer} "
-    try:
-        production = True
-        answer = IPv4Address(name='192.168.0.143').ping4(production=production)
-        assert not answer[0], f"192.168.0.143 is pingable and it should NOT be.  " \
-                              f"Answer is {answer} "
-    except NotPingable as n:
-        cprint(f"Handling the NotPingable exception on 192.168.0.143 production is {production} answer is {answer}",
-               'white', 'on_red', file=sys.stderr)
-
-    assert IPv4Address(name='google.com').ping4(production=False)[0], "google.com is not pingable and it should be"
-    try:
-        answer = IPv4Address(name='spurious.spurious').ping4(production=False)[0]
-    except (utilities.DNSFailure)  as d:
-        cprint("Detected a DNSFailure as expected", "green", file=sys.stderr)
-    except socket.gaierror as s:
-        cprint("Detected a socket.gaierror as expected", "green", file=sys.stderr)
-    else:
-        cprint("Did NOT Detect a DNSFailure or socket.gaierror.  This is an error", "red", file=sys.stderr)
-
-    # This is mentioned in Issue 5
-    cprint("IPv6 tests not implemented yet", "magenta", "on_yellow")
+        print(f"The gateway is {ipv4_routing_table.default_gateway}\n")
+    print(40 * "=")
+    for r in ipv6_routing_table.routing_table:
+        print(r.__str__())
+        print(f"The gateway is {ipv6_routing_table.default_gateway}\n")
+    print(40 * "-")
+    inet_dgw = ipv4_routing_table.default_gateway[0]
+    print(
+        f"The default IPv4 gateway {inet_dgw} is "
+        f"{('' if ipv4_routing_table.ping(inet_dgw, production=False) else 'NOT')} pingable")
+    for t in ["208.97.189.29", "Commercialventvac.com", "ps558161.dreamhost.com", 'google.com']:
+        print(f"{t} is {('' if ipv4_routing_table.ping(t, production=False) else 'NOT')} pingable")
+    inet6_dgw = ipv6_routing_table.default_gateway[0]
+    print(
+        f"The default IPv6 gateway {inet6_dgw} is "
+        f"{('' if ipv6_routing_table.ping(inet6_dgw, production=False) else 'NOT')} pingable")
+    for t in ["2607:f298:5:115f::23:e397", "Commercialventvac.com", "ps558161.dreamhost.com", 'google.com']:
+        print(f"{t} is {('' if ipv4_routing_table.ping(t, production=False) else 'NOT')} pingable")
