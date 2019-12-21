@@ -10,7 +10,7 @@ from typing import List, Dict, Tuple
 
 from termcolor import cprint
 
-import utilities
+# import utilities
 from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
@@ -19,11 +19,12 @@ from layer import Layer
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
 # Text highlights: on_grey, on_red, on_green, on_yellow, on_blue, on_magenta, on_cyan, on_white
 
+# Issue #42 https://github.com/jeffsilverm/nbmdt/issues/42
 
 IP_COMMAND = Configuration.find_executable('ip')
 PING_COMMAND = Configuration.find_executable('ping')
-PING6_COMMAND = Configuration.find_executable('ping6')
-cprint(f"Debugging network.py: {IP_COMMAND}, {PING_COMMAND}, {PING6_COMMAND}", 'green', file=sys.stderr)
+# PING6_COMMAND = Configuration.find_executable('ping6')
+cprint(f"Debugging network.py: {IP_COMMAND}, {PING_COMMAND}", 'green', file=sys.stderr)
 
 
 class NotPingable(Exception):
