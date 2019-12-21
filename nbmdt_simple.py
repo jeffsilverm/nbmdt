@@ -28,12 +28,15 @@ def main():
         f"default_gateway_4 should be a list, is actually {type(default_gateway_4)}."
     ldr6 = len(default_gateway_6)
     report("Found default IPv6 gateway", green=(ldr6 == 1), red=(ldr6 == 0), yellow=(ldr6 > 1))
-    verify_ping_4 = network.IPv4Address.ping4(default_gateway_4[0])
-    report("IPv4 default gateway pingable", green=(verify_ping_4 == 1.0),
-           yellow=(verify_ping_4 < 1.0 and verify_ping_4 > 0.0), red=(verify_ping_4 == 0.0))
-    verify_ping_6 = network.IPv6Address.ping6(default_gateway_6[0])
+    # The ping methods return a tuple: first element is True if pingable, second element is true
+    # if response time (RTT) is acceptable.  What is "acceptable" can be specified in the method
+    # call.  The defaults are reasonable.
+    verify_ping_4: tuple = network.IPv4Address.ping4(default_gateway_4[0])
+    report("IPv4 default gateway pingable", green=(verify_ping_4[0] and verify_ping_4[0]),
+           yellow=(verify_ping_4[0]), red=(not verify_ping_4[0]))
+    verify_ping_6: float = network.IPv6Address.ping6(default_gateway_6[0])
     report("IPv6 default gateway pingable", green=(verify_ping_6 == 1.0),
-           yellow=(verify_ping_6 < 1.0 and verify_ping_4 > 0.0), red=(verify_ping_4 == 0.0))
+           yellow=(1.0 > verify_ping_6 > 0.0), red=(verify_ping_6 == 0.0))
 
 
 def report(explanation, yellow=False, green=False, red=False):
