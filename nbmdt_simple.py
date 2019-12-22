@@ -1,6 +1,11 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# From jeffs-windows-laptop
+
+
+from typing import List
+import network
 import subprocess
 from time import sleep
 
@@ -8,9 +13,10 @@ from time import sleep
 INET="-4"
 INET6="-6"
 
-
 BORDER_GATEWAY_4 = "96.120.102.161"
 BORDER_GATEWAY_6 = "2001:558:4082:5c::1"
+
+network_obj = network.Network()
 
 
 def main():
@@ -25,9 +31,8 @@ def main():
   verify_ping_6 = ping(default_gateway_6, INET6`)
   report("IPv6 default gateway pingable", green=(verify_ping_6 == 1.0), yellow=(verify_ping_6 < 1.0 and verify_ping_4 > 0.0), red = (verify_ping_4 == 0.0) )
 
-def ping(host, protocol):
 
-def report(explanation: str="Not specified", red: bool =False, yellow: 
+def report(explanation: str="Not specified", red: bool =False, yellow:
         bool =False, green: bool =False):
   """
   explanation: str  A descriptive string
@@ -42,11 +47,10 @@ def report(explanation: str="Not specified", red: bool =False, yellow:
               "UNKNOWN") ) )
   print(f"{explanation}: {status}")
 
-def ping(
+
 
 
 if "__main__" == __name__:
-  while True do:
-    main()
-    time.sleep(10)
-
+    while True:
+        main()
+        sleep(10)
