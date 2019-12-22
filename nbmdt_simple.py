@@ -4,50 +4,48 @@
 # From jeffs-windows-laptop
 
 
-from typing import List
 import network
-import subprocess
 from time import sleep
+import socket
+from constants import ErrorLevels
+from utilities import report
 
 
-INET="-4"
-INET6="-6"
+INET = "-4"
+INET6 = "-6"
 
 BORDER_GATEWAY_4 = "96.120.102.161"
 BORDER_GATEWAY_6 = "2001:558:4082:5c::1"
 
-network_obj = network.Network()
-
 
 def main():
-  default_gateway_4 = get_default_gateway(INET)
-  ldr4 = len(default_gateway_4)
-  report("Found default IPv4 gateway", green=(ldr4 == 1), red=(ldr4 == 0), yellow=(ldr4 > 1) )
-  default_gateway_6 = get_default_gateway(INET6)
-  ldr6 = len(default_gateway_6)
-  report("Found default IPv6 gateway", green=(ldr6 == 1), red=(ldr6 == 0), yellow=(ldr6 > 1 ) )
-  verify_ping_4 = ping(default_gateway_4, INET)
-  report("IPv4 default gateway pingable", green=(verify_ping_4 == 1.0), yellow=(verify_ping_4 < 1.0 and verify_ping_4 > 0.0), red = (verify_ping_4 == 0.0) )
-  verify_ping_6 = ping(default_gateway_6, INET6`)
-  report("IPv6 default gateway pingable", green=(verify_ping_6 == 1.0), yellow=(verify_ping_6 < 1.0 and verify_ping_4 > 0.0), red = (verify_ping_4 == 0.0) )
+    ipv4_routing_table: network.Network = network.Network(socket.AF_INET)
+    ipv6_routing_table: network.Network = network.Network(socket.AF_INET6)
+    ipv4_default_gateway = ipv4_routing_table.default_gateway
+    ipv6_default_gateway = ipv6_routing_table.default_gateway
+    ldr4 = len(ipv4_default_gateway)
+    ldr6 = len(ipv6_default_gateway)
+    # The assumption is that you *must* have a default gateway (that's not strictly true, but it is for all non-strange
+    # use cases).
+    # You *might* have more than one default gateway, but that's probably a configuration error
+    # You *should* have one and only one default gateway
+    report("Default IPv4 gateway",
+           severity=(ErrorLevels.NORMAL if ldr4 == 1 else (ErrorLevels.OTHER if ldr4 > 1 else ErrorLevels.DOWN)))
+    if ldr4 > 0:
+        for dg in ipv4_default_gateway:
+            verify_ping_4: ErrorLevels = ipv4_routing_table.ping(address=dg)
+            report(condition=f"IPv4 default gateway {dg} ping: ", severity=verify_ping_4)
+        else:
+            report(condition="NO DEFAULT IPv4 GATEWAY", severity=ErrorLevels.DOWN)
 
-
-def report(explanation: str="Not specified", red: bool =False, yellow:
-        bool =False, green: bool =False):
-  """
-  explanation: str  A descriptive string
-  red: bool True if status should be red
-  yellow: bool  True if status should be yellow.  If not specified, the default
-                is False so the answer must be RED or GREEN
-  green: bool True if status should be green
-  This is done this way to shift complexity to the subroutine
-  """
-  if int(red) + int(yellow) + int(green) > 1:
-      raise ValueError("More than one of red, yellow, or green was set to True")  status = ("RED" if red else ("YELLOW" if yellow else ("GREEN" if green else \
-              "UNKNOWN") ) )
-  print(f"{explanation}: {status}")
-
-
+    report("Default IPv6 gateway",
+           severity=(ErrorLevels.NORMAL if ldr6 == 1 else (ErrorLevels.OTHER if ldr6 > 1 else ErrorLevels.DOWN)))
+    if ldr6 > 0:
+        for dg in ipv6_default_gateway:
+            verify_ping_6: ErrorLevels = ipv6_routing_table.ping(address=dg)
+            report(condition=f"IPv4 default gateway {dg} ping: ", severity=verify_ping_6)
+        else:
+            report(condition="NO DEFAULT IPv4 GATEWAY", severity=ErrorLevels.DOWN)
 
 
 if "__main__" == __name__:
