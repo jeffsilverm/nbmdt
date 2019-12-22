@@ -79,7 +79,7 @@ class ErrorLevels(IntEnum):
     NORMAL = 1  # Everything is working properly
     SLOW = 2  # Up, but running slower than allowed
     DEGRADED = 3  # Up, but something that this thing partly depends on is down (e.g. 1 DNS server or 1 NTP
-    #  server)
+    #  server) or otherwise unreliable.
     DOWN = 4  # It flunks the test, cause unknown
     DOWN_DEPENDENCY = 5  # It flunks the test, but it is known to be due to a dependency
     DOWN_ACKNOWLEDGED = 6  # It flunks the test, but somebody has acknowledged the problem
