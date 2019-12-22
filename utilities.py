@@ -9,6 +9,7 @@ import subprocess
 import sys
 from enum import Enum
 from typing import List
+import termcolor
 
 from constants import ErrorLevels, colors
 
@@ -122,11 +123,11 @@ class DNSFailure(Exception):
         """
 
         report(condition=f"DNSFailure was raised querying {name} using query type "
-                         f"{query_type}", severity=ErrorLevels.OTHER)
+               f"{query_type}", severity=ErrorLevels.OTHER)
         Exception.__init__(self, *args)
 
 
-def report(condition: str, severity: ErrorLevels):
+def report(condition: str, severity: ErrorLevels) -> None:
     """
     Report all problems here.  Eventually, report will include a logging
     capability.
@@ -142,7 +143,6 @@ def report(condition: str, severity: ErrorLevels):
 if "__main__" == __name__:
     import dns.resolver
 
-    import termcolor
     from constants import ErrorLevels as ELs
 
     for e in ELs:
@@ -163,7 +163,8 @@ if "__main__" == __name__:
         # I'm getting bogged down in details.  As of this writing (2019/11/17),
         # I just want to be able to do a DNS query!
         # dns.resolver.default_resolver.nameservers = server_list
-        answer: dns.resolver.Answer = dns.resolver.query(qname, rdatatype)
+        assert len(server_list) >= 1
+        answer: dns.resolver.Answer = dns.resolver.query(qname=qname, rdatatype=rdatatype)
         # answer.sort()
         return answer
 
@@ -172,9 +173,9 @@ if "__main__" == __name__:
     # https://github.com/jeffsilverm/nbmdt/issues/40
     def resolver_tst(tst_resolver, qname="google.com", rdatatype=dns.rdatatype.A):
         """
-        :param  str:    tst_resolver the resolver to test
-        :param  str:    qname the string to do the query on (usually the remote server)
-        :type rdatatype: dns.rdatatype
+        :param  tst_resolver    str:    the resolver to test
+        :param  qname   str:    the string to do the query on (usually the remote server)
+        :param rdatatype: dns.rdatatype The data type to query, A, AAAA, MX, PTR, etc.
         """
         answer = query_specific_nameserver(server_list=tst_resolver,
                                            qname="commercialventvac.com",
@@ -205,7 +206,7 @@ if "__main__" == __name__:
 
     print(resolver_obj.nameservers)
     failed_resolver_list = []
-    all_okay = True     # Assume everything is fine until we find something that is NOT fine
+    all_okay = True  # Assume everything is fine until we find something that is NOT fine
     for resolver in resolver_obj.nameservers + ['8.8.8.8']:
         print(40 * '=' + '\n' + f"Working on resolver {resolver}")
         okay = resolver_tst(tst_resolver=resolver, rdatatype=dns.rdatatype.A)
