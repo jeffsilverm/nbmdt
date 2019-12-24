@@ -10,7 +10,7 @@ from typing import List, Dict, Tuple
 
 from termcolor import cprint
 
-# import utilities
+import utilities
 from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
@@ -46,8 +46,10 @@ class Network(Layer):
         super().__init__()
         if socket.AF_INET == family:
             self.family_flag = "-4"
+            self.family_str = "IPv4"
         elif socket.AF_INET6 == family:
             self.family_flag = "-6"
+            self.family_str = "IPv6"
         else:
             raise ValueError(
                 f"family should be either {socket.AF_INET} (socket.AF_INET) or {socket.AF_INET6} (socket.AF_INET6"
@@ -165,7 +167,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
 
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
         # -c is for linux, use -n for windows.
-        cpi = subprocess.run(args=[PING_COMMAND, '-c', count, address],
+        cpi = subprocess.run(args=[PING_COMMAND, self.family_flag, '-c', count, address],
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
