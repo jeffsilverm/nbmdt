@@ -246,6 +246,20 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                    f"src={w.get('src')} scope={w.get('scope')} " + \
                    ("linkdown" if w.get('linkdown', True) else "linkUP")
 
+    def report_default_gateways_len(self) -> None:
+        """
+        This is common for IPv4 and IPv6
+        :param  num_def_gateways    number of default gateways
+        :param  family_str  Either the string "IPv4" or "IPv6"
+        """
+        num_def_gateways = len(self.default_gateway)
+        if num_def_gateways == 1:
+            utilities.report(f"Found default {self.family_str} gateway", severity=ErrorLevels.NORMAL)
+        elif num_def_gateways > 1:
+            utilities.report(f"Found multiple default {self.family_str} gateways", severity=ErrorLevels.OTHER)
+        elif num_def_gateways == 0:
+            utilities.report(f"Found NO default {self.family_str} gateways", severity=ErrorLevels.DOWN)
+
 
 if __name__ in "__main__":
 
@@ -266,9 +280,15 @@ if __name__ in "__main__":
         f"{('' if ipv4_routing_table.ping(inet_dgw, production=False) else 'NOT')} pingable")
     for t in ["208.97.189.29", "Commercialventvac.com", "ps558161.dreamhost.com", 'google.com']:
         print(f"{t} is {('' if ipv4_routing_table.ping(t, production=False) else 'NOT')} pingable")
+    print(40 * ".")
     inet6_dgw = ipv6_routing_table.default_gateway[0]
     print(
         f"The default IPv6 gateway {inet6_dgw} is "
         f"{('' if ipv6_routing_table.ping(inet6_dgw, production=False) else 'NOT')} pingable")
     for t in ["2607:f298:5:115f::23:e397", "Commercialventvac.com", "ps558161.dreamhost.com", 'google.com']:
-        print(f"{t} is {('' if ipv4_routing_table.ping(t, production=False) else 'NOT')} pingable")
+        try:
+            print(f"{t} is {('' if ipv6_routing_table.ping(t, production=False) else 'NOT')} pingable")
+        except utilities.DNSFailure as u:
+            cprint(f"There was a DNS failure exception {str(u)} on {t}.  Continuing")
+    print(40 * "-")
+
