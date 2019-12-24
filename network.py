@@ -150,7 +150,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
             route_list.append(route)
         return route_list, default_gateway
 
-    def ping(self, address, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> tuple:
+    # Issue 43 - https://github.com/jeffsilverm/nbmdt/issues/43  Return constants.ErrorLevels, not a tuple
+    def ping(self, address, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> ErrorLevels:
         """
         This does a ping test of the machine with this IPv4 or IPv6 address
         :param  address            the remote machine to ping
@@ -160,8 +161,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         :param  slow_ms         The maximum amount of time, in milliseconds, that is allowed to transpire before the
                                 remote machine will be considered "slow"
         :param  production      If production is false, then ping4 won't raise a NotPingable exception
-        :return     Returns a 2-tuple.  This first element is True if pingable, number of good pings >= min_for_good
-                                The second element is True if the average response time (milliseconds) is >= slow_ms
+        :return     NORMAL if pingable and fast enough, SLOW if round trip time (RTT) is too slow, DOWN if not pingable,
+                    DOWN_DEPENDENCY if down because of a DNS failure (not implemented as of 21-Dec-2019)
         """
         assert isinstance(address, str), f"address should be a string, is actually a {type(address)}."
 
@@ -217,7 +218,12 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                     packets_rcvd = packet_counters[1]
                     # If at least one packet was received, then the remote machine
                     # is pingable and the NotPingable exception will not be raised
-                    up = int(packets_rcvd) >= min_for_good
+                    if packets_rcvd == count:
+                        results = ErrorLevels.NORMAL
+                    elif int(packets_rcvd) >= min_for_good :
+                        results = ErrorLevels.DEGRADED
+                    else:
+                        results = ErrorLevels.DOWN
                 elif "rtt " == line[0:4]:  # crude, I will do something better, later
                     # >>> re.findall("\d+\.\d+", "rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms")
                     # ['23.326', '29.399', '46.300', '9.762']
@@ -225,12 +231,12 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                     # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
                     numbers = re.findall("""\d+\.\d+""", line)      # noqa
                     slow = float(numbers[1]) > slow_ms
+                    if results == ErrorLevels.NORMAL and slow:
+                        results = ErrorLevels.SLOW
                 else:
                     pass
-            cprint(f"About to exit from ping up={up} slow={slow}", 'yellow')
-            return up, slow
+            return ( results )
 
-    @property
     def __str__(self):
         """This method produces a nice string representation of a routing table"""
         for w in self.routing_table:

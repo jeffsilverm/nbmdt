@@ -10,8 +10,13 @@ from typing import List
 
 import network
 import utilities
-from constants import ErrorLevels
+from utilities import report
 from network import Network
+from time import sleep
+import socket
+from constants import ErrorLevels
+
+
 
 INET = "-4"
 INET6 = "-6"
@@ -40,6 +45,24 @@ def report_default_gateways_len(num_def_gateways: int, family_str: str = "IPv4")
 
 
 def main():
+    ipv4_routing_table: network.Network = network.Network(socket.AF_INET)
+    ipv6_routing_table: network.Network = network.Network(socket.AF_INET6)
+    ipv4_default_gateway = ipv4_routing_table.default_gateway
+    ipv6_default_gateway = ipv6_routing_table.default_gateway
+    ldr4 = len(ipv4_default_gateway)
+    ldr6 = len(ipv6_default_gateway)
+    # The assumption is that you *must* have a default gateway (that's not strictly true, but it is for all non-strange
+    # use cases).
+    # You *might* have more than one default gateway, but that's probably a configuration error
+    # You *should* have one and only one default gateway
+    utilities.report("Default IPv4 gateway",
+           severity=(ErrorLevels.NORMAL if ldr4 == 1 else (ErrorLevels.OTHER if ldr4 > 1 else ErrorLevels.DOWN)))
+    if ldr4 > 0:
+        for dg in ipv4_default_gateway:
+            verify_ping_4: ErrorLevels = ipv4_routing_table.ping(address=dg)
+            report(condition=f"IPv4 default gateway {dg} ping: ", severity=verify_ping_4)
+        else:
+            report(condition="NO DEFAULT IPv4 GATEWAY", severity=ErrorLevels.DOWN)
     default_gateway_4: list = network_obj_4.default_gateway
     assert isinstance(default_gateway_4, list), \
         f"default_gateway_4 should be a list, is actually {type(default_gateway_4)}."
@@ -64,6 +87,14 @@ def verify_ping(gw: str, nwobj: Network) -> None:
     severity: ErrorLevels = nwobj.ping(gw)
     utilities.report(f"Default {nwobj.family_str} gateway {gw} pingable "
                      f"{ErrorLevels.__str__(severity)}", severity=severity)
+    report("Default IPv6 gateway",
+           severity=(ErrorLevels.NORMAL if ldr6 == 1 else (ErrorLevels.OTHER if ldr6 > 1 else ErrorLevels.DOWN)))
+    if ldr6 > 0:
+        for dg in ipv6_default_gateway:
+            verify_ping_6: ErrorLevels = ipv6_routing_table.ping(address=dg)
+            report(condition=f"IPv4 default gateway {dg} ping: ", severity=verify_ping_6)
+        else:
+            report(condition="NO DEFAULT IPv4 GATEWAY", severity=ErrorLevels.DOWN)
 
 
 if "__main__" == __name__:
