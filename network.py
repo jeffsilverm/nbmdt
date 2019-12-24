@@ -253,6 +253,11 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
         :param  family_str  Either the string "IPv4" or "IPv6"
         """
         num_def_gateways = len(self.default_gateway)
+        # The assumption is that you *must* have a default gateway (that's not strictly true, but it is for all
+        # non-strange
+        # use cases).
+        # You *might* have more than one default gateway, but that's probably a configuration error
+        # You *should* have one and only one default gateway
         if num_def_gateways == 1:
             utilities.report(f"Found default {self.family_str} gateway", severity=ErrorLevels.NORMAL)
         elif num_def_gateways > 1:
