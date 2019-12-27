@@ -6,14 +6,13 @@ import re
 import socket
 import subprocess
 import sys
-from typing import List, Dict, Tuple
-
-from termcolor import cprint
+from typing import List, Dict, Tuple, Union
 
 import utilities
 from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
+from termcolor import cprint
 
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
@@ -56,8 +55,11 @@ class Network(Layer):
                 f"But it's actually {family}")
         self.family = family
         self.layer = Layer()
-        rt: Tuple[List[Dict[str, str]], List] = self.parse_ip_route_list_cmd()
-        (self.routing_table, self.default_gateway) = rt
+        # As part of issue 44, add the default_interface to this tuple
+        rt: Tuple[List[Dict[str, str]], List, List] = self.parse_ip_route_list_cmd()
+        (self.routing_table, self.default_gateway, self.default_dev) = rt
+        # Issue 44
+        assert self.default_dev != ['dev'], f"default_dev is ['dev'] and that's wrong"
 
     @property
     def get_default_gateway(self):
@@ -68,7 +70,8 @@ class Network(Layer):
 
     pass
 
-    def parse_ip_route_list_cmd(self) -> Tuple[List[Dict[str, str]], List]:
+    # Issue 44 - add a list of default devices in addition to the list of default addresses
+    def parse_ip_route_list_cmd(self) -> Tuple[List[Dict[str, str]], List, List]:
         """
         This method runs the ip route list command and parses the output
         It's here because the output of the ip -4 route list command and the
@@ -114,6 +117,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         # It is possible, but unlikely, that there is more than one default gateway
         # That would be a misconfiguration
         default_gateway = []
+        default_dev = []
         for line in lines:  # lines is the output of the ip route list command
             fields = line.split()
             route = dict()  # route is a description of a route.  It is keyed by the name of a field in the output
@@ -125,6 +129,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
                 else:
                     (network, mask) = ("::", "0")
                 default_gateway.append(fields[2])
+                default_dev.append(fields[3])
             else:
                 try:
                     (network, mask) = fields[0].split("/")
@@ -135,8 +140,13 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
 
             # fields[1] is a special case
             if fields[1] == "via":
+                assert fields[3] == 'dev', "Parse error in parse_ip_route_list_cmd:" \
+                                           f"fields[3] should be 'dev' but is actually {fields[3]}."
                 route["gateway"] = fields[2]
+                route["device"] = fields[4]
             elif fields[1] == "dev":
+                route["gateway"] = ""  # Not really a route, but rather a
+                # marker to the kernel to tell which device these packets should go to
                 route["device"] = fields[2]
             else:
                 raise AssertionError(f"fields[1] can be 'via' or 'dev' but it's actually {fields[1]}")
@@ -148,10 +158,11 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
                     break
                 route[fields[i]] = fields[i + 1]
             route_list.append(route)
-        return route_list, default_gateway
+        return route_list, default_gateway, default_dev
 
     # Issue 43 - https://github.com/jeffsilverm/nbmdt/issues/43  Return constants.ErrorLevels, not a tuple
-    def ping(self, address, count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0, production=True) -> ErrorLevels:
+    def ping(self, address: Union[List, str], count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0,
+             production=True) -> ErrorLevels:
         """
         This does a ping test of the machine with this IPv4 or IPv6 address
         :param  address            the remote machine to ping
@@ -164,11 +175,31 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         :return     NORMAL if pingable and fast enough, SLOW if round trip time (RTT) is too slow, DOWN if not pingable,
                     DOWN_DEPENDENCY if down because of a DNS failure (not implemented as of 21-Dec-2019)
         """
-        assert isinstance(address, str), f"address should be a string, is actually a {type(address)}."
+        if isinstance(address, list) and len(address) == 1:
+            address = address[0]
+        assert isinstance(address, str), "address should be a str or a list of "
+        "length 1 but it's actually a {type(address)} length={len(address)}."
 
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
         # -c is for linux, use -n for windows.
-        cpi = subprocess.run(args=[PING_COMMAND, self.family_flag, '-c', count, address],
+        # https://github.com/jeffsilverm/nbmdt/issues/44
+        # This is complicated, and it needs to be complicated for IPv6 because
+        # IPv4 doesn't need to know the interface.
+        if self.family == socket.AF_INET6:
+            # Is this a Globally Unique Address?  It is if the MSB 3 bits are 001
+            for ent in self.routing_table:
+                # Issue 44
+                # This is naive.  I should use some sort of membership test.
+                if ent['destination'] == address:
+                    default_dev = ent["device"]
+                    break
+            else:
+                self.dump_network_obj()
+                raise AssertionError(f"default_dev not found.  Address is {address}")
+            args = [PING_COMMAND, self.family_flag, '-c', count, '-I', default_dev, address]
+        else:
+            args = [PING_COMMAND, self.family_flag, '-c', count, address]
+        cpi = subprocess.run(args=args,
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
@@ -206,21 +237,21 @@ rtt min/avg/max/mdev = 23.326/29.399/46.300/9.762 ms
 jeffs@jeffs-laptop:~/nbmdt (development)*$ 
             """
             # Failsafe initialization
-            slow: bool = True
-            up: bool = cpi.returncode == 0
+            # slow: bool = True
+            # up: bool = cpi.returncode == 0
             # loop through output of ping command
             for line in lines:
                 if "transmitted" in line:
                     # re.findall returns a list of length 1 because there is 1 match to the RE
                     packet_counters = \
-                        re.findall("""(\d+).*?(\d+).*received.*(\d+).*(\d+)""", line)[0]   # noqa
+                        re.findall("""(\d+).*?(\d+).*received.*(\d+).*(\d+)""", line)[0]  # noqa
                     # packets_xmit = packet_counters[0]
                     packets_rcvd = packet_counters[1]
                     # If at least one packet was received, then the remote machine
                     # is pingable and the NotPingable exception will not be raised
                     if packets_rcvd == count:
                         results = ErrorLevels.NORMAL
-                    elif int(packets_rcvd) >= min_for_good :
+                    elif int(packets_rcvd) >= min_for_good:
                         results = ErrorLevels.DEGRADED
                     else:
                         results = ErrorLevels.DOWN
@@ -229,13 +260,13 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                     # ['23.326', '29.399', '46.300', '9.762']
                     # >>>
                     # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
-                    numbers = re.findall("""\d+\.\d+""", line)      # noqa
+                    numbers = re.findall("""\d+\.\d+""", line)  # noqa
                     slow = float(numbers[1]) > slow_ms
                     if results == ErrorLevels.NORMAL and slow:
                         results = ErrorLevels.SLOW
                 else:
                     pass
-            return ( results )
+            return results
 
     def __str__(self):
         """This method produces a nice string representation of a routing table"""
@@ -249,8 +280,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
     def report_default_gateways_len(self) -> None:
         """
         This is common for IPv4 and IPv6
-        :param  num_def_gateways    number of default gateways
-        :param  family_str  Either the string "IPv4" or "IPv6"
+
         """
         num_def_gateways = len(self.default_gateway)
         # The assumption is that you *must* have a default gateway (that's not strictly true, but it is for all
@@ -264,6 +294,14 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             utilities.report(f"Found multiple default {self.family_str} gateways", severity=ErrorLevels.OTHER)
         elif num_def_gateways == 0:
             utilities.report(f"Found NO default {self.family_str} gateways", severity=ErrorLevels.DOWN)
+
+    def dump_network_obj(self):
+        """This a "hail mary" move: dump the entire object"""
+        print(self, file=sys.stderr)  # dump the routing table
+        print("Default gateways are" + str(self.default_gateway), file=sys.stderr)
+        print("Default devices are" + str(self.default_dev), file=sys.stderr)
+        print("Family is ", self.family_str, self.family_flag, self.family, file=sys.stderr)
+        print("Layer is ", self.layer, file=sys.stderr)
 
 
 if __name__ in "__main__":
@@ -296,4 +334,3 @@ if __name__ in "__main__":
         except utilities.DNSFailure as u:
             cprint(f"There was a DNS failure exception {str(u)} on {t}.  Continuing")
     print(40 * "-")
-
