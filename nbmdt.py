@@ -4,7 +4,6 @@
 # The Network Boot Monitor Diagnostic tool
 #
 
-
 # https://pypi.python.org/pypi/termcolor
 import argparse
 import sys
