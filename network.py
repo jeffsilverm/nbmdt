@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # This module is responsible for representing the routing tables.  There are at least 2: one for IPv4 and one for IPv6
+import ipaddress
 import re
 import socket
 import subprocess
@@ -56,10 +57,23 @@ class Network(Layer):
         self.family = family
         self.layer = Layer()
         # As part of issue 44, add the default_interface to this tuple
-        rt: Tuple[List[Dict[str, str]], List, List] = self.parse_ip_route_list_cmd()
+        rt: Tuple[List[Dict[ipaddress]], List, List] = self.parse_ip_route_list_cmd
+        assert isinstance(rt[1], list), \
+            f"rt[1] should be a list of ipaddress but is {type(rt[1])}."
+
+        for e in rt[0]:
+            assert isinstance(e['destination'], (ipaddress.IPv4Network, ipaddress.IPv6Network))
+            # The gateway might be None if the IPv4 address is 169.254.0.0/16
+            assert isinstance(e['gateway'], (ipaddress.IPv4Address, ipaddress.IPv6Address)) or e['gateway'] is None
+            assert isinstance(e['dev'], str)
+            assert isinstance(e['linkdown'], bool)
         (self.routing_table, self.default_gateway, self.default_dev) = rt
-        # Issue 44
-        assert self.default_dev != ['dev'], f"default_dev is ['dev'] and that's wrong"
+        # Issue 44 is no longer an issue here.
+        # Issue 45 negated it.
+        # assert self.default_dev != ['dev'], f"default_dev is ['dev'] and that's wrong\n" + str(rt)
+        # Issue 45.  Actually, this isn't thorough because there could be more than one default
+        # gateway, but it's good enough for now.
+        assert isinstance(self.default_gateway[0], (ipaddress.IPv4Address, ipaddress.IPv6Address))
 
     @property
     def get_default_gateway(self):
@@ -71,6 +85,7 @@ class Network(Layer):
     pass
 
     # Issue 44 - add a list of default devices in addition to the list of default addresses
+    @property
     def parse_ip_route_list_cmd(self) -> Tuple[List[Dict[str, str]], List, List]:
         """
         This method runs the ip route list command and parses the output
@@ -124,33 +139,35 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
             # of the ip route.  The first field is an address/subnet mask combination, so handle it
             # specially
             if fields[0] == "default":
+                assert fields[1] == "via", f"fields[1] should be 'via' but is {fields[1]}.\n" + str(fields)
                 if self.family == socket.AF_INET:
-                    (network, mask) = ("0.0.0.0", "0")
+                    destination = ipaddress.IPv4Network("0.0.0.0/0")
                 else:
-                    (network, mask) = ("::", "0")
-                default_gateway.append(fields[2])
-                default_dev.append(fields[3])
+                    destination = ipaddress.IPv6Network("::/0")
+                # Issue 45
+                default_gateway.append(ipaddress.ip_address(fields[2]))
+                assert fields[3] == "dev", f"fields[3] should be 'dev' but is {fields[3]}.\n" + str(fields)
+                default_dev.append(fields[4])
+            # IPv4 loop back address does not have a routing table entry
             else:
-                try:
-                    (network, mask) = fields[0].split("/")
-                except ValueError:
-                    print(f"fields[0] is {fields[0]} and does not contain a '/'", file=sys.stderr)
-                    (network, mask) = (fields[0], None)
-            route['destination'] = (network, mask)
+                destination = ipaddress.ip_network(fields[0])
+            route['destination'] = destination
 
             # fields[1] is a special case
             if fields[1] == "via":
                 assert fields[3] == 'dev', "Parse error in parse_ip_route_list_cmd:" \
                                            f"fields[3] should be 'dev' but is actually {fields[3]}."
-                route["gateway"] = fields[2]
-                route["device"] = fields[4]
+                route["gateway"] = ipaddress.ip_address(fields[2])
+                route["dev"] = fields[4]
             elif fields[1] == "dev":
-                route["gateway"] = ""  # Not really a route, but rather a
+                route["gateway"] = None  # Not really a route, but rather a
                 # marker to the kernel to tell which device these packets should go to
-                route["device"] = fields[2]
+                route["dev"] = fields[2]
             else:
                 raise AssertionError(f"fields[1] can be 'via' or 'dev' but it's actually {fields[1]}")
 
+            # There is actually a redundant assignment of routes['dev'] but it's too complicated to fix now
+            route["linkdown"] = False  # Until we see otherwise
             for i in range(3, len(fields) - 1, 2):
                 if fields[i] == "linkdown":
                     route["linkdown"] = True
@@ -161,8 +178,10 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         return route_list, default_gateway, default_dev
 
     # Issue 43 - https://github.com/jeffsilverm/nbmdt/issues/43  Return constants.ErrorLevels, not a tuple
-    def ping(self, address: Union[List, str], count: str = "10", min_for_good: int = 8, slow_ms: float = 100.0,
-             production=True) -> ErrorLevels:
+    # Issue 45 - https://github.com/jeffsilverm/nbmdt/issues/45 use the ipaddress type
+    def ping(self, address: Union[List, ipaddress.ip_address], count: str = "10", min_for_good: int = 8,
+             slow_ms: float = 100.0,
+             production=False) -> ErrorLevels:
         """
         This does a ping test of the machine with this IPv4 or IPv6 address
         :param  address            the remote machine to ping
@@ -177,28 +196,34 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         """
         if isinstance(address, list) and len(address) == 1:
             address = address[0]
-        assert isinstance(address, str), "address should be a str or a list of "
-        "length 1 but it's actually a {type(address)} length={len(address)}."
+        assert isinstance(address, (ipaddress.IPv6Address, ipaddress.IPv4Address)), \
+            "address should be an ipaddress.IPv4Address or an ipaddress.IPv6Address, but it's an" \
+            f"{type(address)}, {str(address)}. "
 
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
         # -c is for linux, use -n for windows.
         # https://github.com/jeffsilverm/nbmdt/issues/44
-        # This is complicated, and it needs to be complicated for IPv6 because
+        # This is complicated, and it needs to be complicated for IPv6 becauseadd
         # IPv4 doesn't need to know the interface.
-        if self.family == socket.AF_INET6:
-            # Is this a Globally Unique Address?  It is if the MSB 3 bits are 001
-            for ent in self.routing_table:
-                # Issue 44
-                # This is naive.  I should use some sort of membership test.
-                if ent['destination'] == address:
-                    default_dev = ent["device"]
-                    break
-            else:
+        if self.family == socket.AF_INET6 and address not in ipaddress.IPv6Network("2000::/3"):
+            # Is this a Globally Unique Address?  It is if the MSB 3 bits are 001.  By convention,
+            # if the value of the first 4 bits is 2, then the address is a GUA.
+            # If we're here, then this is not a GUA
+            # For now, I am going to make the simplifying assumption that if we're *not*
+            # pinging a GUA, then we are pinging the link local gateway, which is the in default_gateway
+            # attribute, via the device in the default_dev attribute.
+            if address not in self.default_gateway:
                 self.dump_network_obj()
-                raise AssertionError(f"default_dev not found.  Address is {address}")
-            args = [PING_COMMAND, self.family_flag, '-c', count, '-I', default_dev, address]
+                raise AssertionError(f"Trying to ping a non-GUA IPv6 address {str(address)}"
+                f"that is a the default gateway {str(self.default_gateway)}")
+            else:
+                # Not sure how to deal with the case where there is more than one default device.
+                # I will deal with that when I come to it.
+                dev = self.default_dev[0]
+                assert isinstance(dev, str)
+            args = [PING_COMMAND, "-6", '-c', count, '-I', dev, str(address)]
         else:
-            args = [PING_COMMAND, self.family_flag, '-c', count, address]
+            args = [PING_COMMAND, self.family_flag, '-c', count, str(address)]
         cpi = subprocess.run(args=args,
                              stdin=None,
                              input=None,
@@ -217,7 +242,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
                 'red', file=sys.stderr)
             raise subprocess.CalledProcessError
         elif cpi.returncode == 1 and production:
-            raise NotPingable(name=address)
+            raise NotPingable(name=str(address))
         else:
             # Because subprocess.run was called with encoding=utf-8, output will be a string
             results = cpi.stdout
@@ -289,11 +314,13 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
         # You *might* have more than one default gateway, but that's probably a configuration error
         # You *should* have one and only one default gateway
         if num_def_gateways == 1:
-            utilities.report(f"Found default {self.family_str} gateway", severity=ErrorLevels.NORMAL)
+            utilities.report(f"Found default {self.family_str} gateway {self.default_gateway[0]}.",
+                             severity=ErrorLevels.NORMAL)
         elif num_def_gateways > 1:
-            utilities.report(f"Found multiple default {self.family_str} gateways", severity=ErrorLevels.OTHER)
+            utilities.report(f"Found multiple default {self.family_str} gateways {str(default_gateway)}.",
+                             severity=ErrorLevels.OTHER)
         elif num_def_gateways == 0:
-            utilities.report(f"Found NO default {self.family_str} gateways", severity=ErrorLevels.DOWN)
+            utilities.report(f"Found NO default {self.family_str} gateway", severity=ErrorLevels.DOWN)
 
     def dump_network_obj(self):
         """This a "hail mary" move: dump the entire object"""
