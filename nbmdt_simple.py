@@ -9,6 +9,7 @@ from typing import List
 import network
 import utilities
 from constants import ErrorLevels
+import ansiescapes
 
 # These should come from a configuration file or a mock
 BORDER_GATEWAY_4 = "96.120.102.161"
@@ -32,6 +33,6 @@ def main():
 
 if "__main__" == __name__:
     while True:
-        print("\033[2J")
+        print(ansiescapes.eraseScreen+ansiescapes.cursorTo(0,0))
         main()
         sleep(5)
