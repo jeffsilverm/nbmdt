@@ -3,15 +3,12 @@
 
 # import curses
 import socket
-import sys
 from time import sleep
 from typing import List
 
 import network
 import utilities
 from constants import ErrorLevels
-from network import Network
-from utilities import report
 
 # These should come from a configuration file or a mock
 BORDER_GATEWAY_4 = "96.120.102.161"
@@ -26,16 +23,15 @@ def main():
         assert isinstance(default_gateway, list), \
             f"{nw_obj[family].family_str} default_gateway should be a list, is actually {type(default_gateway)}."
         nw_obj[family].report_default_gateways_len()
-        verify_ping(gw=default_gateway, nwobj = nw_obj[family])
-
-def verify_ping(gw: str, nwobj: Network) -> None:
-    severity: ErrorLevels = nwobj.ping(gw)
-    utilities.report(f"Default {nwobj.family_str} gateway {gw} pingable: "
-                     f"{ErrorLevels.__str__(severity)}", severity=severity)
+        # Issue 45
+        for defgw in default_gateway:
+            severity: ErrorLevels = nw_obj[family].ping(address=defgw)
+            utilities.report(f"Default {nw_obj[family].family_str} gateway {str(defgw)} pingable: "
+                             f"{ErrorLevels.__str__(severity)}", severity=severity)
 
 
 if "__main__" == __name__:
     while True:
         print("\033[2J")
         main()
-        sleep(1)
+        sleep(5)
