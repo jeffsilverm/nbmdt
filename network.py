@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # This module is responsible for representing the routing tables.  There are at least 2: one for IPv4 and one for IPv6
+import utilities
 import ipaddress
 import re
 import socket
@@ -9,11 +10,13 @@ import subprocess
 import sys
 from typing import List, Dict, Tuple, Union
 
-import utilities
 from configuration import Configuration
 from constants import ErrorLevels
 from layer import Layer
 from termcolor import cprint
+from utilities import OsCliInter as Os
+
+
 
 # The color names described in https://pypi.python.org/pypi/termcolor are:
 # Text colors: grey, red, green, yellow, blue, magenta, cyan, white
@@ -58,6 +61,9 @@ class Network(Layer):
         self.layer = Layer()
         # As part of issue 44, add the default_interface to this tuple
         rt: Tuple[List[Dict[ipaddress]], List, List] = self.parse_ip_route_list_cmd
+        """
+        # Moved to test_network.py
+        
         assert isinstance(rt[1], list), \
             f"rt[1] should be a list of ipaddress but is {type(rt[1])}."
 
@@ -74,6 +80,8 @@ class Network(Layer):
         # Issue 45.  Actually, this isn't thorough because there could be more than one default
         # gateway, but it's good enough for now.
         assert isinstance(self.default_gateway[0], (ipaddress.IPv4Address, ipaddress.IPv6Address))
+        """
+        return None
 
     @property
     def get_default_gateway(self):
@@ -96,16 +104,20 @@ class Network(Layer):
         """
 
         # https://docs.python.org/3/library/subprocess.html
+        """
         cpi = subprocess.run(args=[IP_COMMAND, self.family_flag, 'route', 'list'],
                              stdin=None,
                              input=None,
                              stdout=subprocess.PIPE, stderr=None,
                              shell=False, timeout=None,
                              check=False, encoding="utf-8", errors=None)
+                            
         if cpi.returncode != 0:
             raise subprocess.CalledProcessError
         # Because subprocess.run was called with encoding=utf-8, output will be a string
         results = cpi.stdout
+        """
+        results = Os.run_command(command=[IP_COMMAND, self.family_flag, 'route', 'list'])
         lines = results.split('\n')[:-1]  # Don't use the last element, which is empty
         """
 jeffs@jeffs-desktop:~/nbmdt (blue-sky)*$ ip -4 route
@@ -317,7 +329,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
             utilities.report(f"Found default {self.family_str} gateway {self.default_gateway[0]}.",
                              severity=ErrorLevels.NORMAL)
         elif num_def_gateways > 1:
-            utilities.report(f"Found multiple default {self.family_str} gateways {str(default_gateway)}.",
+            utilities.report(f"Found multiple default {self.family_str} gateways {str(self.default_gateway)}.",
                              severity=ErrorLevels.OTHER)
         elif num_def_gateways == 0:
             utilities.report(f"Found NO default {self.family_str} gateway", severity=ErrorLevels.DOWN)

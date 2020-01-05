@@ -12,6 +12,7 @@ from typing import List
 import termcolor
 
 from constants import ErrorLevels, colors
+import pytest
 
 """
 >>> platform.system()
@@ -83,6 +84,7 @@ class OsCliInter(object):
     # to be instantiated
     system = platform.system()
 
+
     @classmethod
     def run_command(cls, command: List[str]) -> str:
         """
@@ -90,7 +92,7 @@ class OsCliInter(object):
 
         :param command: a list of strings.  Element 0 is the name of the executable. The rest of the list are args to
         the command
-        :return: A string which is the output of the program in ASCII
+        :return: A string which is the output of the program in UTF-8
         """
 
         completed: subprocess.CompletedProcess = subprocess.run(command,
@@ -99,7 +101,7 @@ class OsCliInter(object):
                                                                 stdout=subprocess.PIPE, stderr=None, shell=False,
                                                                 timeout=None,
                                                                 check=False)
-        completed_str = completed.stdout.decode('ascii')
+        completed_str = completed.stdout.decode('utf-8')
         return completed_str
 
 
