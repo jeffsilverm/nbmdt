@@ -60,7 +60,10 @@ class Network(Layer):
         self.family = family
         self.layer = Layer()
         # As part of issue 44, add the default_interface to this tuple
+        # The rationale for this Rube Goldberg two step is that you can't do type
+        # conformance testing when breaking a tuple into fields.
         rt: Tuple[List[Dict[ipaddress]], List, List] = self.parse_ip_route_list_cmd
+        self.route_list, self.dgw, self.default_dev = rt
         """
         # Moved to test_network.py
         
