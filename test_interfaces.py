@@ -40,7 +40,20 @@ def test_interfaces():
         PhysicalInterface.run_ip_link_command(mocked_interface)))
     with patch("interfaces.PhysicalInterface.run_ip_link_command") as run_ip_link_command_mock:
         # fake_run_ip_link_command is not a call, it's a callable
-        run_ip_link_command_mock.return_value = fake_run_ip_link_command
+
+        # When I set the run_ip_link_command_mock.return_value to a dictionary,
+        # I get a good result.  It is only if I set the run_ip_link_command_mock.return_value
+        # to a callable that I run into a problem
+        run_ip_link_command_mock.return_value = \
+            {"eno1": "<NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 "
+                     r"qdisc fq_codel state DOWN mode DEFAULT group default "
+                     r"qlen 1000\      link/ether 00:22:4d:7c:4d:d9 "
+                     r"brd ff:ff:ff:ff:ff:ff\ "
+                     r"RX: bytes  packets  errors  dropped overrun mcast   \    0"
+                     r" \ 0        0       0       0       0       \    "
+                     r"TX: bytes  packets  errors  dropped carrier collsns \ "
+                     r"0          0        0       0       0       0"}
+            # fake_run_ip_link_command
         print(
             f"After patching, the object ID of the interfaces.PhysicalInterface.run_ip_link_command is "
             f"{id(PhysicalInterface.run_ip_link_command)}")
