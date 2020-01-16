@@ -42,14 +42,14 @@ def none_if_none(s):
 
 
 class PhysicalInterface(object):
-    def __init__(self, intf_name, intf_description):
+    def __init__(self, intf_name: str, intf_properties_dict: dict):
         self.intf_name = intf_name
-        self.intf_description = intf_description.copy()
+        self.intf_properties_dict = intf_properties_dict
 
     def __str__(self):
         s = "name: " + self.intf_name
-        for key in self.intf_description.keys():
-            s += "\t" + key + ": " + self.intf_description[key]
+        for key in self.intf_properties_dict.keys():
+            s += "\t" + key + ": " + self.intf_properties_dict[key]
 
         return s
 
@@ -62,7 +62,8 @@ class PhysicalInterface(object):
         links_list: list = netifaces.interfaces()
         return links_list
 
-    def run_ip_link_command(self, interface=None) -> dict:
+    @classmethod
+    def run_ip_link_command(cls, interface=None) -> dict:
         """
         This method returns all of the properties of the interface interface as
         a dictionary which is keyed by interface name and has the value of a
@@ -76,7 +77,7 @@ class PhysicalInterface(object):
         :return:
         """
         interfaces_dict = dict()
-        if interface is not None:
+        if interface is None:
             completed = subprocess.run(
                 [IP_COMMAND, "--details", "--oneline", "link", "list"], stdin=None,
                 input=None,
@@ -141,30 +142,61 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
         """
         # Get rid of the \ characters.  They really are in there
         completed_str = completed_str.replace("\\", "")
-        lines_lst = completed_str.split()
+        # completed str will be one line if I specified the interface name
+        # because I used the --oneline switch to the ip link show dev command
+        # But if I did not specify the interface name, then there will be one
+        # line per interface.
+        lines_lst = completed_str.split("\n")
         for line in lines_lst:
             link_fields = line.split()
+            # Skip empty lines
+            if len(link_fields) == 0:
+                continue
             # skip the line number, link_fields[0]
-            interface_name = link_fields[1]
-            # According to https://pypi.org/project/ifparser/ , the possible values
-            # of interface_flags include:
-            # BROADCAST, LOOPBACK, MULTICAST, RUNNING, UP, DYNAMIC, NOARP, PROMISC, POINTOPOINT, SIMPLEX, SMART,
-            # MASTER, SLAVE
-            # How do they know that?
-
-            interface_flags = link_fields[2]
-            property_dict = {}
-            for field_idx in range(2, len(link_fields), 2):
-                property_name = link_fields[field_idx]
-                property_value = link_fields[field_idx + 1]
-                property_dict[property_name] = property_value
-            for if_flag in ["BROADCAST", "LOOPBACK", "MULTICAST", "RUNNING",
-                            "UP", "DYNAMIC", "NOARP", "PROMISC", "POINTOPOINT", "SIMPLEX",
-                            "SMART", "MASTER", "SLAVE"]:
-                property_dict[if_flag] = if_flag in interface_flags
-            interface_obj = self.__init__(interface_name, property_dict)
+            interface_name: str = link_fields[1]
+            # Remove the trailing colon
+            if ":" in interface_name:
+                interface_name = interface_name[:-1]
+            assert interface == interface_name, \
+                "interface_name and interface should be the same and they're not. "\
+                f"interface_name is {interface_name} and interface is {interface}."
+            property_dict = cls.parse_link_fields(link_fields)
+            # You can use PhysicalInterface here instead of self.__init__
+            # this is a classmethod
+            interface_obj = PhysicalInterface(interface_name, property_dict)
             interfaces_dict[interface_name] = interface_obj
         return interfaces_dict
+
+    @staticmethod
+    def parse_link_fields(link_fields) -> dict:
+        """
+
+        :rtype: dict
+        """
+        # According to https://pypi.org/project/ifparser/ , the possible values
+        # of interface_flags include:
+        # BROADCAST, LOOPBACK, MULTICAST, RUNNING, UP, DYNAMIC, NOARP, PROMISC, POINTOPOINT, SIMPLEX, SMART,
+        # MASTER, SLAVE
+        # How do they know that?
+
+        interface_flags = link_fields[2]
+        property_dict = {}
+        for field_idx in range(3, len(link_fields), 2):
+            property_name = link_fields[field_idx]
+            try:
+                property_value = link_fields[field_idx + 1]
+            except IndexError as e:
+                print(f"IndexError was raised.  field_idx is {field_idx}.  " 
+                      f"The length of link_fields is {len(link_fields)}.  "
+                      f"The last 4 elements of link_fields is {link_fields[-4:]}"
+                      f"The stack trace is {str(e)}")
+                raise
+            property_dict[property_name] = property_value
+        for if_flag in ["BROADCAST", "LOOPBACK", "MULTICAST", "RUNNING",
+                        "UP", "DYNAMIC", "NOARP", "PROMISC", "POINTOPOINT", "SIMPLEX",
+                        "SMART", "MASTER", "SLAVE"]:
+            property_dict[if_flag] = if_flag in interface_flags
+        return property_dict
 
     @staticmethod
     def link_properties(ifname: str) -> dict:
@@ -186,7 +218,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
         dev_properties_path = NET_DEVS_PATH / ifname
         if not path.exists(str(dev_properties_path)):
             print(
-                f"The device path {str(dev_properties_path)} does not exist.  " 
+                f"The device path {str(dev_properties_path)} does not exist.  "
                 f"It likely that the directory for the interface named {ifname} does not exist.\n",
                 "The devices that are known are:", file=sys.stderr)
             for f in dev_properties_path.glob("*"):
@@ -213,5 +245,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (blue-sky) *  $
 
 if "__main__" == __name__:
     all_interfaces = PhysicalInterface.get_all_physical_interfaces()
+    if_d = dict()
     for i_f in all_interfaces:
         print(i_f)
+        if_d[i_f] = PhysicalInterface.run_ip_link_command(interface=i_f)
+        print(if_d[i_f])
