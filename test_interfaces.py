@@ -3,9 +3,8 @@
 
 # test class interfaces.PhysicalInterace
 
-from unittest.mock import patch
-
 from interfaces import PhysicalInterface
+from unittest.mock import patch
 
 
 def fake_run_ip_link_command(interface=None) -> dict:
@@ -26,6 +25,8 @@ def fake_run_ip_link_command(interface=None) -> dict:
                           r"TX: bytes  packets  errors  dropped carrier collsns \ "
                           r"0          0        0       0       0       0"}
         return answer
+    else:
+        return {interface: f"Haven't done {interface} yet."}
 
 
 def test_interfaces():
@@ -44,8 +45,8 @@ def test_interfaces():
             f"{id(PhysicalInterface.run_ip_link_command)}")
         if_properties_dict = PhysicalInterface.run_ip_link_command(mocked_interface)
         if callable(if_properties_dict):
-            print("if_properties_dict is callable.  If we call it,\n")
-            print(if_properties_dict())
+            print(f"if_properties_dict is callable.  If we call it,\n{if_properties_dict()} . ")
+            print(f"If we call it with enx1: {PhysicalInterface.run_ip_link_command('enx1')}.")
         assert isinstance(if_properties_dict, dict), \
             f"if_properties_dict should be a dict, but it's really a " + \
             str(type(if_properties_dict))
