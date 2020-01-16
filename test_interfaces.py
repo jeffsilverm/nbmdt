@@ -26,6 +26,7 @@ def fake_run_ip_link_command(interface=None) -> dict:
                           r"0          0        0       0       0       0"}
         return answer
     else:
+        # This must be a dict, and not a string
         return {interface: f"Haven't done {interface} yet."}
 
 
