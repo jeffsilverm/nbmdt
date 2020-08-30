@@ -1,0 +1,55 @@
+{
+  "levels": {
+    "application":
+      {
+        "F5 IPv6": "curl -6 -i http://f5.com",
+        "Amazon IPv4": "curl -4 -i http://amazon.com"
+      },
+    "local_server":
+      {
+        "local ssh": "ssh jha@commercialventvac.com -C \"ssh jeffs@jeffsilverm.ddns.net -p 22022 -C hostname\""
+      },
+    "presentation": {},
+    "session": {},
+    "transport": {},
+    "internet IPv4":
+      {
+        "local router IPv4": "ping -4 -c 4 $LOCAL_ROUTER_IPv4",
+        "ISP gateway router IPv4": "ping -4 -c 4 $ISP_GATEWAY_ROUTER_IPv4",
+        "Google IPv4": "ping -c 4 google.com",
+        "my local IPv4": "ip -4 addr list | fgrep $MY_IPv4_ADDR"
+      },
+    "internet IPv6":
+      {
+        "my local IPv6": "ip -6 addr list | fgrep $MY_IPv6_ADDR",
+        "local router IPv6": "ping -6 -c 4 $LOCAL_ROUTER_IPv6",
+        "ISP gateway router IPv6": "ping -6 -c 4 $ISP_GATEWAY_ROUTER_IPv6",
+        "Google IPv6": "ping -6 -c 4 google.com"
+      },
+    "Media Access":
+      {
+        "my local router via ARP (IPv4)": "/usr/sbin/arp -an | fgrep $LOCAL_ROUTER_MAC",
+        "my local router via NDP (IPv6)": "ip -6 neigh show | fgrep $LOCAL_ROUTER_MAC"
+      },
+    "Physical":
+      {
+        "eno1": "ip link show dev eno1 | fgrep 'state UP'",
+        "enp3s0": "ip link show dev enp3s0 | fgrep 'state UP'",
+        "wlx1cbfce83809a": "ip link show dev wlx1cbfce83809a | fgrep 'state UP'",
+        "wlx000e8e06e1a7": "ip link show dev wlx000e8e06e1a7 | fgrep 'state UP'"
+      }
+    },
+  "variables": {
+    "ISP_GATEWAY_ROUTER_IPv6": "2001:558:4082:5c::1",
+    "ISP_GATEWAY_ROUTER_IPv4": "www.routerlogin.com",
+    "LOCAL_ROUTER_IPv4": "192.168.1.1",
+    "LOCAL_ROUTER_IPv6": "2601:602:8500:1b2::",
+    "MY_IPv4_ADDR": "192.168.1.149",
+    "MY_IPv6_ADDR": "2601:602:8500:1b2:5910:668b:5075:a4d0",
+    "LOCAL_ROUTER_MAC": "bc:a5:11:db:a2:9e"
+  }
+}
+
+    
+    
+
