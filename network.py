@@ -57,13 +57,14 @@ class Network(Layer):
             raise ValueError(
                 f"family should be either {socket.AF_INET} (socket.AF_INET) or {socket.AF_INET6} (socket.AF_INET6"
                 f"But it's actually {family}")
+
         self.family = family
         self.layer = Layer()
         # As part of issue 44, add the default_interface to this tuple
         # The rationale for this Rube Goldberg two step is that you can't do type
         # conformance testing when breaking a tuple into fields.
         rt: Tuple[List[Dict[ipaddress]], List, List] = self.parse_ip_route_list_cmd
-        self.route_list, self.dgw, self.default_dev = rt
+        self.route_list, self.dgw, self.default_dev = rt    # dgw is Default GateWay
         """
         # Moved to test_network.py
         
@@ -84,16 +85,17 @@ class Network(Layer):
         # gateway, but it's good enough for now.
         assert isinstance(self.default_gateway[0], (ipaddress.IPv4Address, ipaddress.IPv6Address))
         """
-        return None
+        return
 
     @property
     def get_default_gateway(self):
-        return self.routing_table[1]
+        return self.rt[1]
 
     def get_status(self) -> ErrorLevels:
         return self.layer.get_status()
 
-    pass
+    def get_routing_table(self, family_ ) -> dict:
+        ip_route_list_command = f"ip {self.family_flag} route list"
 
     # Issue 44 - add a list of default devices in addition to the list of default addresses
     @property
@@ -145,11 +147,15 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         """
         route_list = list()
         # It is possible, but unlikely, that there is more than one default gateway
-        # That would be a misconfiguration
+        # That would be a misconfiguration.  No, it wouldn't.  It might be the case that a second interface was brought
+        # up using DHCP.  The dhcpd might tell the interface that it's the default, but the first interface was already
+        # the default.  It would be an interesting experiment to down the first interface and see if the system keeps
+        # working.
         default_gateway = []
         default_dev = []
         for line in lines:  # lines is the output of the ip route list command
             fields = line.split()
+            # Route should become a Route class and not a dict
             route = dict()  # route is a description of a route.  It is keyed by the name of a field in the output
             # of the ip route.  The first field is an address/subnet mask combination, so handle it
             # specially
@@ -194,7 +200,7 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
 
     # Issue 43 - https://github.com/jeffsilverm/nbmdt/issues/43  Return constants.ErrorLevels, not a tuple
     # Issue 45 - https://github.com/jeffsilverm/nbmdt/issues/45 use the ipaddress type
-    def ping(self, address: Union[List, ipaddress.ip_address], count: str = "10", min_for_good: int = 8,
+    def ping(self, address: Union[List, ipaddress.ip_address, str], count: str = "4", min_for_good: int = 8,
              slow_ms: float = 100.0,
              production=False) -> ErrorLevels:
         """
@@ -209,36 +215,68 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         :return     NORMAL if pingable and fast enough, SLOW if round trip time (RTT) is too slow, DOWN if not pingable,
                     DOWN_DEPENDENCY if down because of a DNS failure (not implemented as of 21-Dec-2019)
         """
-        if isinstance(address, list) and len(address) == 1:
+        print(sys.stderr, "++++++++ This is all wrong.  Since the ping command wants a string, give it a string +++++")
+        if isinstance(address, list):
             address = address[0]
-        assert isinstance(address, (ipaddress.IPv6Address, ipaddress.IPv4Address)), \
+        if isinstance(address, str ):
+                """
+>>> data = socket.getaddrinfo("f5.com", port=None, family=socket.AF_INET)
+>>> data
+>>> data[0][4][0]
+'107.162.162.40'
+>>> data = socket.getaddrinfo("f5.com", port=None, family=socket.AF_INET6)
+>>> data[0][4][0]
+'2604:e180:1047::ffff:6ba2:b09a'
+>>> 
+>>> data = socket.getaddrinfo("107.162.162.40", port=None, family=socket.AF_INET6)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/usr/lib/python3.8/socket.py", line 918, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+socket.gaierror: [Errno -9] Address family for hostname not supported
+>>> data = socket.getaddrinfo("2604:e180:1047::ffff:6ba2:b09a", port=None, family=socket.AF_INET6)
+>>> data[0][4][0]
+'2604:e180:1047::ffff:6ba2:b09a'
+>>> 
+                """
+                try:
+                    this_address = socket.getaddrinfo(address, port=None, family=self.family)
+                    this_address = this_address[0][4][0]
+                except ( ValueError, socket.gaierror ) as ve :
+                    print(sys.stderr, f"Tried to convert {address} to address using family {self.family} {ve}")
+                    raise
+        else:
+            # This covers the case if address is an instance of IPv6address or IPv4Address
+            this_address = address
+        # A check that any of the conversion processes above produced an ip_adddress
+        assert isinstance(this_address, (ipaddress.IPv6Address, ipaddress.IPv4Address)), \
             "address should be an ipaddress.IPv4Address or an ipaddress.IPv6Address, but it's an" \
-            f"{type(address)}, {str(address)}. "
+            f"{type(this_address)}, {str(this_address)}. "
 
         # Issue 11 starts here https://github.com/jeffsilverm/nbmdt/issues/11
         # -c is for linux, use -n for windows.
         # https://github.com/jeffsilverm/nbmdt/issues/44
         # This is complicated, and it needs to be complicated for IPv6 becauseadd
         # IPv4 doesn't need to know the interface.
-        if self.family == socket.AF_INET6 and address not in ipaddress.IPv6Network("2000::/3"):
+        if self.family == socket.AF_INET6 and this_address not in ipaddress.IPv6Network("2000::/3"):
             # Is this a Globally Unique Address?  It is if the MSB 3 bits are 001.  By convention,
             # if the value of the first 4 bits is 2, then the address is a GUA.
             # If we're here, then this is not a GUA
             # For now, I am going to make the simplifying assumption that if we're *not*
             # pinging a GUA, then we are pinging the link local gateway, which is the in default_gateway
             # attribute, via the device in the default_dev attribute.
-            if address not in self.default_gateway:
+            if this_address not in self.dgw:
                 self.dump_network_obj()
-                raise AssertionError(f"Trying to ping a non-GUA IPv6 address {str(address)}"
-                f"that is a the default gateway {str(self.default_gateway)}")
+                raise AssertionError(f"Trying to ping a non-GUA IPv6 address {str(this_address)}"
+                f"that is a the default gateway {str(self.dgw)}")
             else:
                 # Not sure how to deal with the case where there is more than one default device.
                 # I will deal with that when I come to it.
                 dev = self.default_dev[0]
                 assert isinstance(dev, str)
-            args = [PING_COMMAND, "-6", '-c', count, '-I', dev, str(address)]
+            args = [PING_COMMAND, self.family_flag, '-c', count, '-I', dev, str(this_address), '-n']
         else:
-            args = [PING_COMMAND, self.family_flag, '-c', count, str(address)]
+            args = [PING_COMMAND, self.family_flag, '-c', count, str(this_address), '-n']
         cpi = subprocess.run(args=args,
                              stdin=None,
                              input=None,
@@ -248,16 +286,17 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
         # return status = 0 if everything is okay
         # return status = 2 if DNS fails to look up the name
         # return status = 1 if the device is not pingable
+        # I think this is too draconian
         if cpi.returncode == 2:
-            raise utilities.DNSFailure(name=address, query_type=('A' if self.family == socket.AF_INET else 'AAAA'))
+            raise utilities.DNSFailure(name=this_address, query_type=('A' if self.family == socket.AF_INET else 'AAAA'))
         elif cpi.returncode != 0 and cpi.returncode != 1:
             cprint(
-                f"About to raise a subprocess.CalledProcessError exception. name={address} cpi={cpi} returncode is "
+                f"About to raise a subprocess.CalledProcessError exception. name={this_address} cpi={cpi} returncode is "
                 f"{cpi.returncode}",
                 'red', file=sys.stderr)
             raise subprocess.CalledProcessError
         elif cpi.returncode == 1 and production:
-            raise NotPingable(name=str(address))
+            raise NotPingable(name=str(this_address))
         else:
             # Because subprocess.run was called with encoding=utf-8, output will be a string
             results = cpi.stdout
@@ -351,22 +390,22 @@ if __name__ in "__main__":
     ipv4_routing_table = Network(socket.AF_INET)
     ipv6_routing_table = Network(socket.AF_INET6)
     print(40 * "=")
-    for r in ipv4_routing_table.routing_table:
+    for r in ipv4_routing_table.route_list:
         print(r.__str__())
-        print(f"The gateway is {ipv4_routing_table.default_gateway}\n")
+        print(f"Destination network {r['destination']} gateway router {r['gateway']}")
     print(40 * "=")
-    for r in ipv6_routing_table.routing_table:
+    for r in ipv6_routing_table.route_list:
         print(r.__str__())
-        print(f"The gateway is {ipv6_routing_table.default_gateway}\n")
+        print(f"Destination network {r['destination']} gateway router {r['gateway']}")
     print(40 * "-")
-    inet_dgw = ipv4_routing_table.default_gateway[0]
+    inet_dgw: list = ipv4_routing_table.dgw
     print(
         f"The default IPv4 gateway {inet_dgw} is "
         f"{('' if ipv4_routing_table.ping(inet_dgw, production=False) else 'NOT')} pingable")
     for t in ["208.97.189.29", "Commercialventvac.com", "ps558161.dreamhost.com", 'google.com']:
         print(f"{t} is {('' if ipv4_routing_table.ping(t, production=False) else 'NOT')} pingable")
     print(40 * ".")
-    inet6_dgw = ipv6_routing_table.default_gateway[0]
+    inet6_dgw = ipv6_routing_table['default_gateway'][0]
     print(
         f"The default IPv6 gateway {inet6_dgw} is "
         f"{('' if ipv6_routing_table.ping(inet6_dgw, production=False) else 'NOT')} pingable")
