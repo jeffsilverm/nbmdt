@@ -33,20 +33,21 @@
       },
     "Physical":
       {
-        "eno1": "ip link show dev eno1 | fgrep 'state UP'",
-        "enp3s0": "ip link show dev enp3s0 | fgrep 'state UP'",
+
+        "enp5s0": "ip link show dev enp3s0 | fgrep 'state UP'",
         "wlx1cbfce83809a": "ip link show dev wlx1cbfce83809a | fgrep 'state UP'",
-        "wlx000e8e06e1a7": "ip link show dev wlx000e8e06e1a7 | fgrep 'state UP'"
+        "wlx000e8e06e1a7": "ip link show dev wlx000e8e06e1a7 | fgrep 'state UP'",
+        "wlx00c0caae60b3": "
       }
     },
   "variables": {
-    "ISP_GATEWAY_ROUTER_IPv6": "2001:558:4082:5c::1",
-    "ISP_GATEWAY_ROUTER_IPv4": "www.routerlogin.com",
-    "LOCAL_ROUTER_IPv4": "192.168.1.1",
+    "ISP_GATEWAY_ROUTER_IPv6": "2602::205:171:3:250",
+    "ISP_GATEWAY_ROUTER_IPv4": "63.231.10.67",
+    "LOCAL_ROUTER_IPv4": "192.168.0.1",
     "LOCAL_ROUTER_IPv6": "2601:602:8500:1b2::",
-    "MY_IPv4_ADDR": "192.168.1.149",
-    "MY_IPv6_ADDR": "2601:602:8500:1b2:5910:668b:5075:a4d0",
-    "LOCAL_ROUTER_MAC": "bc:a5:11:db:a2:9e"
+    "MY_IPv4_ADDR": "192.168.0.149",
+    "MY_IPv6_ADDR": "2602:61:713e:bc01:be5f:f4ff:fe21:aa60/64",
+    "LOCAL_ROUTER_MAC": "88:6a:e3:74:af:3b"
   }
 }
 
