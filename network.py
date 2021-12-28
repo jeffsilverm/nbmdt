@@ -59,6 +59,7 @@ class Network(Layer):
         """
 
         super().__init__()
+        self.route_dict = {}
         if socket.AF_INET == family_:
             self.family_flag = "-4"
             self.family_str = "IPv4"
@@ -75,8 +76,10 @@ class Network(Layer):
         # As part of issue 44, add the default_interface to this tuple
         # The rationale for this Rube Goldberg two step is that you can't do type
         # conformance testing when breaking a tuple into fields.
-        rt: Tuple[List[Dict[ipaddress]], List, List] = self.parse_ip_route_list_cmd
-        self.route_list, self.dgw, self.default_dev = rt  # dgw is Default GateWay
+        rt: Dict[Dict] = self.parse_ip_route_list_cmd
+        self.route_dict, self.dgw, self.default_dev = rt  # dgw is Default GateWay
+
+
         """
         # Moved to test_network.py
         
@@ -107,14 +110,15 @@ class Network(Layer):
         return self.layer.get_status()
 
     # Issue 44 - add a list of default devices in addition to the list of default addresses
-    @property
-    def parse_ip_route_list_cmd(self) -> Tuple[List[Dict[str, str]], List, List]:
+    def parse_ip_route_list_cmd(self) -> Dict[Dict]:
         """
         This method runs the ip route list command and parses the output
         It's here because the output of the ip -4 route list command and the
         ip -6 route list command are very similar
-        :return a list of routes.  Each route is a dictionary of the fields of a route
+        :return a dict of routes.  Each route is a dictionary of the fields of a route
                             in the routing table
+        The keys to the dictionary are ipaddress.IPv4Network or ipaddress.IPv6Network
+        and should be consistent with self.family_flag
         """
 
         # https://docs.python.org/3/library/subprocess.html
@@ -154,7 +158,7 @@ default via fdda:cfd2:28e3::1 dev enp3s0 proto static metric 20100 pref medium
 default via fe80::c256:27ff:feca:724 dev wlx000e8e06e1a7 proto ra metric 20600 pref medium
 jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $ 
         """
-        route_list = list()
+        route_dict = {}
         # It is possible, but unlikely, that there is more than one default gateway
         # That would be a misconfiguration.  No, it wouldn't.  It might be the case that a second interface was brought
         # up using DHCP.  The dhcpd might tell the interface that it's the default, but the first interface was already
@@ -169,34 +173,38 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
             # of the ip route.  The first field is an address/subnet mask combination, so handle it
             # specially
             if fields[0] == "default":
-                assert fields[1] == "via", f"fields[1] should be 'via' but is {fields[1]}.\n" + str(fields)
                 if self.family == socket.AF_INET:
                     destination = ipaddress.IPv4Network("0.0.0.0/0")
                 else:
                     destination = ipaddress.IPv6Network("::/0")
                 # Issue 45
+                assert fields[1] == "via", f"route {destination} field 1 should be the word 'via' but it's {fields[1]}."
                 default_gateway.append(ipaddress.ip_address(fields[2]))
-                assert fields[3] == "dev", f"fields[3] should be 'dev' but is {fields[3]}.\n" + str(fields)
+                assert fields[3] == "dev", f"route {destination} field 3 should be the word 'dev' but it's {fields[1]}."
                 default_dev.append(fields[4])
+                field_ctr = 5
             # IPv4 loop back address does not have a routing table entry
             else:
                 destination = ipaddress.ip_network(fields[0])
-            route['destination'] = destination
 
-            # fields[1] is a special case
+            # fields[1] is a special case - it can be either via or dev
             if fields[1] == "via":
-                assert fields[3] == 'dev', "Parse error in parse_ip_route_list_cmd:" \
-                                           f"fields[3] should be 'dev' but is actually {fields[3]}."
                 route["gateway"] = ipaddress.ip_address(fields[2])
+                assert fields[3] == 'dev', f"since fields[1] is 'via', fields[3] should be 'dev' but is actually {fields[3]}."
                 route["dev"] = fields[4]
+                field_ctr = 5
             elif fields[1] == "dev":
                 route["gateway"] = None  # Not really a route, but rather a
                 # marker to the kernel to tell which device these packets should go to
                 route["dev"] = fields[2]
+                field_ctr = 3
             else:
                 raise AssertionError(f"fields[1] can be 'via' or 'dev' but it's actually {fields[1]}")
-
+# default via fe80::c256:27ff:feca:724 dev wlx000e8e06e1a7 proto ra metric 20600 pref medium
+            for fctr in range(field_ctr, len(fields), 2):
             # There is actually a redundant assignment of routes['dev'] but it's too complicated to fix now
+                field_name = fields[fctr]
+                route[field_name] = fields[fctr+1]
             route["linkdown"] = fields[-1] == "linkdown"   # Until we see otherwise
             # for i in range(3, len(fields) - 1, 2):
             #    if fields[i] == "linkdown":
@@ -204,8 +212,8 @@ jeffs@jeffs-desktop:/home/jeffs/python/nbmdt  (dev_0) *  $
             #        # linkdown is a flag, not the title of a field.  No value follows it
             #        break
             #    route[fields[i]] = fields[i + 1]
-            route_list.append(route)
-        return route_list, default_gateway, default_dev
+            route_dict[destination]=route
+        return route_dict, default_gateway, default_dev
 
     # Issue 43 - https://github.com/jeffsilverm/nbmdt/issues/43  Return constants.ErrorLevels, not a tuple
     # Issue 45 - https://github.com/jeffsilverm/nbmdt/issues/45 use the ipaddress type
@@ -372,7 +380,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                 if "transmitted" in line:
                     # re.findall returns a list of length 1 because there is 1 match to the RE
                     packet_counters = \
-                        re.findall("""(\d+).*?(\d+).*received.*(\d+).*(\d+)""", line)[0]  # noqa
+                        re.findall(r"(\d+).*?(\d+).*received.*(\d+).*(\d+)", line)[0]  # noqa
                     # packets_xmit = packet_counters[0]
                     packets_rcvd = packet_counters[1]
                     # If at least one packet was received, then the remote machine
@@ -388,7 +396,7 @@ jeffs@jeffs-laptop:~/nbmdt (development)*$
                     # ['23.326', '29.399', '46.300', '9.762']
                     # >>>
                     # The RE matches a fixed point number, and there are 4 of them.  The second one is the average
-                    numbers = re.findall("""\d+\.\d+""", line)  # noqa
+                    numbers = re.findall(r"\d+\.\d+", line)  # noqa
                     slow = float(numbers[1]) > slow_ms
                     if results == ErrorLevels.NORMAL and slow:
                         results = ErrorLevels.SLOW
