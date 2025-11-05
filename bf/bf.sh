@@ -44,10 +44,20 @@ has_nft(){ has nft; } ; has_ipt(){ has iptables; } ; has_ip6t(){ has ip6tables; 
 
 
 primary_iface() {
-  local dev; dev=$(ip route show default 2>>$LOG_FILE | awk '/default/ {print $5; exit}')
-  [[ -n "${dev:-}" ]] && { echo "$dev"; return; }
+  # Choose a harmless target that exercises normal routing.
+  local target="${PUBLIC_TARGET:-1.1.1.1}"
+  local dev
+
+  if ip -4 route get "$target" 2>>"$LOG_FILE" >/tmp/.rt.$$; then
+    dev=$(awk '{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}' /tmp/.rt.$$)
+    rm -f /tmp/.rt.$$ 
+    [[ -n "$dev" ]] && { echo "$dev"; return; }
+  fi
+
+  # Fallback: first UP non-loopback interface
   ip -o link show up | awk -F': ' '$2 !~ /lo/ {print $2; exit}'
 }
+
 default_gw(){ ip route show default 2>>$LOG_FILE | awk '/default via/ {print $3; exit}'; }
 
 # echo1 I actually thought of second, but I didn't want to call it echo3.
@@ -62,9 +72,9 @@ echo2() {
 # just the log file
   if $VERBOSE_FLAG; then
     echo1 $@
-  else
-    echo $@ >> $LOG_FILE
   fi
+  echo $@ >> $LOG_FILE
+  
 }
 
 # if PUBLIC_TARGET, HTTPS_HOST, or DNS_NAME are defined by the caller of this script, then
@@ -194,11 +204,12 @@ fix_routing_isp(){ require_root; echo "== Routing (ISP) fix: remove blackhole ==
 
 # ---------- routing-border (default gateway) ----------
 test_routing_border(){
-  echo "== Routing (border) test: default route/gateway ==" | tee -a $LOG_FILE
+  echo "== Routing (border) test: default route/gateway =="
   local gw; gw=$(default_gw)
-  [[ -z "${gw:-}" ]] && { echo "❌ No default route" | tee -a $LOG_FILE; return 1; }
-  echo "Gateway: $gw" | tee -a $LOG_FILE; ping -c 2 -W 1 "$gw" >>$LOG_FILE 2>&1 && { echo "✅ Gateway $gw reachable" | tee -a $LOG_FILE; return 0; } || { echo "❌ Gatewau $gw unreachable" | tee -a $LOG_FILE; return 1; }
+  [[ -z "${gw:-}" ]] && { echo "❌ No default route"; return 1; }
+  echo "Gateway: $gw"; ping -c 2 -W 1 "$gw" >/dev/null 2>&1 && { echo "✅ GW reachable"; return 0; } || { echo "❌ GW unreachable"; return 1; }
 }
+
 break_routing_border(){
   require_root; echo "== Routing (border) break: remove defaults ==" | tee -a $LOG_FILE
   ip route show default > /tmp/bflab_default_route.txt || true
@@ -300,126 +311,110 @@ fix_wifi(){
 #
 
 test_nic(){
-  echo "== NIC counter test (kernel stats; no DNS required) ==" | tee -a "$LOG_FILE"
+  echo "== NIC counter test (using only kernel stats) ==" | tee -a "$LOG_FILE"
 
-  ### local IF; IF=$(primary_iface || true)  # moved to the dispatcher
-  if [[ -z "${IF:-}" ]]; then
-    echo "❌ No active interface detected." | tee -a "$LOG_FILE"
+  # If we previously broke a NIC, test that same interface; otherwise use primary
+  local ifc
+  if [[ -f /tmp/bflab_nic_iface ]]; then
+    ifc="$(cat /tmp/bflab_nic_iface)"
+  else
+    ifc="${IF:-$(primary_iface || true)}"
+  fi
+
+  if [[ -z "${ifc:-}" ]]; then
+    echo "🌧 No interface to test (none recorded; no primary found)." | tee -a "$LOG_FILE"
     return 1
   fi
-  echo "Interface under test: $IF" | tee -a "$LOG_FILE"
+  echo "Interface under test: $ifc" | tee -a "$LOG_FILE"
 
-  # Helpers to read integer counters from sysfs safely
   _stat() { cat "/sys/class/net/$1/statistics/$2" 2>/dev/null || echo 0; }
   _uptime_secs() { awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0; }
 
-  # Snapshot #1
   local rx1 tx1 rxerr1 txerr1 rxd1 txd1 coll1 carr1
-  rx1=$(_stat "$IF" rx_packets)
-  tx1=$(_stat "$IF" tx_packets)
-  rxerr1=$(_stat "$IF" rx_errors)
-  txerr1=$(_stat "$IF" tx_errors)
-  rxd1=$(_stat "$IF" rx_dropped)
-  txd1=$(_stat "$IF" tx_dropped)
-  coll1=$(_stat "$IF" collisions)
-  carr1=$(_stat "$IF" tx_carrier_errors)
+  rx1=$(_stat "$ifc" rx_packets);  tx1=$(_stat "$ifc" tx_packets)
+  rxerr1=$(_stat "$ifc" rx_errors); txerr1=$(_stat "$ifc" tx_errors)
+  rxd1=$(_stat "$ifc" rx_dropped);  txd1=$(_stat "$ifc" tx_dropped)
+  coll1=$(_stat "$ifc" collisions); carr1=$(_stat "$ifc" tx_carrier_errors)
   local up1; up1=$(_uptime_secs)
 
-  # Create a tiny burst of local traffic so counters should move
-  # — gateway ping (no DNS), but don't fail the test if it doesn't reply.
   local gw; gw=$(default_gw || true)
-  if [[ -n "${gw:-}" ]]; then
-    ping -c 3 -W 1 "$gw" >/dev/null 2>&1 || true
-  fi
+  [[ -n "${gw:-}" ]] && ping -c 3 -W 1 "$gw" >/dev/null 2>&1 || true
 
-  # Wait a few seconds to let counters advance
-  local SLEEP_SEC=5
-  sleep "$SLEEP_SEC"
+  local SLEEP_SEC=5; sleep "$SLEEP_SEC"
 
-  # Snapshot #2
   local rx2 tx2 rxerr2 txerr2 rxd2 txd2 coll2 carr2
-  rx2=$(_stat "$IF" rx_packets)
-  tx2=$(_stat "$IF" tx_packets)
-  rxerr2=$(_stat "$IF" rx_errors)
-  txerr2=$(_stat "$IF" tx_errors)
-  rxd2=$(_stat "$IF" rx_dropped)
-  txd2=$(_stat "$IF" tx_dropped)
-  coll2=$(_stat "$IF" collisions)
-  carr2=$(_stat "$IF" tx_carrier_errors)
+  rx2=$(_stat "$ifc" rx_packets);  tx2=$(_stat "$ifc" tx_packets)
+  rxerr2=$(_stat "$ifc" rx_errors); txerr2=$(_stat "$ifc" tx_errors)
+  rxd2=$(_stat "$ifc" rx_dropped);  txd2=$(_stat "$ifc" tx_dropped)
+  coll2=$(_stat "$ifc" collisions); carr2=$(_stat "$ifc" tx_carrier_errors)
   local up2; up2=$(_uptime_secs)
 
-  # Deltas over the short window
-  local drx=$((rx2 - rx1))
-  local dtx=$((tx2 - tx1))
-  local drxerr=$((rxerr2 - rxerr1))
-  local dtxerr=$((txerr2 - txerr1))
-  local drxd=$((rxd2 - rxd1))
-  local dtxd=$((txd2 - txd1))
-  local dcoll=$((coll2 - coll1))
-  local dcarr=$((carr2 - carr1))
+  local drx=$((rx2-rx1)) dtx=$((tx2-tx1)) drxerr=$((rxerr2-rxerr1)) dtxerr=$((txerr2-txerr1))
+  local drxd=$((rxd2-rxd1)) dtxd=$((txd2-txd1)) dcoll=$((coll2-coll1)) dcarr=$((carr2-carr1))
+  local uph=$(( up2>0 ? (up2+3599)/3600 : 1 ))
 
-  # Totals (since boot) for rate analysis
-  local rx_total="$rx2" tx_total="$tx2"
-  local rxerr_total="$rxerr2" txerr_total="$txerr2"
-  local rxd_total="$rxd2" txd_total="$txd2"
-  local coll_total="$coll2" carr_total="$carr2"
-
-  # Uptime in hours (avoid div-by-zero)
-  local uph=1
-  if (( up2 > 0 )); then
-    uph=$(( (up2 + 3599) / 3600 ))  # ceil to nearest hour
-  fi
-
-  # Thresholds: errors must not increase; other “bad” counters should be ~< 1/hour of uptime
-  local per_hour_thresh=$uph
-
-  # Report
   {
     echo "Window: ${SLEEP_SEC}s"
     printf "RX pkts: %d -> %d  (Δ=%d)\n" "$rx1" "$rx2" "$drx"
     printf "TX pkts: %d -> %d  (Δ=%d)\n" "$tx1" "$tx2" "$dtx"
-    printf "RX errors Δ=%d (total=%d), TX errors Δ=%d (total=%d)\n" "$drxerr" "$rxerr_total" "$dtxerr" "$txerr_total"
-    printf "RX dropped Δ=%d (total=%d), TX dropped Δ=%d (total=%d)\n" "$drxd" "$rxd_total" "$dtxd" "$txd_total"
-    printf "Collisions Δ=%d (total=%d), TX carrier errs Δ=%d (total=%d)\n" "$dcoll" "$coll_total" "$dcarr" "$carr_total"
-    echo "Uptime (hours, ceil): $uph  → “small” total threshold ≈ <$per_hour_thresh"
+    printf "RX errors Δ=%d (total=%d), TX errors Δ=%d (total=%d)\n" "$drxerr" "$rxerr2" "$dtxerr" "$txerr2"
+    printf "RX dropped Δ=%d (total=%d), TX dropped Δ=%d (total=%d)\n" "$drxd" "$rxd2" "$dtxd" "$txd2"
+    printf "Collisions Δ=%d (total=%d), TX carrier errs Δ=%d (total=%d)\n" "$dcoll" "$coll2" "$dcarr" "$carr2"
+    echo "Uptime (hours, ceil): $uph  → “small” total threshold ≈ <$uph"
   } | tee -a "$LOG_FILE"
 
   local status=0
-
-  # Pass/fail on packet movement
   if (( drx + dtx <= 0 )); then
-    echo "❌ No packet movement detected over ${SLEEP_SEC}s — link may be down or idle." | tee -a "$LOG_FILE"
+    echo "⚠️  No packet movement in ${SLEEP_SEC}s — link may be idle/down." | tee -a "$LOG_FILE"
     status=1
   else
     echo "✅ Packet movement observed (ΔRX=$drx, ΔTX=$dtx)." | tee -a "$LOG_FILE"
   fi
+  (( drxerr>0 || dtxerr>0 )) && echo "⚠️  Errors increased (Δrx_err=$drxerr, Δtx_err=$dtxerr)." | tee -a "$LOG_FILE"
 
-  # Warnings per your criteria
-  if (( drxerr > 0 || dtxerr > 0 )); then
-    echo "⚠️  Errors increased in the last ${SLEEP_SEC}s (Δrx_err=$drxerr, Δtx_err=$dtxerr)." | tee -a "$LOG_FILE"
-  fi
-
-  # “Very small”: totals less than ~1 per hour of uptime
-  if (( rxd_total > per_hour_thresh || txd_total > per_hour_thresh )); then
-    echo "⚠️  Drops seem high for $uph h uptime (rx_dropped=$rxd_total, tx_dropped=$txd_total)." | tee -a "$LOG_FILE"
-  fi
-  if (( coll_total > per_hour_thresh )); then
-    echo "⚠️  Collisions seem high for $uph h uptime (collisions=$coll_total)." | tee -a "$LOG_FILE"
-  fi
-  if (( carr_total > per_hour_thresh )); then
-    echo "⚠️  TX carrier errors seem high for $uph h uptime (tx_carrier_errors=$carr_total)." | tee -a "$LOG_FILE"
-  fi
+  (( rxd2>uph || txd2>uph )) && echo "⚠️  Drops high for $uph h (rx_dropped=$rxd2, tx_dropped=$txd2)." | tee -a "$LOG_FILE"
+  (( coll2>uph )) && echo "⚠️  Collisions high for $uph h (collisions=$coll2)." | tee -a "$LOG_FILE"
+  (( carr2>uph )) && echo "⚠️  Carrier errs high for $uph h (tx_carrier_errors=$carr2)." | tee -a "$LOG_FILE"
 
   return "$status"
 }
 
 
+break_nic(){
+  require_root
+  local ifc="${IF:-$(primary_iface || true)}"
+  [[ -z "$ifc" ]] && { echo "No interface found." | tee -a "$LOG_FILE"; return 0; }
+  echo "$ifc" > /tmp/bflab_nic_iface
+  echo "== NIC break: '$ifc' down ==" | tee -a "$LOG_FILE"
+  ip link set "$ifc" down
+}
 
 
 
 
-break_nic(){ require_root; [[ -z "${IF:-}" ]] && { echo "No interface found."; return 0; }; echo "$IF" > /tmp/bflab_nic_iface; echo "== NIC break: '$IF' down =="; ip link set "$IF" down; }
-fix_nic(){ require_root; [[ -f /tmp/bflab_nic_iface ]] || return 0; echo "== NIC fix: '$IF' up =="; ip link set "$IF" up || true; has nmcli && nmcli device connect "$IF" 2>>$LOG_FILE || true; rm -f /tmp/bflab_nic_iface; }
+fix_nic(){
+  require_root
+  [[ -f /tmp/bflab_nic_iface ]] || return 0
+  local ifc; ifc=$(cat /tmp/bflab_nic_iface)
+  echo "== NIC fix: '$ifc' up ==" | tee -a "$LOG_FILE"
+  ip link set "$ifc" up || true
+  has nmcli && nmcli device connect "$ifc" 2>>"$LOG_FILE" || true
+  rm -f /tmp/bflab_nic_iface
+}
+
+test_nic_all(){
+  # Test all NICs that are currently UP
+  local iflist
+  iflist=$(ip -o link show up | awk -F': ' '$2 !~ /lo|tun|tap|docker|veth|virbr|nm-|wg/ {print $2}')
+  [[ -z "$iflist" ]] && { echo "🌧 No candidate interfaces up."; return 1; }
+  local rc=0
+  for ifc in $iflist; do
+    echo "----"; IF="$ifc" test_nic || rc=1
+  done
+  return $rc
+}
+
+
 
 # ---------- time of day -----------------------------
 # This tests that the time of day is correct to within 10 seconds.
@@ -435,7 +430,11 @@ test_time(){
   # https://www.youtube.com/watch?v=jgF_ycCmF18&list=RDjgF_ycCmF18&start_radio=1
   TIME_SERVER=time.google.com       # Actually, any public web server will do
   # DATE_HDR is GMT in RFC 2822 Format
-  DATE_HDR=$(curl -sI "https://${TIME_SERVER}" | grep -i '^Date:')
+  DATE_HDR=$(curl -sI "https://${TIME_SERVER}" | grep -i '^Date:' || true)
+  if [[ -z "${DATE_HDR:-}" ]]; then
+    echo "🌧 Could not read HTTP Date header from ${TIME_SERVER}" | tee -a "$LOG_FILE"
+    return 1
+  fi
   # Everything up to and including the colon is removed.  RFC 2616 says the header must be Date, RFCs RFC 7230 §3.2 → RFC 9110
   # say that Date is case insensitive, and HTTP/2 and HTTP/3 say that all headers should be lower case.
   # In the bash man page, look for ${parameter#word} — Remove the shortest match of word from the beginning of parameter.
@@ -484,15 +483,52 @@ fix_time(){
 
 # ---------- packet-loss (tc netem) ----------
 test_packet_loss(){
-  echo "== Packet-loss test (ping 1.1.1.1, expect 0% when idle) =="  | tee -a $LOG_FILE
+  local DEF_ROUTES_FILE="/tmp/bflab_default_routes"
+  local IF; # IF=$(cat /tmp/bflab_tc_iface)
+  if [[ -n ${LOSS_IF:-} ]]; then
+    IF=$LOSS_IF
+  elif [[ -f /tmp/bflab_tc_iface ]]; then
+    IF=$(cat /tmp/bflab_tc_iface) 
+  else
+    IF=$(primary_iface || true )
+  fi
+  ip route list | fgrep default > $DEF_ROUTES_FILE
+  if [[ -z $IF ]]; then
+    echo "🌧 Interface $IF is not set: the file /tmp/bflab_tc_iface didn't have it, neither did envar LOSS_IF, and primary_iface returned nothing"
+    exit 1
+  elif [[ $( wc -l <"$DEF_ROUTES_FILE" ) -ne 1 ]]; then
+     echo "⚠️ There are $(wc -l <$DEF_ROUTES_FILE) default routes,  There should be only one.  "
+     cat $DEF_ROUTES_FILE
+  fi  
+  echo "== Packet-loss test on interface $IF (ping 1.1.1.1, expect 0% when idle) =="  | tee -a $LOG_FILE
+  if ip route list | egrep -q -E "$IF"; then
+    echo2 "Interface $IF is connected to a default route"
+  else
+    echo1 "🌧 Interface $IF is **not** connected to a default route, so the ping test will be meaningless"
+  fi
   if ping -c 10 -W 1 1.1.1.1 | awk '/packets transmitted/ {loss=$6+0; print; if (loss>0) exit 1}'; then
     echo "✅ No significant loss observed" | tee -a $LOG_FILE; return 0
   else
     echo "⚠️  Packet loss detected (may be induced)" | tee -a $LOG_FILE; return 1
   fi
+  rm -f $DEF_ROUTES_FILE
 }
 break_packet_loss(){
-  require_root; local IF; IF=$(primary_iface || true); [[ -z "${IF:-}" ]] && { echo "No primary interface."; exit 1; }
+  require_root
+  local IF;     # IF=$(primary_iface || true); [[ -z "${IF:-}" ]] && { echo "No primary interface."; exit 1; }
+  if [[ -n ${LOSS_IF:-} ]]; then
+    IF=$LOSS_IF
+    echo $IF > /tmp/bflab_tc_iface
+  elif [[ -f /tmp/bflab_tc_iface ]]; then
+    IF=$(cat /tmp/bflab_tc_iface) 
+  else
+    IF=$(primary_iface || true )
+  fi
+  if ip route list | egrep -q -E "$IF"; then
+    echo2 "Interface $IF is connected to a default route"
+  else
+    echo1 "🌧 Interface $IF is **not** connected to a default route, so the ping test will probably fail"
+  fi
   local PCT="${LOSS_PCT:-74}"; echo "$IF" > /tmp/bflab_tc_iface
   echo "== Packet-loss break: tc netem loss ${PCT}% on ${IF} =="
   tc qdisc del dev "$IF" root 2>>$LOG_FILE || true
@@ -502,9 +538,14 @@ break_packet_loss(){
 fix_packet_loss(){
   require_root; [[ -f /tmp/bflab_tc_iface ]] || return 0
   local IF; IF=$(cat /tmp/bflab_tc_iface)
+  echo "== Packet-loss fix: Setting the packet loss rate on ${IF} to 0% (should not be needed) ==" | tee -a $LOG_FILE  
+  tc qdisc change dev "$IF" root netem loss 0%
+  tc qdisc show dev "$IF"  
   echo "== Packet-loss fix: remove tc netem on ${IF} ==" | tee -a $LOG_FILE
   tc qdisc del dev "$IF" root >> $LOG_FILE 2>>$LOG_FILE  || true
+  tc qdisc show dev "$IF"
   rm -f /tmp/bflab_tc_iface
+  
 }
 
 # --------------- Bad certificate ---------------------
@@ -797,18 +838,25 @@ test_openssl_bad_dns(){
 }
 
 break_openssl_bad_dns(){
+  # This simulates an evil (because this is deliberately malicious as opposed to merely stupid)
+  # nameserver.  However, this is the precisely the threat that SSL/TLS was designed to detect and stop
+  require_root
   HOST_TO_TEST=$DNS_TEST_FAKE_HOST
+  # Intentionally map the FAKE hostname to a KNOWN GOOD real IP so TLS hostname mismatch is triggered.
   HOST_TO_TEST_IPv4_ADDR=$(dig +short $HOST_TO_TEST)
   cp /etc/hosts /tmp/hosts_SAVED
-  echo "$HOST_TO_TEST_IPv4_ADDR     $HOST_TO_TEST   # bflab poison" >> /etc/hosts
+  # Avoid duplicate poison lines:
+  grep -q "bflab poison" /etc/hosts || echo "${HOST_TO_TEST_IPv4_ADDR}     ${HOST_TO_TEST}   # bflab poison" >> /etc/hosts
+  echo "$HOST_TO_TEST_IPv4_ADDR   $HOST_TO_TEST   # bflab poison" >> /etc/hosts
   if $VERBOSE_FLAG; then
     echo1 "Verifying that /etc/hosts was patched with $HOST_TO_TEST_IPv4_ADDR"
-    fgrep "$HOST_TO_TEST_IPv4_ADDR" /etc/hosts | tee -a $LOG_FILE
   fi
+  fgrep "$HOST_TO_TEST_IPv4_ADDR" /etc/hosts | tee -a $LOG_FILE  
 }
 
 fix_openssl_bad_dns(){
-  if egrep "${HOST_TO_TEST_IPv4_ADDR}.*${HOST_TO_TEST}.*bflab poison" /etc/hosts; then
+  require_root
+  if egrep -E "${HOST_TO_TEST_IPv4_ADDR}.*${HOST_TO_TEST}.*bflab poison" /etc/hosts; then
     if fgrep "bflab poison" /tmp/hosts_SAVED; then
       echo "🌧 NOT FIXING /etc/hosts with /tmp/hosts_SAVED has bflab poison"
       # This isn't a catastrophic failure because breaking /etc/hosts means
@@ -829,13 +877,14 @@ usage(){
 Usage: sudo ./bf.sh <operation> <subsystem> [verbose]
 
 Operations: test | break | fix | all
-Subsystems: dns | time | routing-isp | routing-border | local-connectivity | wifi | nic | packet-loss | openssl-expired | openssl-bad-dns 
+Subsystems: dns | time | routing-isp | routing-border | local-connectivity | wifi | nic | nics | packet-loss | openssl-expired | openssl-bad-dns 
 Add the word "verbose" if you want a more verbose output.
 
 Examples:
   sudo ./bf.sh all dns
   sudo ./bf.sh test tls
   sudo LOSS_PCT=15 ./bf.sh all packet-loss
+  sudo LOSS_IF=wlp1s0  ./bf.sh test packet-loss
   sudo PUBLIC_TARGET=8.8.8.8 ./bf.sh all routing-isp
 EOF
 }
@@ -849,6 +898,7 @@ map_sub(){
     local-connectivity) echo local_connectivity ;;
     wifi) echo wifi ;;
     nic) echo nic ;;
+    nics) echo nics ;;
     packet-loss) echo packet_loss ;;
     openssl-expired) echo openssl_expired ;;
     openssl-bad-dns) echo openssl_bad_dns ;;
@@ -862,7 +912,11 @@ OP="${1:-}"; SUB="${2:-}"
 SUBN=$(map_sub "$SUB"); [[ -z "$SUBN" ]] && { echo "Unknown subsystem: $SUB"; usage; exit 2; }
 if [[ $SUBN == "nic" ]]; then
   IF=$(primary_iface || true)
+elif [[ $SUBN == "nics" ]]; then
+  echo1 "This tests all UP NICs, but does not attempt to break or fix them"
+  test_nic_all
 fi
+
 do_test="test_${SUBN}"; do_break="break_${SUBN}"; do_fix="fix_${SUBN}"
 echo "Log file is on $LOG_FILE" | tee -a $LOG_FILE
 case "$(echo "$OP" | tr '[:upper:]' '[:lower:]')" in

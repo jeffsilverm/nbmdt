@@ -30,6 +30,8 @@ sudo ./verify_bf.sh
 
 I wrote this script to help me test bf.sh automatically, and then I realized that it would actually be useful if something went wrong and you didn't know what it was.
 
+CAUTION: the packet-loss test is not reliable on machines with more than one default route.  Yet.
+
 ## Safety & cleanup
 - Script stores breadcrumbs in `/tmp/bflab_*` and `/etc/hosts` and removes only what it created.
 - Manual cleanup if needed:
