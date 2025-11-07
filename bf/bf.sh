@@ -12,7 +12,7 @@
 #   dns
 #   ssl | tls
 #   routing-isp
-#   routing-border
+#   routing-local
 #   local-connectivity
 #   wifi
 #   nic
@@ -37,21 +37,31 @@
 # # Any comment that has a unicode emoticon e.g. 💣 is [supposed to be] a joke.
 set -euo pipefail
 
+
 # ---------- helpers ----------
-require_root() { [[ $EUID -eq 0 ]] || { echo "🌧 Please run as root (sudo)."; exit 1; }; }
+require_root() { [[ $EUID -eq 0 ]] || { lecho  "🌧 $WHITE_ON_RED  Please run as root (sudo)."; exit 1; }; }
 has(){ command -v "$1" >>$LOG_FILE 2>&1; }
 has_nft(){ has nft; } ; has_ipt(){ has iptables; } ; has_ip6t(){ has ip6tables; }
+# Colors for VT-100 (ANSI X3.64) escape sequences.  This will also work on a linux console
+WHITE_ON_RED='\033[37;41m'
+BLACK_ON_RED='\033[30;41m'
+BLACK_ON_YELLOW='\033[30;43m'
+WHITE_ON_GREEN='\033[37;42m'
+BLACK_ON_GREEN='\033[30;42m'
+RESET='\033[0m'
+
+lecho() { echo -e "$@ ${RESET}" ; return 0; }
 
 
 primary_iface() {
   # Choose a harmless target that exercises normal routing.
-  local target="${PUBLIC_TARGET:-1.1.1.1}"
+  # local target="${PUBLIC_TARGET:-1.1.1.1}"
   local dev
 
-  if ip -4 route get "$target" 2>>"$LOG_FILE" >/tmp/.rt.$$; then
+  if ip -4 route get "$PUBLIC_TARGET" 2>>"$LOG_FILE" >/tmp/.rt.$$; then
     dev=$(awk '{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}' /tmp/.rt.$$)
     rm -f /tmp/.rt.$$ 
-    [[ -n "$dev" ]] && { echo "$dev"; return; }
+    [[ -n "$dev" ]] && { echo  "$dev"; return; }
   fi
 
   # Fallback: first UP non-loopback interface
@@ -62,7 +72,7 @@ default_gw(){ ip route show default 2>>$LOG_FILE | awk '/default via/ {print $3;
 
 # echo1 I actually thought of second, but I didn't want to call it echo3.
 # Write the arguments both the stdout and the log file unconditionally.
-echo1() { echo $@ | tee -a $LOG_FILE ; }
+echo1() { lecho  $@ | tee -a $LOG_FILE ; }
 
 VERBOSE_FLAG=$([[ "${3-}" == "verbose" ]] && echo true || echo false)    # If $3 is unset, then expand to empty string
 
@@ -73,9 +83,19 @@ echo2() {
   if $VERBOSE_FLAG; then
     echo1 $@
   fi
-  echo $@ >> $LOG_FILE
+  lecho $@ >> $LOG_FILE
   
 }
+
+
+
+# For testing purposes only!
+# lecho  "🌧 $${BLACK_ON_RED} ERROR: Network unreachable ${RESET} Error"
+# lecho  "❌ ${WHITE_ON_RED} ERROR: Network unreachable ${RESET} Error"
+# lecho  "⚠️ ${BLACK_ON_YELLOW} WARNING: DNS lookup slow ${RESET} Warning"
+# lecho  "✅ ${WHITE_ON_GREEN} SUCCESS: Link up and verified ${RESET} Okay"
+# lecho  "✅✅ ${BLACK_ON_GREEN} OK: Counters nominal ${RESET} Okay"
+
 
 # if PUBLIC_TARGET, HTTPS_HOST, or DNS_NAME are defined by the caller of this script, then
 # use those values.
@@ -89,8 +109,8 @@ NFT_DNS="bflab_dns"
 IPT_CHAIN="BFLAB"
 DATE=$(date -Isec)		# date string in ISO 8601 format, suitable for use in a filename
 LOG_FILE="/tmp/$0_${DATE}.log"
-echo $DATE > $LOG_FILE
-echo "Log file, if any, in $LOG_FILE"
+echo  $DATE > $LOG_FILE
+echo  "Log file, if any, in $LOG_FILE"
 
 SSL_CA_DIR="/tmp/bflab_ssl_ca"
 SSL_CA_KEY="$SSL_CA_DIR/ca.key"
@@ -115,7 +135,7 @@ HOST_TO_TEST=$DNS_TEST_REAL_HOST
 if HOST_TO_TEST_IPv4_ADDR=$(dig +short $HOST_TO_TEST); then
     echo2 "dig is working"; 
   else
-    echo1 "🌧 dig +short $HOST_TO_TEST failed.  Why?  Don't know.  Using $DNS_GOOGLE_IPv4_ADDR"
+    echo1 "🌧 $WHITE_ON_RED  dig +short $HOST_TO_TEST failed.  Why?  Don't know.  Using $DNS_GOOGLE_IPv4_ADDR"
     HOST_TO_TEST_IPv4_ADDR=$DNS_GOOGLE_IPv4_ADDR
   fi
 
@@ -148,27 +168,27 @@ test_dns(){
 #   Step 1: It’s DNS.
 #   Step 2: No, really — it’s DNS.
 #   Step 3: OK, fine… it was the firewall.
-  echo "== DNS test ==" | tee -a $LOG_FILE
+  echo  "== DNS test == " | tee -a $LOG_FILE
   if has dig; then
-    echo "Using dig" | tee -a $LOG_FILE
-    dig +time=2 +tries=1 "$DNS_NAME" >>$LOG_FILE 2>&1 && { echo "✅ DNS OK ($DNS_NAME)"; return 0; }
-    echo "❌ DNS failed ($DNS_NAME)"  |  tee -a $LOG_FILE ; return 1
+    echo  "Using dig" | tee -a $LOG_FILE
+    dig +time=2 +tries=1 "$DNS_NAME" >>$LOG_FILE 2>&1 && { lecho  "✅ $BLACK_ON_GREEN  DNS OK ($DNS_NAME) $RESET"; return 0; }
+    lecho  "❌ $BLACK_ON_RED DNS failed ($DNS_NAME)"  |  tee -a $LOG_FILE ; return 1
   else
-    echo "Using getent" | tee -a $LOG_FILE
-    getent hosts "$DNS_NAME" >> $LOG_FILE 2>&1 && { echo "✅ DNS OK via getent ($DNS_NAME)"; return 0; }
-    echo "❌ DNS failed via getent ($DNS_NAME)" |  tee -a $LOG_FILE ; return 1
+    echo  "Using getent" | tee -a $LOG_FILE
+    getent hosts "$DNS_NAME" >> $LOG_FILE 2>&1 && { lecho  "✅ $BLACK_ON_GREEN  DNS OK via getent ($DNS_NAME) $RESET"; return 0; }
+    lecho  "❌ $BLACK_ON_RED DNS failed via getent ($DNS_NAME) $RESET" |  tee -a $LOG_FILE ; return 1
   fi
 }
 break_dns(){
-  require_root; echo "== DNS break: drop UDP/TCP 53 ==" | tee -a $LOG_FILE
+  require_root; echo  "== DNS break: drop UDP/TCP 53 ==" | tee -a $LOG_FILE
   if has_nft; then
-    echo "Using NFT" | tee -a $LOG_FILE
+    echo  "Using NFT" | tee -a $LOG_FILE
     ensure_nft_table "$NFT_DNS"
     nft 'add chain inet '"$NFT_DNS"' out { type filter hook output priority 0 ; }' 2>>$LOG_FILE || true
     nft add rule inet "$NFT_DNS" out udp dport 53 drop 2>>$LOG_FILE || true
     nft add rule inet "$NFT_DNS" out tcp dport 53 drop 2>>$LOG_FILE || true
   elif has_ipt; then
-    echo "Using iptables" | tee -a $LOG_FILE
+    echo  "Using iptables" | tee -a $LOG_FILE
     ensure_ipt_chain
     iptables -A "$IPT_CHAIN" -p udp --dport 53 -j DROP
     iptables -A "$IPT_CHAIN" -p tcp --dport 53 -j DROP
@@ -177,12 +197,12 @@ break_dns(){
       ip6tables -A "$IPT_CHAIN" -p tcp --dport 53 -j DROP
     fi
   else
-    echo "🌧 No nftables/iptables available." | tee -a $LOG_FILE
+    lecho  "🌧 $WHITE_ON_RED  No nftables/iptables available." | tee -a $LOG_FILE
     exit 1
   fi
 }
 fix_dns(){
-  require_root; echo "== DNS fix: remove rules ==" | tee -a $LOG_FILE
+  require_root; echo  "== DNS fix: remove rules ==" | tee -a $LOG_FILE
   if has_nft; then delete_nft_table "$NFT_DNS"; elif has_ipt; then flush_ipt_chain; fi
 }
 
@@ -197,34 +217,131 @@ fix_dns(){
 #   2. Data Link
 #   1. Physical
 #   0. User: "Why doesn’t it work?"   😢
-test_routing_isp(){ echo "== Routing (ISP) test: ping ${PUBLIC_TARGET} ==" | tee -a $LOG_FILE
-ping -c 2 -W 1 "${PUBLIC_TARGET}" >> $LOG_FILE 2>&1 && { echo "✅ Reachable: ${PUBLIC_TARGET}"; return 0; } || { echo "❌ Unreachable: ${PUBLIC_TARGET}"; return 1; } | tee -a $LOG_FILE; }
-break_routing_isp(){ require_root; echo1 "== Routing (ISP) break: blackhole ${PUBLIC_TARGET} ==" ; echo "${PUBLIC_TARGET}" > /tmp/bflab_isp_target; ip route replace blackhole "${PUBLIC_TARGET}" || true; }
-fix_routing_isp(){ require_root; echo "== Routing (ISP) fix: remove blackhole ==" | tee -a $LOG_FILE; [[ -f /tmp/bflab_isp_target ]] && { ip route del blackhole "$(cat /tmp/bflab_isp_target)" 2>>$LOG_FILE || true; rm -f /tmp/bflab_isp_target; } || true; }
+test_routing_isp(){ echo  "== Routing (ISP) test: ping ${PUBLIC_TARGET} ==" | tee -a $LOG_FILE
+ping -c 2 -W 1 "${PUBLIC_TARGET}" >> $LOG_FILE 2>&1 && { lecho  "✅ $BLACK_ON_GREEN  Reachable: ${PUBLIC_TARGET}"; return 0; } || { lecho  "❌ $BLACK_ON_RED Unreachable: ${PUBLIC_TARGET}"; return 1; } | tee -a $LOG_FILE; }
+#break_routing_isp(){ require_root; echo1 "== Routing (ISP) break: blackhole ${PUBLIC_TARGET} ==" ; lecho  "${PUBLIC_TARGET}" > /tmp/bflab_isp_target; ip route replace blackhole "${PUBLIC_TARGET}" || true; }
 
-# ---------- routing-border (default gateway) ----------
-test_routing_border(){
-  echo "== Routing (border) test: default route/gateway =="
-  local gw; gw=$(default_gw)
-  [[ -z "${gw:-}" ]] && { echo "❌ No default route"; return 1; }
-  echo "Gateway: $gw"; ping -c 2 -W 1 "$gw" >/dev/null 2>&1 && { echo "✅ GW reachable"; return 0; } || { echo "❌ GW unreachable"; return 1; }
+# Resolve a token to one or more IPv4 addresses (A records).
+# If the token is already an IPv4 (optionally with /CIDR), just echo it back.
+_resolve_ipv4s() {
+  local name="$1"
+  # IPv4 or IPv4/CIDR
+  if [[ "$name" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/([0-9]|[12][0-9]|3[0-2]))?$ ]]; then
+    printf '%s\n' "$name"
+    return 0
+  fi
+
+  # Try dig (A records)
+  if command -v dig >/dev/null 2>&1; then
+    dig +short A "$name" 2>>"$LOG_FILE" | awk '/^[0-9.]+$/' | sort -u
+  fi
+
+  # Fallback: getent (ahostsv4)
+  if command -v getent >/dev/null 2>&1; then
+    getent ahostsv4 "$name" 2>>"$LOG_FILE" | awk '{print $1}' | awk '/^[0-9.]+$/' | sort -u
+  fi
 }
 
-break_routing_border(){
-  require_root; echo "== Routing (border) break: remove defaults ==" | tee -a $LOG_FILE
+break_routing_isp(){
+  require_root
+  local target="${PUBLIC_TARGET:-${1:-}}"
+  [[ -z "$target" ]] && target="1.1.1.1"
+
+  echo "== Routing (ISP) break: blackhole '${target}' ==" | tee -a "$LOG_FILE"
+
+  # Resolve to IPv4s or accept IP/CIDR
+  mapfile -t _ips < <(_resolve_ipv4s "$target")
+  if [[ ${#_ips[@]} -eq 0 ]]; then
+    echo "🌧 Could not resolve or parse '$target' into IPv4(s)." | tee -a "$LOG_FILE"
+    exit 1
+  fi
+
+  # Record destinations we blackhole (one per line) for later fixes
+  : > /tmp/bflab_isp_targets
+
+  local dest
+  for ip in "${_ips[@]}"; do
+    # If no CIDR given, force /32 host route to avoid classful surprises
+    if [[ "$ip" == */* ]]; then
+      dest="$ip"
+    else
+      dest="$ip/32"
+    fi
+    echo "Blackholing $dest" | tee -a "$LOG_FILE"
+    # replace is idempotent per-destination; add would also work if unique
+    if ip route replace blackhole "$dest" 2>>"$LOG_FILE"; then
+      printf '%s\n' "$dest" >> /tmp/bflab_isp_targets
+    else
+      echo "🌧 Failed to blackhole $dest (see log)" | tee -a "$LOG_FILE"
+    fi
+  done
+}
+
+
+
+
+
+## fix_routing_isp() ### { require_root; lecho  "== Routing (ISP) fix: remove blackhole ==" | tee -a $LOG_FILE; [[ -f /tmp/bflab_isp_target ]] && { ip route del blackhole "$(cat /tmp/bflab_isp_target)" 2>>$LOG_FILE || true; rm -f /tmp/bflab_isp_target; } || true; }
+fix_routing_isp(){
+  require_root
+  echo "== Routing (ISP) fix: remove blackhole routes ==" | tee -a "$LOG_FILE"
+
+  local found=0
+
+  # Strict pass: only lines that are exactly "blackhole <DEST>"
+  while read -r line; do
+    # Skip empty
+    [[ -z "${line// /}" ]] && continue
+    # Tokenize the line into positional parameters
+    set -- $line
+    if [[ $# -eq 2 && "$1" == "blackhole" ]]; then
+      echo "Deleting blackhole route to '$2'" | tee -a "$LOG_FILE"
+      if ip route del "$2" 2>>"$LOG_FILE"; then
+        echo "✅ Removed blackhole $2" | tee -a "$LOG_FILE"
+        found=1
+      else
+        echo "🌧 Failed to delete blackhole $2 (see log)" | tee -a "$LOG_FILE"
+      fi
+    fi
+  done < <(ip -4 route list 2>>"$LOG_FILE" | fgrep blackhole)
+
+  # Fallback: if nothing matched the strict pattern, try a safer parse
+  if [[ $found -eq 0 ]]; then
+    while read -r dst; do
+      [[ -z "${dst:-}" ]] && continue
+      echo "Fallback deleting blackhole '$dst'" | tee -a "$LOG_FILE"
+      ip route del "$dst" 2>>"$LOG_FILE" || true
+    done < <(ip -4 route list 2>>"$LOG_FILE" | awk '$1=="blackhole"{print $2}')
+  fi
+
+  # Clean up the older breadcrumb (no longer relied upon)
+  rm -f /tmp/bflab_isp_target
+}
+
+
+# ---------- routing-local (default gateway) ----------
+test_routing_local(){
+  echo  "== Routing (local) test: default route/gateway =="
+  local gw; gw=$(default_gw)
+  [[ -z "${gw:-}" ]] && { lecho  "❌ $BLACK_ON_RED No default route"; return 1; }
+  echo  "Gateway: $gw"; ping -c 2 -W 1 "$gw" >/dev/null 2>&1 && { lecho  "✅ $BLACK_ON_GREEN  GW reachable"; return 0; } || { lecho  "❌ $BLACK_ON_RED GW unreachable"; return 1; }
+}
+
+break_routing_local(){
+  require_root; echo  "== Routing (local) break: remove defaults ==" | tee -a $LOG_FILE
   ip route show default > /tmp/bflab_default_route.txt || true
   ip -6 route show default > /tmp/bflab_default_route6.txt || true
   ip route del default 2>>$LOG_FILE || true
   ip -6 route del default 2>>$LOG_FILE || true
   if $VERBOSE_FLAG; then
-    echo "== Default IPv4 gateway (route) ==" >> $LOG_FILE
+    echo  "== Default IPv4 gateway (route) ==" >> $LOG_FILE
     cat /tmp/bflab_default_route.txt >> $LOG_FILE
-    echo "== Default IPv6 gateway (route) ==" >> $LOG_FILE
+    echo  "== Default IPv6 gateway (route) ==" >> $LOG_FILE
     cat /tmp/bflab_default_route6.txt >> $LOG_FILE
   fi
 }
-fix_routing_border(){
-  require_root; echo "== Routing (border) fix: restore defaults ==" | tee -a $LOG_FILE
+fix_routing_local(){
+  require_root; echo  "== Routing (local) fix: restore defaults ==" | tee -a $LOG_FILE
   if [[ -s /tmp/bflab_default_route.txt ]]; then
     while read -r line; do ip route add ${line#default } 2>>$LOG_FILE || true; done < /tmp/bflab_default_route.txt
     rm -f /tmp/bflab_default_route.txt
@@ -241,40 +358,40 @@ fix_routing_border(){
 # ---------- local-connectivity (keep NIC up; block GW host) ----------
 test_local_connectivity(){
   local gw; gw=$(default_gw)
-  echo "== Local connectivity: ping gateway host $gw ==" | tee -a $LOG_FILE
-  [[ -z "${gw:-}" ]] && { echo "❌ No default route"; return 1; }
-  ping -c 2 -W 1 "$gw" >> $LOG_FILE  2>&1 && { echo "✅ Gateway $gw reachable on LAN" | tee -a $LOG_FILE; return 0; } || { echo "❌ GW $gw not reachable" | tee -a $LOG_FILE; return 1; }
+  echo  "== Local connectivity: ping gateway host $gw ==" | tee -a $LOG_FILE
+  [[ -z "${gw:-}" ]] && { lecho  "❌ $BLACK_ON_RED No default route"; return 1; }
+  ping -c 2 -W 1 "$gw" >> $LOG_FILE  2>&1 && { lecho  "✅ $BLACK_ON_GREEN  Gateway $gw reachable on LAN" | tee -a $LOG_FILE; return 0; } || { lecho  "❌ $BLACK_ON_RED GW $gw not reachable" | tee -a $LOG_FILE; return 1; }
 }
 break_local_connectivity(){
   require_root;
   local gw; gw=$(default_gw)
-  echo "== Local connectivity break: blackhole GW host $gw ==" | tee -a $LOG_FILE
-  [[ -z "${gw:-}" ]] && { echo "No default route; nothing to do." | tee -a $LOG_FILE; return 0; }
-  echo "$gw" > /tmp/bflab_blackhole_gw
+  echo  "== Local connectivity break: blackhole GW host $gw ==" | tee -a $LOG_FILE
+  [[ -z "${gw:-}" ]] && { echo  "No default route; nothing to do." | tee -a $LOG_FILE; return 0; }
+  echo  "$gw" > /tmp/bflab_blackhole_gw
   ip route replace blackhole "$gw" || true
 }
 fix_local_connectivity(){
   require_root;
   local gw; gw=$(default_gw)
-  echo "== Local connectivity fix: remove GW blackhole $gw ==" | tee -a $LOG_FILE
+  echo  "== Local connectivity fix: remove GW blackhole $gw ==" | tee -a $LOG_FILE
   [[ -f /tmp/bflab_blackhole_gw ]] && { ip route del blackhole "$(cat /tmp/bflab_blackhole_gw)" 2>>$LOG_FILE || true; rm -f /tmp/bflab_blackhole_gw; } || true
 }
 
 # ---------- wifi (nmcli) ----------
 test_wifi(){
-  echo "== Wi‑Fi test ==" | tee -a $LOG_FILE;
-  has nmcli || { echo "nmcli not available" | tee -a $LOG_FILE; return 2; };
+  echo  "== Wi‑Fi test ==" | tee -a $LOG_FILE;
+  has nmcli || { echo  "nmcli not available" | tee -a $LOG_FILE; return 2; };
   local s; s=$(nmcli -t -f WIFI g 2>>$LOG_FILE | tr '[:upper:]' '[:lower:]' || true);
-  [[ "$s" == "enabled" ]] && { echo "✅ Wi‑Fi enabled" | tee -a $LOG_FILE; return 0; } || { echo "❌ Wi‑Fi disabled" | tee -a $LOG_FILE; return 1; }
+  [[ "$s" == "enabled" ]] && { lecho  "✅ $BLACK_ON_GREEN  Wi‑Fi enabled" | tee -a $LOG_FILE; return 0; } || { lecho  "❌ $BLACK_ON_RED Wi‑Fi disabled" | tee -a $LOG_FILE; return 1; }
 }
 break_wifi(){
   require_root
-  echo "== Wi‑Fi break: radio off ==" | tee -a $LOG_FILE
-  has nmcli && { nmcli radio wifi off || true; : > /tmp/bflab_wifi_disabled; } || echo "nmcli not available" | tee -a $LOG_FILE;
+  echo  "== Wi‑Fi break: radio off ==" | tee -a $LOG_FILE
+  has nmcli && { nmcli radio wifi off || true; : > /tmp/bflab_wifi_disabled; } || echo  "nmcli not available" | tee -a $LOG_FILE;
 }
 fix_wifi(){
   require_root
-  echo "== Wi‑Fi fix: radio on ==" | tee -a $LOG_FILE
+  echo  "== Wi‑Fi fix: radio on ==" | tee -a $LOG_FILE
   [[ -f /tmp/bflab_wifi_disabled ]] && { has nmcli && nmcli radio wifi on || true; rm -f /tmp/bflab_wifi_disabled; } || true;
 }
 
@@ -311,7 +428,7 @@ fix_wifi(){
 #
 
 test_nic(){
-  echo "== NIC counter test (using only kernel stats) ==" | tee -a "$LOG_FILE"
+  echo  "== NIC counter test (using only kernel stats) ==" | tee -a "$LOG_FILE"
 
   # If we previously broke a NIC, test that same interface; otherwise use primary
   local ifc
@@ -322,13 +439,13 @@ test_nic(){
   fi
 
   if [[ -z "${ifc:-}" ]]; then
-    echo "🌧 No interface to test (none recorded; no primary found)." | tee -a "$LOG_FILE"
+    lecho  "🌧 $WHITE_ON_RED  No interface to test (none recorded; no primary found)." | tee -a "$LOG_FILE"
     return 1
   fi
-  echo "Interface under test: $ifc" | tee -a "$LOG_FILE"
+  echo  "Interface under test: $ifc." | tee -a "$LOG_FILE"
 
-  _stat() { cat "/sys/class/net/$1/statistics/$2" 2>/dev/null || echo 0; }
-  _uptime_secs() { awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0; }
+  _stat() { cat "/sys/class/net/$1/statistics/$2" 2>/dev/null || echo  0; }
+  _uptime_secs() { awk '{print int($1)}' /proc/uptime 2>/dev/null || echo  0; }
 
   local rx1 tx1 rxerr1 txerr1 rxd1 txd1 coll1 carr1
   rx1=$(_stat "$ifc" rx_packets);  tx1=$(_stat "$ifc" tx_packets)
@@ -354,27 +471,27 @@ test_nic(){
   local uph=$(( up2>0 ? (up2+3599)/3600 : 1 ))
 
   {
-    echo "Window: ${SLEEP_SEC}s"
+    echo  "Window: ${SLEEP_SEC}s"
     printf "RX pkts: %d -> %d  (Δ=%d)\n" "$rx1" "$rx2" "$drx"
     printf "TX pkts: %d -> %d  (Δ=%d)\n" "$tx1" "$tx2" "$dtx"
     printf "RX errors Δ=%d (total=%d), TX errors Δ=%d (total=%d)\n" "$drxerr" "$rxerr2" "$dtxerr" "$txerr2"
     printf "RX dropped Δ=%d (total=%d), TX dropped Δ=%d (total=%d)\n" "$drxd" "$rxd2" "$dtxd" "$txd2"
     printf "Collisions Δ=%d (total=%d), TX carrier errs Δ=%d (total=%d)\n" "$dcoll" "$coll2" "$dcarr" "$carr2"
-    echo "Uptime (hours, ceil): $uph  → “small” total threshold ≈ <$uph"
+    echo  "Uptime (hours, ceil): $uph  → “small” total threshold ≈ <$uph"
   } | tee -a "$LOG_FILE"
 
   local status=0
   if (( drx + dtx <= 0 )); then
-    echo "⚠️  No packet movement in ${SLEEP_SEC}s — link may be idle/down." | tee -a "$LOG_FILE"
+    lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   No packet movement in ${SLEEP_SEC}s — link may be idle/down." | tee -a "$LOG_FILE"
     status=1
   else
-    echo "✅ Packet movement observed (ΔRX=$drx, ΔTX=$dtx)." | tee -a "$LOG_FILE"
+    lecho  "✅ Packet movement observed (ΔRX=$drx, ΔTX=$dtx)." | tee -a "$LOG_FILE"
   fi
-  (( drxerr>0 || dtxerr>0 )) && echo "⚠️  Errors increased (Δrx_err=$drxerr, Δtx_err=$dtxerr)." | tee -a "$LOG_FILE"
+  (( drxerr>0 || dtxerr>0 )) && lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   Errors increased (Δrx_err=$drxerr, Δtx_err=$dtxerr)." | tee -a "$LOG_FILE"
 
-  (( rxd2>uph || txd2>uph )) && echo "⚠️  Drops high for $uph h (rx_dropped=$rxd2, tx_dropped=$txd2)." | tee -a "$LOG_FILE"
-  (( coll2>uph )) && echo "⚠️  Collisions high for $uph h (collisions=$coll2)." | tee -a "$LOG_FILE"
-  (( carr2>uph )) && echo "⚠️  Carrier errs high for $uph h (tx_carrier_errors=$carr2)." | tee -a "$LOG_FILE"
+  (( rxd2>uph || txd2>uph )) && lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   Drops high for $uph h (rx_dropped=$rxd2, tx_dropped=$txd2)." | tee -a "$LOG_FILE"
+  (( coll2>uph )) && lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   Collisions high for $uph h (collisions=$coll2)." | tee -a "$LOG_FILE"
+  (( carr2>uph )) && lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   Carrier errs high for $uph h (tx_carrier_errors=$carr2)." | tee -a "$LOG_FILE"
 
   return "$status"
 }
@@ -383,9 +500,9 @@ test_nic(){
 break_nic(){
   require_root
   local ifc="${IF:-$(primary_iface || true)}"
-  [[ -z "$ifc" ]] && { echo "No interface found." | tee -a "$LOG_FILE"; return 0; }
-  echo "$ifc" > /tmp/bflab_nic_iface
-  echo "== NIC break: '$ifc' down ==" | tee -a "$LOG_FILE"
+  [[ -z "$ifc" ]] && { echo  "No interface found." | tee -a "$LOG_FILE"; return 0; }
+  echo  "$ifc" > /tmp/bflab_nic_iface
+  echo  "== NIC break: '$ifc' down ==" | tee -a "$LOG_FILE"
   ip link set "$ifc" down
 }
 
@@ -396,7 +513,7 @@ fix_nic(){
   require_root
   [[ -f /tmp/bflab_nic_iface ]] || return 0
   local ifc; ifc=$(cat /tmp/bflab_nic_iface)
-  echo "== NIC fix: '$ifc' up ==" | tee -a "$LOG_FILE"
+  echo  "== NIC fix: '$ifc' up ==" | tee -a "$LOG_FILE"
   ip link set "$ifc" up || true
   has nmcli && nmcli device connect "$ifc" 2>>"$LOG_FILE" || true
   rm -f /tmp/bflab_nic_iface
@@ -406,10 +523,10 @@ test_nic_all(){
   # Test all NICs that are currently UP
   local iflist
   iflist=$(ip -o link show up | awk -F': ' '$2 !~ /lo|tun|tap|docker|veth|virbr|nm-|wg/ {print $2}')
-  [[ -z "$iflist" ]] && { echo "🌧 No candidate interfaces up."; return 1; }
+  [[ -z "$iflist" ]] && { lecho  "🌧 $WHITE_ON_RED  No candidate interfaces up."; return 1; }
   local rc=0
   for ifc in $iflist; do
-    echo "----"; IF="$ifc" test_nic || rc=1
+    echo  "----"; IF="$ifc" test_nic || rc=1
   done
   return $rc
 }
@@ -432,7 +549,7 @@ test_time(){
   # DATE_HDR is GMT in RFC 2822 Format
   DATE_HDR=$(curl -sI "https://${TIME_SERVER}" | grep -i '^Date:' || true)
   if [[ -z "${DATE_HDR:-}" ]]; then
-    echo "🌧 Could not read HTTP Date header from ${TIME_SERVER}" | tee -a "$LOG_FILE"
+    lecho  "🌧 $WHITE_ON_RED  Could not read HTTP Date header from ${TIME_SERVER}" | tee -a "$LOG_FILE"
     return 1
   fi
   # Everything up to and including the colon is removed.  RFC 2616 says the header must be Date, RFCs RFC 7230 §3.2 → RFC 9110
@@ -444,25 +561,25 @@ test_time(){
   OFFSET=$((LOCAL_TS - REMOTE_TS))
   ABS_OFFSET=${OFFSET#-}
   if (( ABS_OFFSET > 10 )); then
-    echo "⚠️  Clock drift ${OFFSET}s exceeds ±10s."
+    lecho  "⚠️ $BLACK_ON_YELLOW  $BLACK_ON_YELLOW   Clock drift ${OFFSET}s exceeds ±10s."
     return 1
   else
-    echo "✅ Clock within tolerance (${OFFSET}s)."
+    lecho  "✅ Clock within tolerance (${OFFSET}s)."
     return 0
   fi
 }
 
 
 break_time(){
-  require_root; echo "== Time skew time by 40 seconds (disable NTP) =="
+  require_root; echo  "== Time skew time by 40 seconds (disable NTP) =="
   has timedatectl && timedatectl set-ntp false || true
   date -s "-40 seconds" >>$LOG_FILE
   : > /tmp/bflab_time_skewed
-  echo "Now: $(date)"
+  echo  "Now: $(date)"
 }
 
 fix_time(){
-  require_root; echo "== time fix: restore time / enable NTP =="
+  require_root; echo  "== time fix: restore time / enable NTP =="
   if [[ -f /tmp/bflab_time_skewed ]]; then
     has timedatectl && timedatectl set-ntp true || true
     has hwclock && hwclock -s || true
@@ -476,7 +593,7 @@ fix_time(){
       echo2 "Waiting 10 seconds.  Hopefully, the system clock is synchronized"
     fi
   fi
-  echo "Now: $(date)"
+  echo  "Now: $(date)"
 }
 
 
@@ -494,31 +611,32 @@ test_packet_loss(){
   fi
   ip route list | fgrep default > $DEF_ROUTES_FILE
   if [[ -z $IF ]]; then
-    echo "🌧 Interface $IF is not set: the file /tmp/bflab_tc_iface didn't have it, neither did envar LOSS_IF, and primary_iface returned nothing"
+    lecho  "🌧 $WHITE_ON_RED  Interface :$IF: is not set: the file /tmp/bflab_tc_iface didn't have it, neither did envar LOSS_IF, and primary_iface returned nothing"
     exit 1
   elif [[ $( wc -l <"$DEF_ROUTES_FILE" ) -ne 1 ]]; then
-     echo "⚠️ There are $(wc -l <$DEF_ROUTES_FILE) default routes,  There should be only one.  "
+     lecho  "⚠️  $BLACK_ON_YELLOW  There are $(wc -l <$DEF_ROUTES_FILE) default routes,  There should be only one.  "
      cat $DEF_ROUTES_FILE
   fi  
-  echo "== Packet-loss test on interface $IF (ping 1.1.1.1, expect 0% when idle) =="  | tee -a $LOG_FILE
+  echo  "== Packet-loss test on interface :$IF: (ping $PUBLIC_TARGET, expect 0% when idle) =="  | tee -a $LOG_FILE
   if ip route list | egrep -q -E "$IF"; then
-    echo2 "Interface $IF is connected to a default route"
+    echo2 "Interface :$IF: is connected to a default route"
   else
-    echo1 "🌧 Interface $IF is **not** connected to a default route, so the ping test will be meaningless"
+    lecho "🌧 $WHITE_ON_RED  Interface :$IF: is **not** connected to a default route, so the ping test will be meaningless"
+    ip route list
   fi
-  if ping -c 10 -W 1 1.1.1.1 | awk '/packets transmitted/ {loss=$6+0; print; if (loss>0) exit 1}'; then
-    echo "✅ No significant loss observed" | tee -a $LOG_FILE; return 0
+  if ping -c 10 -W 1 $PUBLIC_TARGET | awk '/packets transmitted/ {loss=$6+0; print; if (loss>0) exit 1}'; then
+    lecho  "✅ $BLACK_ON_GREEN  No significant loss observed" | tee -a $LOG_FILE; return 0
   else
-    echo "⚠️  Packet loss detected (may be induced)" | tee -a $LOG_FILE; return 1
+    lecho  "⚠️ $BLACK_ON_YELLOW   Packet loss detected (may be induced)" | tee -a $LOG_FILE; return 1
   fi
   rm -f $DEF_ROUTES_FILE
 }
 break_packet_loss(){
   require_root
-  local IF;     # IF=$(primary_iface || true); [[ -z "${IF:-}" ]] && { echo "No primary interface."; exit 1; }
+  local IF;     # IF=$(primary_iface || true); [[ -z "${IF:-}" ]] && { echo  "No primary interface."; exit 1; }
   if [[ -n ${LOSS_IF:-} ]]; then
     IF=$LOSS_IF
-    echo $IF > /tmp/bflab_tc_iface
+    echo  $IF > /tmp/bflab_tc_iface
   elif [[ -f /tmp/bflab_tc_iface ]]; then
     IF=$(cat /tmp/bflab_tc_iface) 
   else
@@ -527,10 +645,11 @@ break_packet_loss(){
   if ip route list | egrep -q -E "$IF"; then
     echo2 "Interface $IF is connected to a default route"
   else
-    echo1 "🌧 Interface $IF is **not** connected to a default route, so the ping test will probably fail"
+    echo1 "🌧 $WHITE_ON_RED  Interface :$IF: is **not** connected to a default route, so the ping test will probably fail"
+    ip route list
   fi
-  local PCT="${LOSS_PCT:-74}"; echo "$IF" > /tmp/bflab_tc_iface
-  echo "== Packet-loss break: tc netem loss ${PCT}% on ${IF} =="
+  local PCT="${LOSS_PCT:-74}"; echo  "$IF" > /tmp/bflab_tc_iface
+  echo  "== Packet-loss break: tc netem loss ${PCT}% on ${IF} =="
   tc qdisc del dev "$IF" root 2>>$LOG_FILE || true
   tc qdisc add dev "$IF" root netem loss "${PCT}%"
   tc qdisc show dev "$IF"
@@ -538,10 +657,10 @@ break_packet_loss(){
 fix_packet_loss(){
   require_root; [[ -f /tmp/bflab_tc_iface ]] || return 0
   local IF; IF=$(cat /tmp/bflab_tc_iface)
-  echo "== Packet-loss fix: Setting the packet loss rate on ${IF} to 0% (should not be needed) ==" | tee -a $LOG_FILE  
+  echo  "== Packet-loss fix: Setting the packet loss rate on ${IF} to 0% (should not be needed) ==" | tee -a $LOG_FILE  
   tc qdisc change dev "$IF" root netem loss 0%
   tc qdisc show dev "$IF"  
-  echo "== Packet-loss fix: remove tc netem on ${IF} ==" | tee -a $LOG_FILE
+  echo  "== Packet-loss fix: remove tc netem on ${IF} ==" | tee -a $LOG_FILE
   tc qdisc del dev "$IF" root >> $LOG_FILE 2>>$LOG_FILE  || true
   tc qdisc show dev "$IF"
   rm -f /tmp/bflab_tc_iface
@@ -585,17 +704,17 @@ EOF
   if $VERBOSE_FLAG; then cat $SSL_CACNF; fi
   # Unless both the Certificate Authority (CA) key and the CA cert exist, create them.
   if [[ ! -s "$SSL_CA_KEY" || ! -s "$SSL_CA_CRT" ]]; then
-    echo "== Creating local demo CA =="
+    echo  "== Creating local demo CA =="
 #   OpenSSL isn’t a tool. It’s a choose-your-own-adventure book written in flags.  😆 
     openssl genrsa -out "$SSL_CA_KEY" 2048 >>$LOG_FILE 2>&1
     openssl req -x509 -new -key "$SSL_CA_KEY" -out "$SSL_CA_CRT" -days 3650 \
       -subj "/CN=BFLab Demo CA" >>$LOG_FILE 2>&1
   else
-    echo "The CA was already prepared"
+    echo  "The CA was already prepared"
   fi
   echo2 "The CA key is $SSL_CA_KEY and the CA cert is $SSL_CA_CRT"
   # Seed the CA serial number file.  This is an even number of hex digits.
-  [[ -s "$SSL_CA_DIR/ca.srl" ]] || echo "01" > "$SSL_CA_DIR/ca.srl"
+  [[ -s "$SSL_CA_DIR/ca.srl" ]] || echo  "01" > "$SSL_CA_DIR/ca.srl"
   
 }
 
@@ -608,7 +727,7 @@ ssl_make_csr() {
     # -s means true if the file exists and has size greater than 0
     # If the server key does not exist, then create it
     if [[ ! -s "$SSL_SRV_KEY" ]]; then
-      echo "Creating the server private key"
+      echo  "Creating the server private key"
       openssl genrsa -out "$SSL_SRV_KEY" 2048 >>$LOG_FILE 2>&1
     fi
 
@@ -647,14 +766,14 @@ ssl_sign_cert() {
   echo2 "Signing a $mode certificate"
   local EXTFILE; EXTFILE="$(mktemp)"
   printf "subjectAltName=DNS:localhost\nbasicConstraints=CA:FALSE\nkeyUsage=Digital Signature\nextendedKeyUsage=serverAuth\n" > "$EXTFILE"
-  echo -n "The CA serial number is: "; cat "$SSL_CA_DIR/ca.srl"
-  rm -f "$SSL_SRV_BAD_CRT" "$SSL_SRV_GOOD_CRT"       # openssl won't overwrite an existing certificate file
+  echo  -n "The CA serial number is: "; cat "$SSL_CA_DIR/ca.srl"
   if [[ "$mode" == "expired" ]]; then
 # In the April 1st, 1992, A graduate student 🎓 named I. M. Virtual published a 
 # paper in the Proceedings of the Association of Computing Machinery, in which
 # they proved that the openssl program was incomprehensible.  That proof has not
 # been refuted in any refereed journal to this day (Oct 23 2025)
     echo2 "Creating an expired certificate with external file $EXTFILE:"
+    rm -f "$SSL_SRV_BAD_CRT"              # openssl won't overwrite an existing certificate file
     if $VERBOSE_FLAG; then cat $EXTFILE; fi
     # Using a negative number of days, as suggested by
     # https://unix.stackexchange.com/questions/359225/create-self-signed-certificate-with-end-date-in-the-past
@@ -675,19 +794,20 @@ ssl_sign_cert() {
           >$LOG_FILE 2>&1
     # I had a couple of failures when openssl had a problem and yet it created
     # an empty cert file.
-    if [[ ! -s "$SSL_SRV_BAD_CRT" ]]; then echo "🌧 SOMETHING WENT WRONG CREATING $SSL_SRV_BAD_CRT"; exit 1; fi
+    if [[ ! -s "$SSL_SRV_BAD_CRT" ]]; then lecho  "🌧 $WHITE_ON_RED  SOMETHING WENT WRONG CREATING $SSL_SRV_BAD_CRT"; exit 1; fi
     local DATES; DATES="$(mktemp)"
     if openssl x509 -in "$SSL_SRV_BAD_CRT" -noout -dates | tee $DATES | fgrep 2023; then
-      echo "The certificate has dates in 2023"
+      echo  "The certificate has dates in 2023"
       rm $DATES
     else
-      echo "The certificate does not have dates in 2023 - something is wrong"
+      echo  "The certificate does not have dates in 2023 - something is wrong"
       cat $DATES
       rm $DATES
       exit 1
     fi 
   else
     echo2 "Creating a valid certificate with external file $EXTFILE:"
+    rm -f "$SSL_SRV_GOOD_CRT"       # openssl won't overwrite an existing certificate file
     # By default, the start date/time is now and the end date/time is however 
     # many days (367) after now.
     openssl x509 -req -in "$SSL_SRV_CSR" \
@@ -695,13 +815,13 @@ ssl_sign_cert() {
       -extfile "$EXTFILE" \
       -days 367 \
       -out "$SSL_SRV_GOOD_CRT" -sha256 >$LOG_FILE 2>&1
-    echo "After creating a valid cert, openssl returned $?"
+    echo  "After creating a valid cert, openssl returned $?"
     # I had a couple of failures when openssl had a problem and yet it created
     # an empty cert file.
-    if [[ ! -s "$SSL_SRV_GOOD_CRT" ]]; then echo "🌧 SOMETHING WENT WRONG CREATING $SSL_SRV_GOOD_CRT"; exit 1; fi
-    echo -n "The CA serial number is: "; cat "$SSL_CA_DIR/ca.srl"
+    if [[ ! -s "$SSL_SRV_GOOD_CRT" ]]; then lecho  "🌧 $WHITE_ON_RED  SOMETHING WENT WRONG CREATING $SSL_SRV_GOOD_CRT"; exit 1; fi
+    echo  -n "The CA serial number is: "; cat "$SSL_CA_DIR/ca.srl"
   fi
-  echo "NOT DELETING $EXTFILE \!\!\!"
+  echo  "NOT DELETING $EXTFILE \!\!\!"
   # rm -f "$EXTFILE"
 }
 
@@ -715,31 +835,31 @@ ssl_server_start() {
   elif [[ $1 == "expired" ]]; then
     SSL_SRV_CRT=$SSL_SRV_BAD_CRT
   else
-    echo1 "🌧 .ssl_server_start was called with a bad value, $1"
+    echo1 "🌧 $WHITE_ON_RED  .ssl_server_start was called with a bad value, $1"
     exit 1
   fi
   echo2 "Starting an HTTPS server on port $SSL_SRV_PORT with certificate $SSL_SRV_CRT and key $SSL_SRV_KEY"
   (openssl s_server -quiet -accept "$SSL_SRV_PORT" \
      -cert "$SSL_SRV_CRT" -key "$SSL_SRV_KEY" -www >/tmp/openssl_s_server_start_log.txt 2>&1 &
-  echo $! > "$SSL_SRV_PID")
+  echo  $! > "$SSL_SRV_PID")
   cat /tmp/openssl_s_server_start_log.txt >> $LOG_FILE
   rm -f /tmp/openssl_s_server_start_log.txt
   sleep 1
   if [[ -s "$SSL_SRV_PID" ]] && ps -p "$(cat "$SSL_SRV_PID")" -o comm= | grep -q openssl; then
-    echo2 "✅ 🗲 OpenSSL demo server: https://localhost:${SSL_SRV_PORT} (PID $(cat "$SSL_SRV_PID"))"
+    echo2 "✅ $BLACK_ON_GREEN  🗲 OpenSSL demo server: https://localhost:${SSL_SRV_PORT} (PID $(cat "$SSL_SRV_PID"))"
 #   In Bash, 'trap' is like 'finally', except when it isn't.   😁
 # The HTTPS server has been started and will continue to run until it stops.
 # Whenever this script exits or generates an error, stop the HTTPS server.
 # The alternative is to stop the server, if it is running, when the script starts
     trap ssl_server_stop EXIT ERR
   else
-    echo2 "❌ Failed to start OpenSSL demo server."
+    echo2 "❌ $BLACK_ON_RED  Failed to start OpenSSL demo server."
     # Why ?
     openssl s_server -quiet -accept "$SSL_SRV_PORT" \
      -cert "$SSL_SRV_CRT" -key "$SSL_SRV_KEY" -www
     echo2 "openssl s_server -quiet -accept $SSL_SRV_PORT \
      -cert $SSL_SRV_CRT -key $SSL_SRV_KEY -www"
-    echo2 "🌧"
+    echo2 "🌧 $WHITE_ON_RED "
     exit 1  
   fi
 }
@@ -772,26 +892,26 @@ ssl_server_stop() {
 }
 
 test_openssl_expired() {
-  echo "== SSL-EXPIRED test =="
+  echo  "== SSL-EXPIRED test =="
   if curl -fsS "https://localhost:${SSL_SRV_PORT}" --cacert "$SSL_CA_CRT" --connect-timeout 3 >>$LOG_FILE 2>&1; then
-    echo "✅ TLS OK (time-valid cert in place)"
+    lecho  "✅ $BLACK_ON_GREEN  TLS OK (time-valid cert in place)"
     return 0
   else
-    echo "❌ TLS verify failed (expected if expired cert is active)"
+    lecho  "❌ $BLACK_ON_RED  TLS verify failed (expected if expired cert is active)"
     return 1
   fi
 }
 
 break_openssl_expired() {
   require_root
-  echo "== BREAK ssl-expired: start server with EXPIRED cert =="
+  echo  "== BREAK ssl-expired: start server with EXPIRED cert =="
   ssl_server_stop
   ssl_server_start expired
 }
 
 fix_openssl_expired() {
   require_root
-  echo "== FIX ssl-expired: swap to VALID cert =="
+  echo  "== FIX ssl-expired: swap to VALID cert =="
   ssl_server_stop
   ssl_server_start valid
 }
@@ -802,6 +922,7 @@ if [[ ! -s $SSL_SRV_BAD_CRT || ! -s $SSL_SRV_GOOD_CRT ]]; then
   ssl_make_csr
   ssl_sign_cert valid 
   ssl_sign_cert expired
+  ls -l $SSL_SRV_BAD_CRT $SSL_SRV_GOOD_CRT
 else
   echo2 "Both certificates already exist"
 fi
@@ -823,16 +944,16 @@ test_openssl_bad_dns(){
   curl -fsS "https://${HOST_TO_TEST}:443"  >>$LOG_FILE 2>&1;
   STATUS=$?
   if [[ $STATUS -eq 60 ]]; then
-    echo "❌ TLS verify failed (expected if using evil hostname $HOST_TO_TEST )"
+    lecho  "❌ $BLACK_ON_RED  TLS verify failed (expected if using evil hostname $HOST_TO_TEST )"
     return $STATUS
   elif [[ $STATUS -eq 6 ]]; then
-    echo "❌ DNS failed to find $HOST_TO_TEST (expected if using bad hostname)"
+    lecho  "❌ $BLACK_ON_RED  DNS failed to find $HOST_TO_TEST (expected if using bad hostname)"
     return $STATUS
   elif [[ $STATUS -ne 0 ]]; then
-    echo "❌ curl failed for some other reason, refer to $LOG_FILE"
+    lecho  "❌ $BLACK_ON_RED  curl failed for some other reason, refer to $LOG_FILE"
     return $STATUS
   else
-    echo "✅ TLS OK (${HOST_TO_TEST}:443 using curl and IPv4 address $HOST_TO_TEST_IPv4_ADDR)"
+    lecho  "✅ $BLACK_ON_GREEN  TLS OK (${HOST_TO_TEST}:443 using curl and IPv4 address $HOST_TO_TEST_IPv4_ADDR)"
     return 0
   fi
 }
@@ -846,8 +967,8 @@ break_openssl_bad_dns(){
   HOST_TO_TEST_IPv4_ADDR=$(dig +short $HOST_TO_TEST)
   cp /etc/hosts /tmp/hosts_SAVED
   # Avoid duplicate poison lines:
-  grep -q "bflab poison" /etc/hosts || echo "${HOST_TO_TEST_IPv4_ADDR}     ${HOST_TO_TEST}   # bflab poison" >> /etc/hosts
-  echo "$HOST_TO_TEST_IPv4_ADDR   $HOST_TO_TEST   # bflab poison" >> /etc/hosts
+  grep -q "bflab poison" /etc/hosts || echo  "${HOST_TO_TEST_IPv4_ADDR}     ${HOST_TO_TEST}   # bflab poison" >> /etc/hosts
+  echo  "$HOST_TO_TEST_IPv4_ADDR   $HOST_TO_TEST   # bflab poison" >> /etc/hosts
   if $VERBOSE_FLAG; then
     echo1 "Verifying that /etc/hosts was patched with $HOST_TO_TEST_IPv4_ADDR"
   fi
@@ -858,7 +979,7 @@ fix_openssl_bad_dns(){
   require_root
   if egrep -E "${HOST_TO_TEST_IPv4_ADDR}.*${HOST_TO_TEST}.*bflab poison" /etc/hosts; then
     if fgrep "bflab poison" /tmp/hosts_SAVED; then
-      echo "🌧 NOT FIXING /etc/hosts with /tmp/hosts_SAVED has bflab poison"
+      lecho  "⚠️   $BLACK_ON_YELLOW  NOT FIXING /etc/hosts with /tmp/hosts_SAVED has bflab poison"
       # This isn't a catastrophic failure because breaking /etc/hosts means
       # that there is a bad entry in it.  It would be bad if somebody actually
       # used that bad entry. But it does mean something may have gone wrong somwehere. 
@@ -866,7 +987,7 @@ fix_openssl_bad_dns(){
       cp -v /tmp/hosts_SAVED /etc/hosts
     fi
   else
-    echo "🌧 NOT FIXING /etc/hosts because there is no bflab poison in it."
+    lecho  "⚠️   $BLACK_ON_YELLOW  NOT FIXING /etc/hosts because there is no bflab poison in it."
   fi
   HOST_TO_TEST=$DNS_TEST_REAL_HOST
   HOST_TO_TEST_IPv4_ADDR=$(dig +short $HOST_TO_TEST)
@@ -877,7 +998,7 @@ usage(){
 Usage: sudo ./bf.sh <operation> <subsystem> [verbose]
 
 Operations: test | break | fix | all
-Subsystems: dns | time | routing-isp | routing-border | local-connectivity | wifi | nic | nics | packet-loss | openssl-expired | openssl-bad-dns 
+Subsystems: dns | time | routing-isp | routing-local | local-connectivity | wifi | nic | nics | packet-loss | openssl-expired | openssl-bad-dns 
 Add the word "verbose" if you want a more verbose output.
 
 Examples:
@@ -889,27 +1010,27 @@ Examples:
 EOF
 }
 map_sub(){
-  local s=$(echo "${1:-}" | tr '[:upper:]' '[:lower:]')
+  local s=$(echo  "${1:-}" | tr '[:upper:]' '[:lower:]')
   case "$s" in
-    dns) echo dns ;;
-    time) echo time ;;
-    routing-isp) echo routing_isp ;;
-    routing-border) echo routing_border ;;
-    local-connectivity) echo local_connectivity ;;
-    wifi) echo wifi ;;
-    nic) echo nic ;;
-    nics) echo nics ;;
-    packet-loss) echo packet_loss ;;
-    openssl-expired) echo openssl_expired ;;
-    openssl-bad-dns) echo openssl_bad_dns ;;
-    *) echo "$s wasn't one of DNS, time, routing_ISP, routing_border, local_connectivity, wifi, nic, packet-loss, openssl-expired, or openssl-bad-dns"; return 1; ;;
+    dns) echo  dns ;;
+    time) echo  time ;;
+    routing-isp) echo  routing_isp ;;
+    routing-local) echo  routing_local ;;
+    local-connectivity) echo  local_connectivity ;;
+    wifi) echo  wifi ;;
+    nic) echo  nic ;;
+    nics) echo  nics ;;
+    packet-loss) echo  packet_loss ;;
+    openssl-expired) echo  openssl_expired ;;
+    openssl-bad-dns) echo  openssl_bad_dns ;;
+    *) lecho  "🌧 $WHITE_ON_RED  $s wasn't one of dns, time, routing_ISP, routing_local, local_connectivity, wifi, nic, nics, packet-loss, openssl-expired, or openssl-bad-dns"; return 1; ;;
   esac
 }
 
 
 OP="${1:-}"; SUB="${2:-}" 
 [[ -z "$OP" || -z "$SUB" ]] && { usage; exit 2; }
-SUBN=$(map_sub "$SUB"); [[ -z "$SUBN" ]] && { echo "Unknown subsystem: $SUB"; usage; exit 2; }
+SUBN=$(map_sub "$SUB"); [[ -z "$SUBN" ]] && { lecho  "🌧 $WHITE_ON_RED Unknown subsystem: $SUB"; usage; exit 2; }
 if [[ $SUBN == "nic" ]]; then
   IF=$(primary_iface || true)
 elif [[ $SUBN == "nics" ]]; then
@@ -918,29 +1039,45 @@ elif [[ $SUBN == "nics" ]]; then
 fi
 
 do_test="test_${SUBN}"; do_break="break_${SUBN}"; do_fix="fix_${SUBN}"
-echo "Log file is on $LOG_FILE" | tee -a $LOG_FILE
-case "$(echo "$OP" | tr '[:upper:]' '[:lower:]')" in
+echo  "Log file is on $LOG_FILE" | tee -a $LOG_FILE
+case "$(echo  "$OP" | tr '[:upper:]' '[:lower:]')" in
   test) "$do_test" ;;
   break) "$do_break" ;;
   fix) "$do_fix" ;;
   all)
-    echo "== Phase: TEST (pre) ==" | tee -a $LOG_FILE
+    echo  "== Phase: TEST (pre) ==" | tee -a $LOG_FILE
     # Whatever was under test is broken before the demonstration has begun!  Do not make a bad situation worse.
-    echo "SUBN = $SUBN %%%%%%%%%% %%%%%%   %%%%%"
-    if ! "$do_test"; then echo "🌧 Pre-test failed. Aborting." | tee -a $LOG_FILE; exit 3; fi
-    echo "== Phase: BREAK ==" | tee -a $LOG_FILE; "$do_break"
-    echo "== Phase: TEST (mid) ==" | tee -a $LOG_FILE
+    echo  "SUBN = $SUBN %%%%%%%%%% %%%%%%   %%%%%"
+    if ! "$do_test"; then lecho  "🌧 $WHITE_ON_RED  Pre-test failed. Aborting." | tee -a $LOG_FILE; exit 3; fi
+    echo  "== Phase: BREAK ==" | tee -a $LOG_FILE; "$do_break"
+    echo  "== Phase: TEST (mid) ==" | tee -a $LOG_FILE
     # This means either the break step didn't break whatever was under test or else the test can't detect that
     # whatever was under test is broken
     # or both!
-    if "$do_test"; then echo "🌧 Mid-test unexpectedly succeeded; aborting." | tee -a $LOG_FILE; exit 4; fi
-    echo "== Phase: FIX ==" | tee -a $LOG_FILE; "$do_fix"
-    echo "== Phase: TEST (post) ==" | tee -a $LOG_FILE
+    if "$do_test"; then lecho  "🌧 $WHITE_ON_RED  Mid-test unexpectedly succeeded; aborting." | tee -a $LOG_FILE; exit 4; fi
+    echo  "== Phase: FIX ==" | tee -a $LOG_FILE; "$do_fix"
+    echo  "== Phase: TEST (post) ==" | tee -a $LOG_FILE
     # Whatever was done to fix the test did not work.  It was working before we started, it stopped working when
     # we deliberately broke it, and now it is still broken!
-    if ! "$do_test"; then echo "🌧 Post-test failed; aborting." | tee -a $LOG_FILE; exit 5; fi
-    echo "✅✅ Completed all phases for '$SUB'." | tee -a $LOG_FILE
+    if ! "$do_test"; then lecho  "🌧 $WHITE_ON_RED  Post-test failed; aborting." | tee -a $LOG_FILE; exit 5; fi
+    lecho  "✅ ✅ $BLACK_ON_GREEN  Completed all phases for '$SUB'." | tee -a $LOG_FILE
     ;;
   *) usage; exit 2 ;;
 esac
+
+######################### known problems/places for improvements ##################
+# router-border is confusing.  Change to router-local everywhere (simple) ✔
+#
+# packet-loss test fails probablistically, so give it several chances before writing it off.
+#
+# Add an openssl-remote test which uses openssl s_client to test the certificate on a remote server (moderate)
+#
+# Add an nmap test.  Check on the following TCP ports: ftp-ftp-data ssh telnet smtp domain http pop3 sunrpc snmp snmp-trap xdmcp ldap https microsoft-ds 6000-6007 (X11) redis 
+#
+#
+# Add a flag, BROKEN_IN_PROGRESS, which is true if we're in the BREAK phase, either false or not defined otherwise.
+#
+# HARD: Change the test-break-test-fix-test paradigm to setup-test-break-test-fix-test-teardown (hard)
+#
+# Ping sometimes returns an invalid argument in the packet-loss test.  I don't know why
 

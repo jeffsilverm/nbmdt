@@ -13,11 +13,12 @@ This bundle provides a single **controller** script (`bf.sh`) for running *test 
 sudo ./bf.sh <operation> <subsystem>
 ```
 **Operations:** `test | break | fix | all`  
-**Subsystems:** `dns | time | routing-isp | routing-border | local-connectivity | wifi | nic | packet-loss | openssl-expired | openssl-bad-dns`
+**Subsystems:** `dns | time | routing-isp | routing-local | local-connectivity | wifi | nic | packet-loss | openssl-expired | openssl-bad-dns`
 
 ### Examples
 ```bash
 sudo ./bf.sh all dns
+sudo DNS_NAME="f5.com" test dns
 sudo ./bf.sh all nic
 sudo LOSS_PCT=15 ./bf.sh all packet-loss
 sudo PUBLIC_TARGET=8.8.8.8 ./bf.sh all routing-isp
@@ -31,6 +32,8 @@ sudo ./verify_bf.sh
 I wrote this script to help me test bf.sh automatically, and then I realized that it would actually be useful if something went wrong and you didn't know what it was.
 
 CAUTION: the packet-loss test is not reliable on machines with more than one default route.  Yet.
+Note: The local-connectivity test and the routing-local test current do the same thing.  This is NOT by design.  I am going to change local-connectivity
+to do something with arp (IPv4) and NDIS (IPv6), I just don't know what, yet.
 
 ## Safety & cleanup
 - Script stores breadcrumbs in `/tmp/bflab_*` and `/etc/hosts` and removes only what it created.
